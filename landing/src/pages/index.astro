@@ -1,0 +1,78 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const features = [
+  {
+    title: 'Automatyzacje',
+    text: 'Procesy spięte w n8n: formularze, CRM, maile i integracje bez ręcznej roboty.',
+  },
+  {
+    title: 'Projektowanie',
+    text: 'Makiety i prototypy interfejsu robimy w FigCraft, bezpośrednio w przeglądarce.',
+  },
+  {
+    title: 'Szybkie wdrożenie',
+    text: 'Cały stack w Dockerze, wdrażany jednym kliknięciem przez Coolify.',
+  },
+];
+---
+
+<Layout title="BizHack 2026" description="BizHack 2026: automatyzacje, design i szybkie wdrożenia.">
+  <header class="wrap nav">
+    <strong class="logo">BizHack<span>2026</span></strong>
+    <a class="btn ghost" href="#kontakt">Kontakt</a>
+  </header>
+
+  <main>
+    <section class="wrap hero">
+      <h1>Pomysł rano, działający produkt wieczorem.</h1>
+      <p class="lead">
+        Landing, automatyzacje i projekt interfejsu w jednym miejscu. Podmień ten tekst na opis
+        swojego projektu w <code>landing/src/pages/index.astro</code>.
+      </p>
+      <a class="btn" href="#kontakt">Zacznij teraz</a>
+    </section>
+
+    <section class="wrap grid">
+      {
+        features.map((f) => (
+          <article class="card">
+            <h2>{f.title}</h2>
+            <p>{f.text}</p>
+          </article>
+        ))
+      }
+    </section>
+
+    <section id="kontakt" class="wrap cta">
+      <h2>Porozmawiajmy</h2>
+      <p>Napisz do nas, a odezwiemy się w ciągu jednego dnia roboczego.</p>
+      <a class="btn" href="mailto:kontakt@example.com">kontakt@example.com</a>
+    </section>
+  </main>
+
+  <footer class="wrap footer">© {new Date().getFullYear()} BizHack</footer>
+</Layout>
+
+<style>
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  .nav { display: flex; align-items: center; justify-content: space-between; padding-block: 20px; }
+  .logo { font-size: 20px; letter-spacing: -0.02em; }
+  .logo span { color: var(--accent); margin-left: 4px; }
+  .hero { padding-block: 72px 56px; }
+  h1 { font-size: clamp(32px, 6vw, 56px); line-height: 1.1; letter-spacing: -0.03em; margin: 0 0 20px; max-width: 16ch; }
+  .lead { font-size: 18px; color: var(--muted); max-width: 60ch; margin: 0 0 28px; }
+  .btn {
+    display: inline-block; padding: 12px 20px; border-radius: 10px;
+    background: var(--accent); color: #fff; text-decoration: none; font-weight: 600;
+  }
+  .btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--border); padding: 8px 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; padding-bottom: 56px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+  .card h2 { font-size: 18px; margin: 0 0 8px; }
+  .card p { margin: 0; color: var(--muted); }
+  .cta { padding-block: 56px; border-top: 1px solid var(--border); }
+  .cta h2 { font-size: 28px; margin: 0 0 8px; }
+  .cta p { color: var(--muted); margin: 0 0 20px; }
+  .footer { padding-block: 32px; color: var(--muted); font-size: 14px; }
+</style>

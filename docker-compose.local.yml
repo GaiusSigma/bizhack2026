@@ -1,0 +1,23 @@
+# Nakładka do uruchamiania lokalnego (Coolify jej nie używa):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+#
+#   landing   http://localhost:8080
+#   FigCraft  http://localhost:8081
+#   n8n       http://localhost:5678
+services:
+  landing:
+    ports:
+      - "127.0.0.1:8080:80"
+
+  figcraft:
+    ports:
+      - "127.0.0.1:8081:80"
+
+  n8n:
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PROTOCOL=http
+      - N8N_SECURE_COOKIE=false
+      - N8N_PROXY_HOPS=0
