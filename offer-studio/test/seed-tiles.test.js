@@ -19,7 +19,7 @@ test('tiles: valid ids and categories, statuses as agreed', () => {
   assert.equal(new Set(tiles.map((t) => t.id)).size, tiles.length, 'powtórzone id');
   assert.deepEqual(ids('role', 'active'), ['role:board', 'role:champion']);
   assert.deepEqual(ids('role', 'soon'), ['role:budget', 'role:cto', 'role:dpo', 'role:gc']);
-  for (const t of tiles.filter((x) => x.category === 'role')) assert.ok(t.data.writing_brief?.length > 40, `${t.id}: writing brief`);
+  for (const t of tiles.filter((x) => x.category === 'role' || (x.category === 'product' && x.status === 'active'))) assert.ok(t.data.writing_brief?.length > 40, `${t.id}: writing brief`);
   assert.deepEqual(ids('segment', 'active'), ['segment:in-house', 'segment:law-firm', 'segment:public-sector']);
   assert.deepEqual(ids('product'), ['product:on-prem', 'product:saas', 'product:vault']);
   const pains = tiles.filter((t) => t.category === 'pain');
@@ -107,6 +107,7 @@ test('scenarios: valid fill and when', () => {
         if (st.data_by_role_product?.[r]) for (const t of Object.keys(st.data_by_role_product[r])) assert.ok(products.has(t), `${where}: ${r} ${t}`);
       }
       for (const [k, w] of Object.entries(st.write || {})) for (const r of Object.keys(w.hint_by_role || {})) assert.ok(roles.has(r), `${where}: ${k} hint ${r}`);
+      for (const [k, w] of Object.entries(st.write || {})) for (const t of Object.keys(w.hint_by_product || {})) assert.ok(products.has(t), `${where}: ${k} hint ${t}`);
     }
   }
   assert.deepEqual(seed.scenarios, scenarios);
@@ -205,6 +206,22 @@ test('base deck: every field a model writes is a field of its slide, and the def
         assert.ok(rows.length >= w.min && rows.length <= w.max, `${where}: ${rows.length} default items`);
         for (const r of rows) assert.equal(r.split('|').length, Object.keys(w.columns).length, `${where}: "${r}"`);
       }
+    }
+  }
+});
+
+test('product fit: content that names Gaius Vault or the client’s own server never reaches a SaaS offer', () => {
+  const all = [...seed.blocks, ...solutionBlocks].map((b) => ({ ...b, tags: [...b.tags, ...(tileTags[b.id] || [])] }));
+  const offered = all.filter((b) => ['solution', 'use_case', 'differentiator', 'comparison', 'pillar'].includes(b.type));
+  const text = (b) => [b.title, b.body, ...Object.values(b.data || {}).map(String)].join(' ');
+  const vaultOnly = offered.filter((b) => /\bVault\b|own server|your server|local language models|on-premise/i.test(text(b)) && !/SaaS/.test(text(b)));
+  assert.ok(vaultOnly.length >= 5);
+  for (const b of vaultOnly) {
+    const prods = b.tags.filter((t) => t.startsWith('product:'));
+    assert.ok(prods.length && !prods.includes('product:saas'), `${b.id}: names Vault or an own server, so it needs product tags without SaaS (has ${prods.join(', ') || 'none'})`);
+    // the client's own server is the on-prem product only
+    if (/own server|your server|on a server in your organisation|local language models/i.test(text(b)) && !/can run on-premise/i.test(text(b))) {
+      assert.deepEqual(prods, ['product:on-prem'], `${b.id}: own server -> on-prem only`);
     }
   }
 });

@@ -416,7 +416,8 @@ export const tiles = [
     "data": {
       "price": "",
       "pick_when": "A small firm or a single lawyer, no requirement for data to stay on site, quick start with a trial.",
-      "avoid_when": "Documents must not leave the organisation, or the client needs company-wide access without per-user limits."
+      "avoid_when": "Documents must not leave the organisation, or the client needs company-wide access without per-user limits.",
+      "writing_brief": "Gaius in the cloud: lite, standard and pro plans and a 14-day trial, hosted in the European Economic Area, with team accounts in separate workspaces. Stress a quick start without an IT project: the team tries it on real matters during the trial. Do not promise the client’s own server, local models or a per-compute-unit licence (those are Vault)."
     }
   },
   {
@@ -430,7 +431,8 @@ export const tiles = [
     "data": {
       "price": "",
       "pick_when": "Mid-size or large firms and in-house teams that work on confidential documents and want the whole team on it.",
-      "avoid_when": "A single lawyer who just wants to try the tool (pick SaaS)."
+      "avoid_when": "A single lawyer who just wants to try the tool (pick SaaS).",
+      "writing_brief": "Gaius Vault: a private environment for a legal team or firm, licensed monthly per compute unit with no per-user fees, with a pilot before the decision. Stress control over documents (never used to train models, access per team and matter), legal sources and the firm’s own documents in one environment, and a cost that does not grow with every user. Do not promise installation on the client’s own server (that is the on-prem product)."
     }
   },
   {
@@ -444,7 +446,8 @@ export const tiles = [
     "data": {
       "price": "",
       "pick_when": "Data must stay inside the organisation: regulated clients, public bodies, IT bans on public cloud, client security questionnaires.",
-      "avoid_when": "The client has no infrastructure of its own and prefers a managed service."
+      "avoid_when": "The client has no infrastructure of its own and prefers a managed service.",
+      "writing_brief": "Gaius Vault on the client’s own server, on local language models; outbound traffic is optional and goes through the client’s proxy. Stress that documents never leave the organisation and that IT controls the environment: it needs one IP address in the network, integrates with the client’s directory and keeps roles per team and matter. Same licence per compute unit, with no per-user fees."
     }
   }
 ];
@@ -654,7 +657,9 @@ export const solutionBlocks = [
       "pain:group-scale",
       "segment:law-firm",
       "segment:in-house",
-      "segment:public-sector"
+      "segment:public-sector",
+      "product:vault",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1019,7 +1024,8 @@ export const solutionBlocks = [
       "pain:shadow-ai",
       "segment:law-firm",
       "segment:in-house",
-      "segment:public-sector"
+      "segment:public-sector",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1061,7 +1067,9 @@ export const solutionBlocks = [
       "pain:confidentiality",
       "segment:in-house",
       "segment:public-sector",
-      "segment:law-firm"
+      "segment:law-firm",
+      "product:vault",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1082,7 +1090,8 @@ export const solutionBlocks = [
       "pain:shadow-ai",
       "pain:group-scale",
       "segment:in-house",
-      "segment:public-sector"
+      "segment:public-sector",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1104,7 +1113,9 @@ export const solutionBlocks = [
       "pain:repetitive-documents",
       "segment:in-house",
       "segment:law-firm",
-      "segment:public-sector"
+      "segment:public-sector",
+      "product:vault",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1146,7 +1157,9 @@ export const tileTags = {
     "segment:in-house"
   ],
   "pl-private-environment": [
-    "pain:confidentiality"
+    "pain:confidentiality",
+    "product:vault",
+    "product:on-prem"
   ],
   "pl-sourced-answers": [
     "pain:hallucinated-citations"
@@ -1207,14 +1220,20 @@ export const tileTags = {
   ],
   "df-private-legal-ai": [
     "pain:confidentiality",
-    "pain:shadow-ai"
+    "pain:shadow-ai",
+    "product:vault",
+    "product:on-prem"
   ],
   "df-one-environment": [
     "pain:weak-case-law-search",
-    "pain:unsearchable-archive"
+    "pain:unsearchable-archive",
+    "product:vault",
+    "product:on-prem"
   ],
   "df-rollout-routine": [
-    "pain:shadow-ai"
+    "pain:shadow-ai",
+    "product:vault",
+    "product:on-prem"
   ],
   "df-no-lock-in": [
     "pain:board-pressure",
@@ -1344,7 +1363,7 @@ export const tileTags = {
 // Content revision. A database seeded with an older revision is updated on startup (src/db.js ensureTiles):
 // new solutions are added, solution pins follow this file, missing guidance is filled in, and a tile
 // description is replaced only if it still has the previous revision's text (edits made by hand stay).
-export const tileUpgrade = { rev: 5, previousDescriptions: {
+export const tileUpgrade = { rev: 8, previousDescriptions: {
   "role:champion": "The enthusiast on the team who brings Gaius in and has to win over colleagues.",
   "role:board": "The board, managing partner or director who signs off the decision and the budget.",
   "role:cto": "Technical sign-off: architecture, security, deployment.",

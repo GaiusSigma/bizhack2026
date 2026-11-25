@@ -5,6 +5,7 @@
 // contentContext() describes every writable field of an offer, with its current value, for the model's prompt;
 // applyContent() validates the model's answer and turns it into slide patches.
 import { HttpError } from './db.js';
+import { productOk, score, segmentOk } from './generate.js';
 
 // "a | b" lines -> [{title, value}] with the step's columns.
 function parseLines(text, columns) {
@@ -20,13 +21,19 @@ const clean = (v) => String(v ?? '').replace(/\s*\|\s*/g, ' / ').replace(/\s*\n\
 export const toLines = (items, columns) => items.map((it) => Object.keys(columns).map((k) => clean(it[k])).join(' | ')).join('\n');
 
 // Everything a model needs to write an offer's copy: per slide (in offer order) the fields it may write.
-// `tiles` (id -> tile) names the reader: the role tile's label, description and writing brief.
+// `tiles` (id -> tile) names the reader (role tile) and the product: label, description and writing brief.
 export function contentContext(offer, scenario, { tiles = {} } = {}) {
-  const role = (offer.data?.tiles || []).find((t) => String(t).startsWith('role:')) || '';
-  const roleTile = tiles[role];
-  const roleLabel = roleTile?.label || role.slice(5).replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
-  // a field's hint for this reader: the general hint plus what changes for the role
-  const hintFor = (w) => [w.hint || '', w.hint_by_role?.[role] ? `For the ${roleLabel}: ${w.hint_by_role[role]}` : ''].filter(Boolean).join(' ');
+  const pick = (cat) => (offer.data?.tiles || []).find((t) => String(t).startsWith(`${cat}:`)) || '';
+  const nameOf = (id) => tiles[id]?.label || id.slice(id.indexOf(':') + 1).replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  const about = (id) => ({ label: nameOf(id), description: tiles[id]?.description || '', brief: tiles[id]?.data?.writing_brief || '' });
+  const role = pick('role');
+  const product = pick('product');
+  // a field's hint for this offer: the general hint, then what changes for the role (reader) and for the product
+  const hintFor = (w) => [
+    w.hint || '',
+    w.hint_by_role?.[role] ? `For the ${nameOf(role)}: ${w.hint_by_role[role]}` : '',
+    w.hint_by_product?.[product] ? `For ${nameOf(product)}: ${w.hint_by_product[product]}` : '',
+  ].filter(Boolean).join(' ');
   const steps = Object.fromEntries((scenario?.steps || []).map((s) => [s.key, s]));
   const slides = [];
   for (const slide of [...offer.slides].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))) {
@@ -43,8 +50,8 @@ export function contentContext(offer, scenario, { tiles = {} } = {}) {
       optional: !!step.optional, ...(slide.origin?.written_by ? { written_by: slide.origin.written_by } : {}), fields,
     });
   }
-  const reader = role ? { role, label: roleLabel, description: roleTile?.description || '', brief: roleTile?.data?.writing_brief || '' } : null;
-  return { offer_id: offer.id, client: offer.data?.client || '', tiles: offer.data?.tiles || [], reader, slides };
+  const reader = role ? { role, ...about(role) } : null;
+  return { offer_id: offer.id, client: offer.data?.client || '', tiles: offer.data?.tiles || [], reader, product: product ? { id: product, ...about(product) } : null, slides };
 }
 
 // A model's answer: { slides: { <step>: { <field>: text | [{title, value…}], hide?: true } } }.
@@ -104,3 +111,41 @@ export function applyContent(ctx, answer, { strict = true } = {}) {
   return { patches, problems };
 }
 
+
+// What the library knows about this client's situation, for the model writing the copy: per selected pain its
+// description, typical quotes (from other clients, not this one), the solutions that fit the client's segment and
+// product (best match first) and proof (differentiators, comparisons, pillars). A pain without content says so
+// (no_solution) instead of borrowing another pain's solution.
+export const SOLUTION_TYPES = ['solution', 'use_case'];
+export const PROOF_TYPES = ['differentiator', 'comparison', 'pillar'];
+const PER_PAIN = 3;
+
+export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
+  const about = (id) => ({ id, label: tiles[id]?.label || id, description: tiles[id]?.description || '' });
+  const fitting = (types, pain) => blocks
+    .map((b, i) => ({ b, i, ...score(b.tags, sel) }))
+    .filter((x) => types.includes(x.b.type) && x.matched.includes(pain) && segmentOk(x.b.tags, sel) && productOk(x.b.tags, sel))
+    .sort((a, b) => b.score - a.score || a.i - b.i)
+    .slice(0, PER_PAIN)
+    .map((x) => x.b);
+  const solution = (b) => ({
+    id: b.id, type: b.type, title: b.title, text: b.body || '',
+    ...(b.data?.effect ? { effect: b.data.effect } : {}), ...(b.data?.value ? { value: b.data.value } : {}),
+  });
+  const proof = (b) => {
+    const cmp = b.data?.them || b.data?.us ? `Others: ${b.data.them || '-'}. Gaius: ${b.data.us || '-'}` : '';
+    return { id: b.id, type: b.type, title: b.title, text: [b.body, cmp].filter(Boolean).join(' ') };
+  };
+  return {
+    segment: about(sel.segment),
+    product: about(sel.product),
+    pains: sel.pains.map((id) => {
+      const solutions = fitting(SOLUTION_TYPES, id).map(solution);
+      return {
+        ...about(id), typical_quotes: tiles[id]?.quotes || [], solutions,
+        proof: fitting(PROOF_TYPES, id).map(proof),
+        ...(solutions.length ? {} : { no_solution: true }),
+      };
+    }),
+  };
+}
