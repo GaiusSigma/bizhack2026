@@ -1,19 +1,19 @@
-// Oferty z kafelków: lista ofert i czytelny widok oferty w trzech kolumnach
-// (klient i pokrycie bólów · slajdy z opisem „dlaczego tu jest” · podgląd FigCraft).
+// Offers from tiles: the offer list and a readable three-column offer view
+// (client and pain coverage · slides with "why it is here" · FigCraft preview).
 import { $, api, autosize, debounce, download, go, h, loadAll, modal, state, tileById, tileLabel, toast, ui } from '../lib.js';
 import { cleanSelection } from '../selection.js';
 import { scoreTags, segmentOk, selectionOf, selectionSummary, tilePicker } from './new-offer.js';
 
-// Nazwy pól slajdu dla ludzi (zamiast kluczy z szablonu).
+// Human names for slide fields (instead of template keys).
 const FIELD_LABELS = {
-  title: 'Tytuł', title_accent: 'Tytuł: wyróżniona końcówka', title_2: 'Tytuł: druga linia', subtitle: 'Podtytuł', lead: 'Wstęp',
-  note: 'Notatka na dole', quote: 'Cytat', quote_lead: 'Tekst pod cytatem', kicker: 'Nadtytuł', text: 'Tekst',
-  price_label: 'Etykieta ceny', price_note: 'Dopisek przy cenie', lines: 'Wiersze (każdy: etykieta | wartość)',
-  col_area: 'Nagłówek kolumny: obszar', col_them: 'Nagłówek kolumny: inni', col_us: 'Nagłówek kolumny: Gaius',
+  title: 'Title', title_accent: 'Title: accented ending', title_2: 'Title: second line', subtitle: 'Subtitle', lead: 'Intro',
+  note: 'Note at the bottom', quote: 'Quote', quote_lead: 'Text under the quote', kicker: 'Kicker', text: 'Text',
+  price_label: 'Price label', price_note: 'Price note', lines: 'Rows (each: label | value)',
+  col_area: 'Column header: area', col_them: 'Column header: others', col_us: 'Column header: Gaius',
 };
 const TYPE_LABELS = {
-  rozwiazanie: 'rozwiązanie', use_case: 'przypadek użycia', problem: 'problem', pillar: 'filar', signal: 'sygnał', step: 'krok wdrożenia',
-  comparison: 'porównanie', package: 'składnik pakietu', person: 'osoba', differentiator: 'wyróżnik',
+  solution: 'solution', use_case: 'use case', problem: 'problem', pillar: 'pillar', signal: 'signal', step: 'rollout step',
+  comparison: 'comparison', package: 'package item', person: 'person', differentiator: 'differentiator',
 };
 const plain = (s) => String(s || '').replace(/\*\*|\[\[\d:|\]\]/g, '');
 
@@ -30,15 +30,15 @@ export function viewOfferList() {
       h('div', { class: 'oc-name' }, o.name),
       ids.length
         ? h('div', { class: 'oc-tiles' }, [sel.role, sel.segment, sel.product].filter(Boolean).map((id) => chip(id)), sel.pains.map((id) => chip(id)))
-        : h('div', { class: 'hint' }, 'oferta złożona ręcznie (bez kafelków)'));
+        : h('div', { class: 'hint' }, 'built by hand (no tiles)'));
   };
   ui.refresh = () => viewOfferList();
   $('#view').replaceChildren(h('div', { class: 'offer-list' },
-    h('div', { class: 'ol-head' }, h('h1', {}, 'Oferty'), h('a', { class: 'btn primary big', href: '#/offers/new' }, '+ Nowa oferta')),
-    state.offers.length ? h('div', { class: 'ol-grid' }, state.offers.map(card)) : h('div', { class: 'empty' }, 'Nie ma jeszcze ofert. Zacznij od „Nowa oferta”.')));
+    h('div', { class: 'ol-head' }, h('h1', {}, 'Offers'), h('a', { class: 'btn primary big', href: '#/offers/new' }, '+ New offer')),
+    state.offers.length ? h('div', { class: 'ol-grid' }, state.offers.map(card)) : h('div', { class: 'empty' }, 'No offers yet. Start with "New offer".')));
 }
 
-// ------------------------------------------------------------------ oferta
+// ------------------------------------------------------------------ offer
 export async function viewOffer(offerId, slideId) {
   let offer;
   try {
@@ -52,7 +52,7 @@ export async function viewOffer(offerId, slideId) {
   const compsById = Object.fromEntries(state.components.map((c) => [c.id, c]));
   let openId = slideId || null;
 
-  // --- podgląd (FigCraft)
+  // --- preview (FigCraft)
   const shots = h('div', { class: 'shots' });
   const pstatus = h('span', { class: 'phint' });
   const shotFor = new Map();
@@ -72,8 +72,8 @@ export async function viewOffer(offerId, slideId) {
       const slide = offer.slides.find((x) => x.id === s.id);
       const img = s.url ? h('img', { src: s.url, alt: `Slajd ${i + 1}` }) : null;
       const fig = h('figure', { class: `shot ${s.hidden ? 'is-hidden' : ''}`, onclick: () => select(s.id, true) },
-        img || h('div', { class: 'shot-error' }, s.error || p.error || 'brak podglądu'),
-        h('figcaption', {}, `${i + 1} · ${slide?.origin?.label || s.frame}${s.hidden ? ' · ukryty' : ''}`));
+        img || h('div', { class: 'shot-error' }, s.error || p.error || 'no preview'),
+        h('figcaption', {}, `${i + 1} · ${slide?.origin?.label || s.frame}${s.hidden ? ' · hidden' : ''}`));
       return { s, fig, img };
     });
     await Promise.all(figs.filter((x) => x.img).map((x) => x.img.decode().catch(() => {})));
@@ -84,13 +84,13 @@ export async function viewOffer(offerId, slideId) {
     shots.replaceChildren(...figs.map((x) => x.fig));
     shots.scrollTop = y;
     markSelected();
-    pstatus.textContent = p.error ? 'błąd renderu' : '';
+    pstatus.textContent = p.error ? 'render error' : '';
   };
   const refreshPreviewSoon = debounce(refreshPreview, 250);
   const preview = h('div', { class: 'preview' },
     h('div', { class: 'pbar' },
-      h('button', { class: 'btn primary', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/pdf`, `${offer.name}.pdf`) }, 'Pobierz PDF'),
-      h('button', { class: 'btn', title: 'Gotowa oferta jako plik FigCraft do ręcznych poprawek', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/figcraft`, `${offer.name}.figcraft`) }, 'Pobierz .figcraft'),
+      h('button', { class: 'btn primary', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/pdf`, `${offer.name}.pdf`) }, 'Download PDF'),
+      h('button', { class: 'btn', title: 'The finished offer as a FigCraft file for manual edits', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/figcraft`, `${offer.name}.figcraft`) }, 'Download .figcraft'),
       h('span', { class: 'spacer' }), pstatus),
     shots);
 
@@ -108,12 +108,12 @@ export async function viewOffer(offerId, slideId) {
     try {
       offer = await api('POST', `/offers/${encodeURIComponent(offer.id)}/recompute`, {});
       const kept = offer.slides.filter((s) => s.locked).length;
-      toast(kept ? `Przeliczono. Slajdy poprawione ręcznie (${kept}) zostały bez zmian.` : 'Przeliczono');
+      toast(kept ? `Recomputed. Slides edited by hand (${kept}) were left unchanged.` : 'Recomputed');
       await reload();
     } catch (e) { toast(e.message, true); }
   };
   const changeTiles = () => {
-    // Kafelki usunięte albo „wkrótce” wypadają z wyboru, żeby zapis się udał.
+    // Deleted or coming-soon tiles drop out of the selection so saving works.
     let ids = cleanSelection(offer.data.tiles, state.tiles);
     const summary = h('div', { class: 'summary-text' });
     const warn = h('div', { class: 'summary-warn' });
@@ -122,21 +122,21 @@ export async function viewOffer(offerId, slideId) {
         offer = await api('PUT', `/offers/${encodeURIComponent(offer.id)}/tiles`, { tiles: ids });
         close();
         const kept = offer.slides.filter((s) => s.locked).length;
-        toast(kept ? `Przeliczono. Slajdy poprawione ręcznie (${kept}) zostały bez zmian.` : 'Przeliczono ofertę');
+        toast(kept ? `Recomputed. Slides edited by hand (${kept}) were left unchanged.` : 'Offer recomputed');
         await loadAll();
         await reload();
       } catch (e) { toast(e.message, true); }
-    } }, 'Zapisz i przelicz');
+    } }, 'Save and recompute');
     const update = () => { const s = selectionSummary(ids); summary.textContent = s.text; warn.textContent = s.warn || ''; save.disabled = !s.ok; };
     const close = modal(h('div', { class: 'tiles-dlg' },
-      h('h3', {}, 'Zmień kafelki'),
-      h('p', { class: 'hint' }, 'Slajdy poprawione ręcznie zostaną bez zmian. Reszta ułoży się od nowa.'),
+      h('h3', {}, 'Change tiles'),
+      h('p', { class: 'hint' }, 'Slides edited by hand stay unchanged. The rest is rebuilt.'),
       tilePicker(ids, (next) => { ids = next; update(); }),
-      h('div', { class: 'bar', style: 'margin-top:14px' }, h('div', { style: 'flex:1' }, summary, warn), h('button', { class: 'btn', onclick: () => close() }, 'Anuluj'), save)));
+      h('div', { class: 'bar', style: 'margin-top:14px' }, h('div', { style: 'flex:1' }, summary, warn), h('button', { class: 'btn', onclick: () => close() }, 'Cancel'), save)));
     update();
   };
 
-  // --- lewa kolumna: klient i pokrycie bólów
+  // --- left column: client and pain coverage
   const clientCol = h('div', { class: 'col client-col' });
   const saveOffer = debounce(async (patch) => {
     try { await api('PATCH', `/offers/${encodeURIComponent(offer.id)}`, patch); refreshPreviewSoon(); } catch (e) { toast(e.message, true); }
@@ -147,42 +147,42 @@ export async function viewOffer(offerId, slideId) {
     const cov = offer.coverage || { covered: [], missing: [] };
     const total = cov.covered.length + cov.missing.length;
     clientCol.replaceChildren(
-      h('a', { class: 'back', href: '#/offers' }, '← Wszystkie oferty'),
-      h('label', { class: 'f' }, 'Klient'),
+      h('a', { class: 'back', href: '#/offers' }, '← All offers'),
+      h('label', { class: 'f' }, 'Client'),
       h('input', { value: offer.data?.client || '', oninput: (e) => saveOffer({ data: { client: e.target.value } }) }),
-      h('label', { class: 'f' }, 'Nazwa oferty'),
+      h('label', { class: 'f' }, 'Offer name'),
       h('input', { value: offer.name, oninput: (e) => saveOffer({ name: e.target.value }) }),
       h('div', { class: 'cc-tiles' },
-        h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Rozmówca'), sel.role ? chip(sel.role) : '–'),
+        h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Contact'), sel.role ? chip(sel.role) : '–'),
         h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Segment'), sel.segment ? chip(sel.segment) : '–'),
-        h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Produkt'), sel.product ? chip(sel.product) : '–')),
+        h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Product'), sel.product ? chip(sel.product) : '–')),
       h('div', { class: `coverage ${cov.missing.length ? 'partial' : 'full'}` },
-        h('div', { class: 'cov-head' }, `Rozwiązane ${cov.covered.length} z ${total} bólów`),
+        h('div', { class: 'cov-head' }, `${cov.covered.length} of ${total} pains solved`),
         h('ul', {},
           cov.covered.map((p) => h('li', { class: 'ok' }, '✓ ', tileLabel(p))),
           cov.missing.map((p) => h('li', { class: 'miss' }, '✗ ', tileLabel(p),
-            h('div', { class: 'hint' }, tileById(p) ? 'Żaden slajd tego nie rozwiązuje. Podmień blok na slajdzie „Jak rozwiązujemy” albo przypnij treść do tego bólu w zakładce Kafelki.' : 'Ten kafelek usunięto. Zmień kafelki oferty.'))))),
-      h('label', { class: 'f' }, 'Cena'),
-      h('input', { value: offer.data?.price || '', placeholder: 'np. 12 000 zł / mies.', oninput: (e) => saveOffer({ data: { price: e.target.value } }) }),
-      !offer.data?.price ? h('div', { class: 'hint warn' }, 'Cena jest pusta: uzupełnij przed wysłaniem.') : null,
+            h('div', { class: 'hint' }, tileById(p) ? 'No slide solves this. Swap a block on the "How we solve it" slide or pin content to this pain in the Tiles tab.' : 'This tile was deleted. Change the offer\'s tiles.'))))),
+      h('label', { class: 'f' }, 'Price'),
+      h('input', { value: offer.data?.price || '', placeholder: 'e.g. 12,000 PLN / month', oninput: (e) => saveOffer({ data: { price: e.target.value } }) }),
+      !offer.data?.price ? h('div', { class: 'hint warn' }, 'The price is empty: fill it in before sending.') : null,
       h('div', { class: 'cc-actions' },
-        h('button', { class: 'btn', onclick: changeTiles }, 'Zmień kafelki'),
-        h('button', { class: 'btn', onclick: recompute, title: 'Ułóż ofertę od nowa z kafelków. Slajdy poprawione ręcznie zostają.' }, 'Przelicz')),
-      h('details', { class: 'advanced' }, h('summary', {}, 'Zaawansowane'),
-        h('p', { class: 'hint' }, 'Edytor dla osób od szablonu: nazwy slajdów w FigCraft, zmienne {{…}}, zapytania o bloki i karty.'),
-        h('a', { class: 'btn sm', href: `#/offer-advanced/${encodeURIComponent(offer.id)}` }, 'Otwórz edytor zaawansowany')),
+        h('button', { class: 'btn', onclick: changeTiles }, 'Change tiles'),
+        h('button', { class: 'btn', onclick: recompute, title: 'Rebuild the offer from its tiles. Slides edited by hand stay.' }, 'Recompute')),
+      h('details', { class: 'advanced' }, h('summary', {}, 'Advanced'),
+        h('p', { class: 'hint' }, 'Editor for template people: FigCraft slide names, {{…}} variables, block queries and cards.'),
+        h('a', { class: 'btn sm', href: `#/offer-advanced/${encodeURIComponent(offer.id)}` }, 'Open the advanced editor')),
     );
   };
 
-  // --- środek: slajdy z opisem „dlaczego tu jest”
-  // Scenariusz liczony na bieżąco: „Zmień kafelki” może zmienić rolę, a z nią scenariusz.
+  // --- middle: slides with "why it is here"
+  // The scenario is looked up live: "Change tiles" may change the role, and with it the scenario.
   const currentScenario = () => state.scenarios.find((s) => s.id === offer.data?.scenario_id);
   const stepOf = (slide) => currentScenario()?.steps.find((st) => st.key === slide.origin?.step);
   const slidesCol = h('div', { class: 'editor slides-col' });
   const itemTitle = (id) => {
     if (id.includes(':')) return tileLabel(id);
     const b = blocksById[id];
-    return b ? plain(b.title) : `${id} (usunięty blok)`;
+    return b ? plain(b.title) : `${id} (deleted block)`;
   };
   const whyChips = (slide) => {
     const all = new Set(Object.values(slide.origin?.matched || {}).flat());
@@ -196,8 +196,8 @@ export async function viewOffer(offerId, slideId) {
       .map((b) => ({ b, ...scoreTags(b.tags, sel) }))
       .sort((a, b) => b.score - a.score || a.b.title.localeCompare(b.b.title, 'pl'));
     const close = modal(h('div', {},
-      h('h3', {}, idx == null ? 'Dodaj blok' : `Podmień: ${itemTitle(slide.block_ids[idx])}`),
-      h('p', { class: 'hint' }, 'Najlepiej pasujące do kafelków klienta są na górze.'),
+      h('h3', {}, idx == null ? 'Add a block' : `Swap: ${itemTitle(slide.block_ids[idx])}`),
+      h('p', { class: 'hint' }, 'The best fits for the client\'s tiles are at the top.'),
       h('div', { class: 'cand-list' }, cands.map(({ b, matched }) => h('button', {
         class: 'cand', disabled: taken.has(b.id),
         onclick: async () => {
@@ -207,7 +207,7 @@ export async function viewOffer(offerId, slideId) {
           await patchSlide(slide.id, { block_ids: next });
         },
       }, h('b', {}, plain(b.title)), b.body ? h('span', { class: 'hint' }, plain(b.body).slice(0, 160)) : null,
-      h('span', {}, matched.map((t) => chip(t)), taken.has(b.id) ? h('span', { class: 'hint' }, ' już na slajdzie') : null))))));
+      h('span', {}, matched.map((t) => chip(t)), taken.has(b.id) ? h('span', { class: 'hint' }, ' already on the slide') : null))))));
   };
 
   const slideEditor = (slide) => {
@@ -220,24 +220,24 @@ export async function viewOffer(offerId, slideId) {
       keys.length ? h('div', { class: 'se-fields' }, keys.map((k) => [
         h('label', { class: 'f' }, FIELD_LABELS[k] || k),
         autosize(h('textarea', { rows: 1, oninput: (e) => saveData({ [k]: e.target.value }) }, slide.data?.[k] ?? '')),
-      ])) : h('div', { class: 'hint' }, 'Ten slajd nie ma pól tekstowych.'),
+      ])) : h('div', { class: 'hint' }, 'This slide has no text fields.'),
       editable && type ? h('div', { class: 'se-blocks' },
-        h('label', { class: 'f' }, 'Bloki na slajdzie'),
+        h('label', { class: 'f' }, 'Blocks on the slide'),
         slide.block_ids.map((id, i) => h('div', { class: 'se-block' }, h('span', {}, itemTitle(id)),
-          h('button', { class: 'btn sm', onclick: () => blockSwap(slide, i, type) }, 'Podmień'),
-          h('button', { class: 'icon', title: 'Usuń z slajdu', onclick: () => patchSlide(slide.id, { block_ids: slide.block_ids.filter((x) => x !== id) }) }, '×'))),
+          h('button', { class: 'btn sm', onclick: () => blockSwap(slide, i, type) }, 'Swap'),
+          h('button', { class: 'icon', title: 'Remove from the slide', onclick: () => patchSlide(slide.id, { block_ids: slide.block_ids.filter((x) => x !== id) }) }, '×'))),
         h('button', { class: 'btn sm', onclick: () => blockSwap(slide, null, type) }, '+ dodaj blok')) : null,
-      Object.keys(slide.picks || {}).length ? h('div', { class: 'hint' }, 'Karty na tym slajdzie zmienisz w edytorze zaawansowanym (wybór ręczny albo „Dobierz karty (AI)”).') : null,
+      Object.keys(slide.picks || {}).length ? h('div', { class: 'hint' }, 'Change the cards on this slide in the advanced editor (manual picks or "Pick cards (AI)").') : null,
       h('div', { class: 'se-actions' },
-        h('button', { class: 'btn sm', onclick: () => patchSlide(slide.id, { hidden: !slide.hidden }) }, slide.hidden ? 'Pokaż w ofercie' : 'Ukryj w ofercie')));
+        h('button', { class: 'btn sm', onclick: () => patchSlide(slide.id, { hidden: !slide.hidden }) }, slide.hidden ? 'Show in the offer' : 'Hide from the offer')));
   };
 
   const renderSlides = () => {
     const visible = offer.slides.filter((s) => !s.hidden).length;
     const scenario = currentScenario();
     slidesCol.replaceChildren(
-      h('div', { class: 'bar' }, h('h2', {}, `Prezentacja · ${visible} slajdów`),
-        scenario ? h('span', { class: 'hint' }, `scenariusz: ${scenario.name}`) : null),
+      h('div', { class: 'bar' }, h('h2', {}, `Deck · ${visible} slides`),
+        scenario ? h('span', { class: 'hint' }, `scenario: ${scenario.name}`) : null),
       ...offer.slides.map((s, i) => {
         const open = s.id === openId;
         const items = s.block_ids.map((id) => h('li', {}, itemTitle(id),
@@ -249,11 +249,11 @@ export async function viewOffer(offerId, slideId) {
             h('span', { class: 'sc-n' }, i + 1),
             h('div', { class: 'sc-main' },
               h('div', { class: 'sc-title' }, s.origin?.label || plain(s.data?.title) || s.frame,
-                s.locked ? h('span', { class: 'badge' }, 'poprawione ręcznie') : null,
-                s.hidden ? h('span', { class: 'badge muted' }, 'ukryty') : null,
-                !s.origin ? h('span', { class: 'badge muted' }, 'dodany ręcznie') : null),
-              whyChips(s).length ? h('div', { class: 'sc-why' }, h('span', { class: 'hint' }, 'bo: '), whyChips(s)) : null),
-            s.locked && s.origin ? h('button', { class: 'btn sm', title: 'Odrzuć ręczne poprawki i dobierz treść z kafelków', onclick: (e) => { e.stopPropagation(); patchSlide(s.id, { locked: false }); } }, 'Przywróć automat') : null),
+                s.locked ? h('span', { class: 'badge' }, 'edited by hand') : null,
+                s.hidden ? h('span', { class: 'badge muted' }, 'hidden') : null,
+                !s.origin ? h('span', { class: 'badge muted' }, 'added by hand') : null),
+              whyChips(s).length ? h('div', { class: 'sc-why' }, h('span', { class: 'hint' }, 'because: '), whyChips(s)) : null),
+            s.locked && s.origin ? h('button', { class: 'btn sm', title: 'Discard manual edits and pick content from the tiles', onclick: (e) => { e.stopPropagation(); patchSlide(s.id, { locked: false }); } }, 'Restore automatic') : null),
           items.length || picks.length ? h('ul', { class: 'sc-items' }, items, picks) : null,
           open ? slideEditor(s) : null);
       }));
@@ -270,7 +270,7 @@ export async function viewOffer(offerId, slideId) {
   };
 
   ui.refresh = async () => {
-    try { await reload(); } catch { /* oferta usunięta */ }
+    try { await reload(); } catch { /* offer deleted */ }
   };
   renderClient();
   renderSlides();

@@ -1,9 +1,9 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 
-// Strona statyczna: `astro build` generuje ./dist, które serwuje nginx (patrz Dockerfile).
+// Static site: `astro build` generates ./dist, which nginx serves (see Dockerfile).
 export default defineConfig({
-  // Ustaw na publiczny adres landingu (używane m.in. w canonical / sitemap).
+  // Set to the landing page's public URL (used e.g. for canonical / sitemap).
   site: process.env.SITE_URL || 'http://localhost:8080',
   output: 'static',
 });

@@ -1,187 +1,186 @@
-// Scenariusze: tok prezentacji dla każdej roli rozmówcy (id = kafelek roli).
-// Krok = slajd z biblioteki (`frame`) + domyślna treść (`data`) + reguła wypełnienia (`fill`).
-//   fill.kind: none (sama treść) | pains (wybrane kafelki bólów) | blocks (bloki typu `type` dobrane po kafelkach,
-//   od `min` do `max`) | picks (karty zestawu komponentów dobrane po kafelkach).
-//   when.any: krok tylko przy którymś z tych kafelków.
-//   data_by_product: nadpisania treści dla produktu (domyślna treść to wersja Vault).
-//   draft: produkty, których teksty są szkicem do poprawy (pokazywane w UI jako „szkic”).
-// Kolejność i treść edytuje się w zakładce Scenariusze.
+// Scenarios: the flow of the presentation for each contact role (id = role tile).
+// Step = a slide from the library (`frame`) + default copy (`data`) + a fill rule (`fill`).
+//   fill.kind: none (copy only) | pains (the client's selected pain tiles) | blocks (blocks of `type` picked by tiles,
+//   from `min` to `max`) | picks (cards from a component set picked by tiles).
+//   when.any: the step appears only with one of these tiles.
+//   data_by_product: copy overrides per product (the default copy is the Vault version).
+//   draft: products whose copy is a draft to review (shown as "draft" in the UI).
+// Order and copy are edited in the Scenarios tab.
 
-const SAAS = 'produkt:saas';
-const ONPREM = 'produkt:on-prem';
-const VAULT_LIKE = { any: ['produkt:vault', ONPREM] };
+const SAAS = 'product:saas';
+const ONPREM = 'product:on-prem';
+const VAULT_LIKE = { any: ['product:vault', ONPREM] };
 
-const okladka = {
-  key: 'okladka', label: 'Okładka', frame: 'okladka',
+// The template prints "GAIUS" before the accent, so SaaS gets "Pro?" (Gaius Pro is the SaaS product).
+const cover = {
+  key: 'cover', label: 'Cover', frame: 'cover',
   data: {
     title: 'Gaius Vault',
-    subtitle: 'Legal AI, które możesz dopuścić **do realnej pracy prawnej**',
-    lead: 'Prywatne Legal AI do pracy na realnych dokumentach - lokalnie, w jednej licencji, pod kontrolą organizacji.',
+    subtitle: 'Legal AI you can trust **with real legal work**',
+    lead: 'Private Legal AI for work on real documents: on-premise, under one licence, under your organisation’s control.',
   },
   data_by_product: {
     [SAAS]: {
       title: 'Gaius Pro',
-      lead: 'Legal AI do pracy na realnych dokumentach: źródła prawa, Wasze wzory i gotowe pisma w jednym narzędziu, bez instalacji.',
+      lead: 'Legal AI for work on real documents: legal sources, your templates and ready drafts in one tool, nothing to install.',
     },
     [ONPREM]: {
-      lead: 'Prywatne Legal AI w Waszej infrastrukturze: dokumenty nie opuszczają organizacji, a środowisko kontroluje Wasz dział IT.',
+      lead: 'Private Legal AI on your own infrastructure: documents never leave the organisation and your IT team controls the environment.',
     },
   },
   draft: [SAAS, ONPREM],
   fill: { kind: 'none' },
 };
 
-const architektura = { key: 'architektura', label: 'Architektura', frame: 'architektura', data: {}, fill: { kind: 'none' }, when: VAULT_LIKE };
+const architecture = { key: 'architecture', label: 'Architecture', frame: 'architecture', data: {}, fill: { kind: 'none' }, when: VAULT_LIKE };
 
-const wdrozenie = {
-  key: 'wdrozenie', label: 'Wdrożenie', frame: 'wdrozenie',
+const rollout = {
+  key: 'rollout', label: 'Rollout', frame: 'rollout',
   data: {
-    quote: 'Nie wdrażamy dostępu.\nWdrażamy sposób pracy.',
-    quote_lead: 'Dlatego Vault obejmuje nie tylko technologię, ale też proces, rutyny i zasady odpowiedzialności.',
+    quote: 'We don’t roll out access.\nWe roll out a way of working.',
+    quote_lead: 'That is why Vault covers not just the technology, but also the process, routines and accountability rules.',
   },
   data_by_product: {
-    [SAAS]: { quote_lead: 'Dlatego Gaius to nie tylko dostęp do narzędzia, ale też warsztaty, rutyny i zasady weryfikacji dla zespołu.' },
+    [SAAS]: { quote_lead: 'That is why Gaius is not just access to a tool, but also workshops, routines and verification rules for the team.' },
   },
   draft: [SAAS],
   fill: { kind: 'blocks', type: 'step', min: 5, max: 5 },
 };
 
-const kontakt = {
-  key: 'kontakt', label: 'Kontakt', frame: 'kontakt',
+const contact = {
+  key: 'contact', label: 'Contact', frame: 'contact',
   data: {
-    kicker: 'ZACZNIJMY WSPÓŁPRACĘ',
-    title: 'Bezpieczne Legal AI w Twojej organizacji',
-    text: 'Jeśli chcesz przyspieszyć research prawny, lepiej kontrolować ryzyka i bezpiecznie wykorzystać AI w swojej firmie, zostaw nam kontakt. Krótka rozmowa wystarczy, żebyśmy zrozumieli specyfikę Twojej organizacji i zaproponowali sensowny zakres pilotażu — od bezpiecznego wdrożenia testowego po pełne wdrożenie on-premise lub model hybrydowy.',
+    kicker: 'LET’S WORK TOGETHER',
+    title: 'Secure Legal AI in your organisation',
+    text: 'If you want faster legal research, tighter risk control and a safe way to use AI in your company, get in touch. A short call is enough for us to understand your organisation and propose a sensible pilot scope, from a safe test rollout to a full on-premise or hybrid deployment.',
   },
   data_by_product: {
-    [SAAS]: { text: 'Jeśli chcesz przyspieszyć research prawny i pracę na dokumentach, zostaw nam kontakt. Krótka rozmowa wystarczy, żebyśmy dobrali plan i pokazali Gaius na Waszych sprawach.' },
+    [SAAS]: { text: 'If you want faster legal research and document work, get in touch. A short call is enough for us to pick the right plan and show Gaius on your own matters.' },
   },
   draft: [SAAS],
   fill: { kind: 'blocks', type: 'person', min: 1, max: 1 },
 };
 
-const cennik = {
-  key: 'cennik', label: 'Cennik', frame: 'cennik',
+const pricing = {
+  key: 'pricing', label: 'Pricing', frame: 'pricing',
   data: {
-    title: 'Co wchodzi w skład',
+    title: 'What’s included in',
     title_accent: 'Vault?',
-    lead: 'Organizacja kupuje nie tylko narzędzie AI, ale wdrożony standard pracy: technologię, środowisko, rutyny i wsparcie adopcji.',
-    price_label: 'Koszt abonamentu',
-    price_note: 'netto',
-    lines: 'Koszt realizacji warsztatów | w cenie abonamentu\nKoszt szkolenia | w cenie abonamentu\nKoszt sprzętu | w cenie abonamentu',
+    lead: 'You are not just buying an AI tool, but a working standard that is rolled out: technology, environment, routines and adoption support.',
+    price_label: 'Subscription fee',
+    price_note: 'net',
+    lines: 'Workshops | included in subscription\nTraining | included in subscription\nHardware | included in subscription',
   },
   data_by_product: {
     [SAAS]: {
       title_accent: 'Pro?',
-      lead: 'Abonament obejmuje narzędzie, aktualne źródła prawa i pomoc we wdrożeniu zespołu.',
-      lines: 'Dostęp dla zespołu | w cenie abonamentu\nAktualizacje źródeł | w cenie abonamentu\nWdrożenie i szkolenie | w cenie abonamentu',
+      lead: 'The subscription covers the tool, up-to-date legal sources and help rolling it out to the team.',
+      lines: 'Team access | included in subscription\nSource updates | included in subscription\nRollout and training | included in subscription',
     },
     [ONPREM]: {
-      lines: 'Koszt realizacji warsztatów | w cenie abonamentu\nKoszt szkolenia | w cenie abonamentu\nInfrastruktura | po stronie organizacji, konfiguracja w cenie',
+      lines: 'Workshops | included in subscription\nTraining | included in subscription\nInfrastructure | provided by the organisation, setup included',
     },
   },
   draft: [SAAS, ONPREM],
   fill: { kind: 'blocks', type: 'package', min: 3, max: 3 },
 };
 
-const czymJestOverrides = { [SAAS]: { title_accent: 'Pro?' } };
-
 export const scenarios = [
   {
-    id: 'rola:zarzad',
-    name: 'Zarząd',
+    id: 'role:board',
+    name: 'Board',
     steps: [
-      okladka,
+      cover,
       {
-        key: 'bole', label: 'Problemy klienta', frame: 'problemy',
+        key: 'pains', label: 'Client pains', frame: 'problems',
         data: {
-          title: 'Co dziś **kosztuje** Waszą organizację?',
-          lead: 'Zebraliśmy to, co usłyszeliśmy w rozmowie. Każdy z tych punktów ma swoje rozwiązanie w dalszej części.',
-          note: 'Celem nie jest kolejne narzędzie. Celem jest mniej pracy odtwórczej przy tym samym zespole.',
+          title: 'What is **costing** your organisation today?',
+          lead: 'This is what we heard in our conversation. Each point has its answer later in this deck.',
+          note: 'The goal is not another tool. The goal is less repetitive work with the same team.',
         },
         fill: { kind: 'pains' },
       },
       {
-        key: 'dlaczego', label: 'Dlaczego Gaius', frame: 'dlaczego',
-        data: { title: 'Dlaczego ', title_accent: 'Vault?', lead: 'Gaius Vault łączy technologię, źródła, dokumenty, wdrożenie i adopcję w jednym modelu.' },
-        data_by_product: { [SAAS]: { title_accent: 'Pro?', lead: 'Gaius łączy technologię, źródła prawa, Wasze dokumenty i wdrożenie zespołu w jednym abonamencie.' } },
+        key: 'why', label: 'Why Gaius', frame: 'why',
+        data: { title: 'Why ', title_accent: 'Vault?', lead: 'Gaius Vault combines technology, sources, documents, rollout and adoption in one model.' },
+        data_by_product: { [SAAS]: { title_accent: 'Pro?', lead: 'Gaius combines technology, legal sources, your documents and team rollout in one subscription.' } },
         draft: [SAAS],
-        fill: { kind: 'picks', set: 'dlaczego' },
+        fill: { kind: 'picks', set: 'why' },
       },
       {
-        key: 'rozwiazania', label: 'Jak rozwiązujemy', frame: 'use-case',
-        data: { title: 'Jak Gaius rozwiązuje Wasze problemy', lead: 'Dla każdego problemu: co robi Gaius i co zyskuje organizacja.' },
-        fill: { kind: 'blocks', type: 'rozwiazanie', min: 2, max: 3 },
+        key: 'solutions', label: 'How we solve it', frame: 'use-case',
+        data: { title: 'How Gaius solves your problems', lead: 'For each problem: what Gaius does and what your organisation gains.' },
+        fill: { kind: 'blocks', type: 'solution', min: 2, max: 3 },
       },
-      architektura,
-      wdrozenie,
-      cennik,
-      kontakt,
+      architecture,
+      rollout,
+      pricing,
+      contact,
     ],
   },
   {
-    id: 'rola:champion',
+    id: 'role:champion',
     name: 'Champion',
     steps: [
-      okladka,
+      cover,
       {
-        key: 'bole', label: 'Problemy klienta', frame: 'problemy',
+        key: 'pains', label: 'Client pains', frame: 'problems',
         data: {
-          title: 'Z czym **mierzy się** Twój zespół?',
-          lead: 'To, co słyszymy od prawników w podobnych zespołach i co padło w naszej rozmowie.',
-          note: 'Każdy z tych problemów ma konkretne rozwiązanie, które pokażesz zespołowi na jego dokumentach.',
+          title: 'What is your team **up against**?',
+          lead: 'What we hear from lawyers in similar teams, and what came up in our conversation.',
+          note: 'Each of these problems has a concrete answer you can show your team on its own documents.',
         },
         fill: { kind: 'pains' },
       },
       {
-        key: 'czym-jest', label: 'Czym jest Gaius', frame: 'czym-jest',
-        data: { title: 'Czym jest ', title_accent: 'Vault?', lead: 'Prywatne środowisko Legal AI, które łączy źródła prawne, dokumenty organizacji i standard pracy zespołu.' },
-        data_by_product: { [SAAS]: { ...czymJestOverrides[SAAS], lead: 'Legal AI, które łączy źródła prawne, dokumenty zespołu i wspólny standard pracy.' } },
+        key: 'what-is', label: 'What Gaius is', frame: 'what-is',
+        data: { title: 'What is ', title_accent: 'Vault?', lead: 'A private Legal AI environment that brings together legal sources, your documents and your team’s way of working.' },
+        data_by_product: { [SAAS]: { title_accent: 'Pro?', lead: 'Legal AI that brings together legal sources, your team’s documents and a shared way of working.' } },
         draft: [SAAS],
         fill: { kind: 'blocks', type: 'pillar', min: 3, max: 3 },
       },
       {
-        key: 'rozwiazania', label: 'Jak rozwiązujemy', frame: 'use-case',
-        data: { title: 'Jak Gaius rozwiązuje Wasze problemy', lead: 'Konkretnie: co robi Gaius i co zyskujesz Ty i Twój zespół.' },
-        fill: { kind: 'blocks', type: 'rozwiazanie', min: 3, max: 3 },
+        key: 'solutions', label: 'How we solve it', frame: 'use-case',
+        data: { title: 'How Gaius solves your problems', lead: 'In concrete terms: what Gaius does and what you and your team gain.' },
+        fill: { kind: 'blocks', type: 'solution', min: 3, max: 3 },
       },
       {
-        key: 'przypadki', label: 'Przypadki użycia', frame: 'use-case',
+        key: 'use-cases', label: 'Use cases', frame: 'use-case',
         data: {
-          title: 'Vault w codziennej praktyce',
-          lead: 'Gaius Vault zamienia najczęstsze punkty styku biznesu z działem prawnym w powtarzalne rutyny: od akceptacji umów, przez reakcję na spór, po wykorzystanie wcześniejszych opinii i standardów.',
+          title: 'Vault in everyday practice',
+          lead: 'Gaius Vault turns the most common touchpoints between the business and legal into repeatable routines: from contract approval and dispute response to reusing past opinions and standards.',
         },
-        data_by_product: { [SAAS]: { title: 'Gaius w codziennej praktyce', lead: 'Gaius zamienia najczęstsze zadania zespołu w powtarzalne rutyny: od akceptacji umów, przez reakcję na spór, po wykorzystanie wcześniejszych opinii.' } },
+        data_by_product: { [SAAS]: { title: 'Gaius in everyday practice', lead: 'Gaius turns your team’s most common tasks into repeatable routines: from contract approval and dispute response to reusing past opinions.' } },
         draft: [SAAS],
         fill: { kind: 'blocks', type: 'use_case', min: 3, max: 6 },
       },
       {
-        key: 'sygnaly', label: 'Sygnały gotowości', frame: 'sygnaly',
+        key: 'signals', label: 'Readiness signals', frame: 'signals',
         data: {
-          title: 'Sygnał, że zespół jest',
-          title_2: 'gotowy na',
+          title: 'Signs your team is',
+          title_2: 'ready for',
           title_accent: 'Vault?',
-          lead: 'Nie chodzi o samą technologię. Chodzi o moment, w którym Legal AI powinno stać się standardem pracy zespołu.',
-          note: 'Gaius pomaga zamienić te sygnały w plan wdrożenia: procesy, rutyny i mierzalny efekt.',
+          lead: 'It is not about the technology itself. It is about the moment Legal AI should become how your team works.',
+          note: 'Gaius helps turn these signals into a rollout plan: processes, routines and measurable impact.',
         },
         data_by_product: { [SAAS]: { title_accent: 'Pro?' } },
         draft: [SAAS],
         fill: { kind: 'blocks', type: 'signal', min: 4, max: 4 },
       },
-      architektura,
+      architecture,
       {
-        key: 'porownanie', label: 'Porównanie', frame: 'porownanie',
+        key: 'comparison', label: 'Comparison', frame: 'comparison',
         data: {
-          title: 'Gaius vs składanie Legal AI z kilku narzędzi',
-          lead: 'Większość rozwiązań rozwiązuje jeden fragment problemu. Gaius Vault dostarcza kompletny standard pracy prawnej z AI — w ramach jednej licencji.',
-          col_area: 'Obszar', col_them: 'Kilka narzędzi AI / LegalTech', col_us: 'Gaius Vault',
+          title: 'Gaius vs. a patchwork of Legal AI tools',
+          lead: 'Most tools solve one piece of the problem. Gaius Vault delivers a complete standard for legal work with AI, under one licence.',
+          col_area: 'Area', col_them: 'Several AI / LegalTech tools', col_us: 'Gaius Vault',
         },
-        data_by_product: { [SAAS]: { lead: 'Większość rozwiązań rozwiązuje jeden fragment problemu. Gaius łączy źródła prawa, dokumenty i pisma w jednym narzędziu.', col_us: 'Gaius Pro' } },
+        data_by_product: { [SAAS]: { lead: 'Most tools solve one piece of the problem. Gaius brings legal sources, documents and drafting together in one tool.', col_us: 'Gaius Pro' } },
         draft: [SAAS],
         fill: { kind: 'blocks', type: 'comparison', min: 5, max: 7 },
       },
-      wdrozenie,
-      kontakt,
+      rollout,
+      contact,
     ],
   },
 ];

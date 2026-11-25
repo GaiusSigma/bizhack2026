@@ -1,26 +1,26 @@
-// Generator oferty z kafelków: czyste funkcje, bez dostępu do bazy.
+// Offer generator from tiles: pure functions, no database access.
 //
-// Wejście: wybrane kafelki (rola, segment, produkt, bóle), scenariusz roli i treść oznaczona kafelkami
-// (tagi bloków i kart). Wyjście: konkretne slajdy (frame, data, block_ids, picks) z zapisem, które
-// kafelki wybrały każdy blok (`origin.matched`), plus pokrycie bólów i plan przeliczenia.
-// Te same kafelki zawsze dają ten sam wynik: przy remisie decyduje kolejność wejściowa.
+// Input: selected tiles (role, segment, product, pains), the role's scenario and content tagged with tiles
+// (block and card tags). Output: concrete slides (frame, data, block_ids, picks) recording which tiles
+// picked each block (`origin.matched`), plus pain coverage and a recompute plan.
+// The same tiles always give the same result: ties are broken by input order.
 import { HttpError } from './db.js';
 
-export const WEIGHTS = { bol: 3, segment: 2, rola: 1, produkt: 1 };
-// Typy bloków, które liczą się do „rozwiązane X z Y bólów”.
-export const COVERAGE_TYPES = ['rozwiazanie', 'use_case'];
+export const WEIGHTS = { pain: 3, segment: 2, role: 1, product: 1 };
+// Block types that count towards "X of Y pains solved".
+export const COVERAGE_TYPES = ['solution', 'use_case'];
 const MAX_PAINS = 5;
 
 const categoryOf = (id) => String(id).split(':')[0];
 
-// Lista id kafelków -> { role, segment, product, pains }. Błędy 400 po polsku, z nazwą kafelka.
+// Tile ids -> { role, segment, product, pains }. 400 errors name the tile.
 export function parseSelection(tileIds, allTiles) {
   const byId = new Map(allTiles.map((t) => [t.id, t]));
   const ids = [...new Set(tileIds || [])];
   for (const id of ids) {
     const t = byId.get(id);
-    if (!t) throw new HttpError(400, `Nie ma kafelka „${id}”`);
-    if (t.status === 'soon') throw new HttpError(400, `Kafelek „${t.label || id}” jest oznaczony jako wkrótce i nie można go jeszcze wybrać`);
+    if (!t) throw new HttpError(400, `No tile "${id}"`);
+    if (t.status === 'soon') throw new HttpError(400, `The tile "${t.label || id}" is marked as coming soon and cannot be selected yet`);
   }
   const of = (cat) => ids.filter((id) => byId.get(id).category === cat);
   const one = (cat, msg) => {
@@ -28,17 +28,17 @@ export function parseSelection(tileIds, allTiles) {
     if (found.length !== 1) throw new HttpError(400, msg);
     return found[0];
   };
-  const role = one('rola', 'Wybierz dokładnie jedną rolę rozmówcy');
-  const segment = one('segment', 'Wybierz dokładnie jeden segment');
-  const product = one('produkt', 'Wybierz dokładnie jeden produkt');
-  const pains = of('bol');
-  if (pains.length < 1 || pains.length > MAX_PAINS) throw new HttpError(400, `Wybierz od 1 do ${MAX_PAINS} bólów klienta`);
+  const role = one('role', 'Select exactly one contact role');
+  const segment = one('segment', 'Select exactly one segment');
+  const product = one('product', 'Select exactly one product');
+  const pains = of('pain');
+  if (pains.length < 1 || pains.length > MAX_PAINS) throw new HttpError(400, `Select 1 to ${MAX_PAINS} client pains`);
   return { role, segment, product, pains };
 }
 
 const selected = (sel) => new Set([sel.role, sel.segment, sel.product, ...sel.pains]);
 
-// Suma wag kafelków z `tags`, które są wybrane. Inne tagi (zwykłe, usunięte kafelki) nic nie dają.
+// Sum of the weights of selected tiles found in `tags`. Other tags (plain tags, deleted tiles) add nothing.
 export function score(tags, sel) {
   const chosen = selected(sel);
   const matched = [];
@@ -51,13 +51,13 @@ export function score(tags, sel) {
   return { score: total, matched };
 }
 
-// Treść oznaczona segmentami pasuje tylko do wybranego segmentu; bez segmentów pasuje zawsze.
+// Content tagged with segments fits only the selected segment; content without segments always fits.
 export function segmentOk(tags, sel) {
   const segs = (tags || []).filter((t) => categoryOf(t) === 'segment');
   return !segs.length || segs.includes(sel.segment);
 }
 
-// Kandydaci posortowani po wyniku (malejąco), przy remisie w kolejności wejściowej.
+// Candidates sorted by score (descending), ties in input order.
 const ranked = (items, sel) =>
   items
     .map((item, i) => ({ item, i, ...score(item.tags, sel) }))
@@ -71,8 +71,8 @@ export function pickBlocks(candidates, fill, sel) {
   return [...hits, ...zeros].map((x) => ({ id: x.item.id, matched: x.matched }));
 }
 
-// Karty zestawu: najwyżej jedna na temat, `slots` tematów z najwyższym wynikiem. Pierwszy temat w rankingu,
-// który ma wariant „wyroznienie”, dostaje go; reszta wariant „zwykla”; „liczba” tylko dla tematu bez zwykłej.
+// Set cards: at most one per topic, the `slots` topics with the highest score. The first ranked topic that has
+// a "highlight" variant gets it; the rest get "regular"; "stat" only for a topic without a regular card.
 export function pickCards(components, slots, sel) {
   const topics = new Map();
   for (const c of components) {
@@ -81,14 +81,14 @@ export function pickCards(components, slots, sel) {
     if (!topics.has(key)) topics.set(key, { key, tags: new Set(), variants: {} });
     const t = topics.get(key);
     for (const tag of c.tags || []) t.tags.add(tag);
-    t.variants[c.variant || 'zwykla'] ??= c;
+    t.variants[c.variant || 'regular'] ??= c;
   }
   const top = ranked([...topics.values()].map((t) => ({ ...t, tags: [...t.tags] })), sel).slice(0, slots);
   let highlighted = false;
   return top.map(({ item, matched }) => {
     const v = item.variants;
     let c;
-    if (!highlighted && v.wyroznienie) { c = v.wyroznienie; highlighted = true; } else c = v.zwykla || v.liczba || Object.values(v)[0];
+    if (!highlighted && v.highlight) { c = v.highlight; highlighted = true; } else c = v.regular || v.stat || Object.values(v)[0];
     return { component: c.id, matched };
   });
 }
@@ -97,7 +97,7 @@ export const stepApplies = (step, sel) => !step.when?.any?.length || step.when.a
 
 export const stepData = (step, sel) => ({ ...(step.data || {}), ...(step.data_by_product?.[sel.product] || {}) });
 
-// Slajdy oferty z kroków scenariusza. `data.blocks` w kolejności, w jakiej mają rozstrzygać remisy.
+// Offer slides from the scenario steps. `data.blocks` in the order that should break ties.
 export function buildSlides(scenario, sel, { blocks = [], components = [], slots = {} } = {}) {
   const out = [];
   for (const step of scenario.steps || []) {
@@ -132,7 +132,7 @@ export function buildSlides(scenario, sel, { blocks = [], components = [], slots
   return out;
 }
 
-// Ból jest pokryty, jeśli na widocznym slajdzie jest blok typu z COVERAGE_TYPES z tym kafelkiem.
+// A pain is covered when a visible slide has a block of a COVERAGE_TYPES type tagged with it.
 export function coverage(slides, pains, blocksById) {
   const hit = new Set();
   for (const s of slides) {
@@ -146,26 +146,26 @@ export function coverage(slides, pains, blocksById) {
   return { covered: pains.filter((p) => hit.has(p)), missing: pains.filter((p) => !hit.has(p)) };
 }
 
-// JSON z posortowanymi kluczami: porównanie treści slajdu niezależne od kolejności pól.
+// JSON with sorted keys: compares slide content regardless of key order.
 const stable = (v) => (Array.isArray(v) ? `[${v.map(stable).join(',')}]`
   : v && typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stable(v[k])}`).join(',')}}`
     : JSON.stringify(v ?? null));
 const content = (s) => stable({ frame: s.frame, data: s.data || {}, block_ids: s.block_ids || [], picks: s.picks || {}, origin: s.origin || null });
 
-// Plan przeliczenia oferty: istniejące slajdy (z id, w obecnej kolejności) kontra świeżo wyliczone.
-// - slajd automatyczny (bez blokady) o tej samej treści zostaje; inny jest wymieniany (remove + create);
-// - slajd zablokowany zostaje bez zmian; jeśli jego krok już nie obowiązuje, zostaje ukryty (origin.auto_hidden),
-//   a gdy krok wróci, znowu się pokazuje (ukrytego ręcznie przeliczenie nie pokazuje);
-// - slajd dodany ręcznie (bez origin.step) zostaje;
-// - kolejność idzie za scenariuszem, a slajdy spoza niego stoją za swoim dawnym poprzednikiem.
+// Recompute plan for an offer: existing slides (with ids, in current order) versus freshly built ones.
+// - an automatic (unlocked) slide with the same content stays; a different one is replaced (remove + create);
+// - a locked slide stays unchanged; if its step no longer applies, it is hidden (origin.auto_hidden),
+//   and when the step applies again it is shown again (a slide hidden by hand stays hidden);
+// - a slide added by hand (no origin.step) stays;
+// - order follows the scenario, and slides outside it stay right after their former predecessor.
 export function mergeRecompute(existing, fresh) {
   const sorted = [...existing].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const freshByStep = new Map(fresh.map((s, i) => [s.origin.step, i]));
   const keep = [];
   const remove = [];
   const hide = [];
-  const unhide = []; // ukryte przez przeliczenie (origin.auto_hidden), których krok znowu obowiązuje
-  const claimed = new Map(); // krok -> id slajdu, który go zajmuje
+  const unhide = []; // hidden by recompute (origin.auto_hidden) whose step applies again
+  const claimed = new Map(); // step -> id of the slide that holds it
   const orphans = [];
 
   for (const s of sorted) {
@@ -178,7 +178,7 @@ export function mergeRecompute(existing, fresh) {
         if (s.hidden && s.origin?.auto_hidden) unhide.push(s.id);
       } else {
         orphans.push(s);
-        if (step != null && !s.hidden) hide.push(s.id); // slajd ręczny (bez kroku) nigdy nie jest ukrywany
+        if (step != null && !s.hidden) hide.push(s.id); // a manual slide (no step) is never hidden
       }
     } else if (has && !claimed.has(step) && content(s) === content(fresh[freshByStep.get(step)])) {
       keep.push(s);
@@ -193,8 +193,8 @@ export function mergeRecompute(existing, fresh) {
     create.push(f);
     return { create: create.length - 1 };
   });
-  // Ręczne i ukryte slajdy: za najbliższym wcześniejszym slajdem, który ma miejsce w nowej kolejności
-  // (sam albo przez krok, który go zastąpił).
+  // Manual and hidden slides: right after the nearest earlier slide that has a place in the new order
+  // (itself or through the step that replaced it).
   const tokenOf = (s) => {
     const at = order.findIndex((x) => x === s.id);
     if (at >= 0) return order[at];

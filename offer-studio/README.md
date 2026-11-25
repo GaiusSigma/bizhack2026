@@ -1,169 +1,173 @@
 # Offer Studio
 
-Minimalistyczny dashboard do zbierania wiedzy o ofercie i składania z niej prezentacji.
-Wygląd slajdów, podgląd i PDF robi **FigCraft**: dashboard trzyma dane, a FigCraft je renderuje.
+A minimal dashboard for collecting knowledge about an offer and assembling presentations from it.
+**FigCraft** handles slide design, preview and PDF: the dashboard holds the data and FigCraft renders it.
 
-- **Oferty z kafelków** (główna ścieżka, opis niżej): sprzedawca opisuje klienta kafelkami
-  (rola, segment, bóle, produkt), a prezentacja składa się sama według scenariusza roli.
-- **Wiedza**: bloki (use case'y, problemy, argumenty, wiersze porównań, składniki pakietów…).
-  Typ i tagi to dowolne napisy, a pola specyficzne dla typu (np. `effect` w use case) dodajesz sam.
-- **Slajdy (biblioteka)**: każdy może dorzucić nowy slajd zaprojektowany w FigCraft: przeciąga plik
-  (`.figcraft`, JSON strony, `.fig`, `.penpot`, `.sketch`, `.svg`) i każda ramka najwyższego poziomu staje się
-  slajdem do wyboru w ofertach (z miniaturą). Pola wiąże się nazwami warstw (niżej). Bez deployu.
-- **Oferty**: lista slajdów. Slajd = wygląd z biblioteki + treść + bloki (konkretne albo
-  „wszystkie use case'y z tagiem kancelaria”). Obok edytora jest podgląd renderowany przez FigCraft,
-  odświeżany po każdej zmianie, także przez API.
-- **Eksport**: „Pobierz PDF” (FigCraft, tekst zostaje tekstem) i „Pobierz .figcraft” (gotowa oferta
-  do ręcznych poprawek w FigCraft).
-- **Eksport / import bazy**: bloki, szablony (z plikami), oferty i slajdy w jednym pliku JSON.
-- **API**: wszystko przez REST, opis pod `/static/api.html`.
+- **Offers from tiles** (the main path, see below): the salesperson describes the client with tiles
+  (role, segment, pains, product), and the deck builds itself from the role's scenario.
+- **Knowledge**: blocks (use cases, problems, arguments, comparison rows, package components…).
+  Type and tags are free-form strings, and you add type-specific fields yourself (e.g. `effect` on a use case).
+- **Slides (library)**: anyone can add a new slide designed in FigCraft by dropping a file
+  (`.figcraft`, page JSON, `.fig`, `.penpot`, `.sketch`, `.svg`). Every top-level frame becomes a slide
+  you can pick in offers (with a thumbnail). Fields are bound by layer names (see below). No deploy needed.
+- **Offers**: a list of slides. Slide = a design from the library + content + blocks (specific ones or
+  "all use cases tagged law-firm"). Next to the editor is a FigCraft-rendered preview that refreshes
+  after every change, including changes made through the API.
+- **Export**: "Download PDF" (FigCraft, text stays text) and "Download .figcraft" (the finished offer,
+  ready for manual touch-ups in FigCraft).
+- **Database export / import**: blocks, templates (with files), offers and slides in one JSON file.
+- **API**: everything over REST, documented at `/static/api.html`.
 
-Na start baza zawiera treść z `gaius-offer.figcraft` (40 bloków, oferta bazowa z 11 slajdami)
-i plik `seed/gaius-template.figcraft` (ten sam plik z oznaczonymi polami) jako pierwszy wpis biblioteki.
+Out of the box the database holds the content of `gaius-offer.figcraft` (40 blocks, a base offer with
+11 slides) and `seed/gaius-template.figcraft` (the same file with marked-up fields) as the first library entry.
 
-## Kafelki i scenariusze
+## Tiles and scenarios
 
-**Jak sprzedawca robi ofertę.** Oferty → „+ Nowa oferta”: nazwa klienta i kafelki z czterech kategorii:
+**How a salesperson makes an offer.** Offers → "+ New offer": the client name and tiles from four categories:
 
-| Kategoria | Wybór | Na start aktywne |
+| Category | Pick | Active at launch |
 |---|---|---|
-| Kim jest rozmówca (rola) | jedna | Champion, Zarząd (CTO, GC, budżet, DPO: wkrótce) |
-| Segment | jeden | Kancelaria, Dział prawny in-house, Administracja publiczna (reszta: wkrótce) |
-| Bóle klienta | od 1 do 5 | 11 bólów z rozmów (zakładka „Bóle (Fireflies)” arkusza sprzedaży) |
-| Produkt / skala | jeden | SaaS, Vault, On-premise |
+| Who you are talking to (role) | one | Champion, Board (CTO, GC, budget owner, DPO: coming soon) |
+| Segment | one | Law firm, In-house legal team, Public administration (others: coming soon) |
+| Client pains | 1 to 5 | 11 pains from sales calls (the "Bóle (Fireflies)" tab of the sales sheet) |
+| Product / scale | one | SaaS, Vault, On-premise |
 
-Rola wybiera **scenariusz** (kolejność slajdów i ich treść domyślną), a reszta kafelków dobiera treść:
-bloki i karty mają kafelki w tagach, wygrywa suma wag trafionych kafelków (ból 3, segment 2, rola 1,
-produkt 1), a przy remisie stała kolejność. Treść oznaczona segmentem trafia tylko do tego segmentu.
-Te same kafelki zawsze dają tę samą ofertę. Przy każdym slajdzie widać „bo: …”, czyli kafelki, które go
-wybrały, a z lewej „Rozwiązane X z Y bólów” (liczą się tylko rozwiązania i przypadki użycia).
+The role picks a **scenario** (slide order and default copy), and the other tiles pick the content:
+blocks and cards carry tiles in their tags, and the highest sum of matched tile weights wins (pain 3,
+segment 2, role 1, product 1), with ties broken by a fixed order. Content tagged with a segment only goes to
+that segment. The same tiles always give the same offer. Every slide shows "because: …", the tiles that
+picked it, and the left column shows "X of Y pains solved" (only solutions and use cases count).
 
-**Poprawki ręczne.** Każda zmiana slajdu (tekst, podmiana bloku, ukrycie, także przez API) oznacza go jako
-„poprawione ręcznie”. „Przelicz” i „Zmień kafelki” układają ofertę od nowa, ale takich slajdów nie ruszają;
-slajd, którego krok już nie pasuje (np. architektura po zmianie na SaaS), zostaje ukryty. „Przywróć automat”
-odrzuca poprawki slajdu. Oferty sprzed kafelków otwierają się w dotychczasowym edytorze.
+**Manual edits.** Any slide change (copy, swapping a block, hiding, also through the API) marks it as
+"edited by hand". "Recompute" and "Change tiles" rebuild the offer but leave those slides alone; a slide whose
+step no longer applies (e.g. architecture after switching to SaaS) is hidden, and comes back when the step
+applies again. "Restore automatic" discards a slide's edits. Offers made before tiles open in the existing editor.
 
-**Przypinanie treści.** Zakładka Kafelki: opis i cytaty kafelka oraz lista przypiętej treści („Przypnij treść”
-wyszukuje bloki i karty). Bóle bez przypiętego rozwiązania są oznaczone na liście. W Wiedzy kafelki bloku
-włącza się klikiem. Startowe przypięcia (27 rozwiązań z zakładki PRKW arkusza) to propozycja do przejrzenia.
+**Pinning content.** The Tiles tab: a tile's description and quotes, and its pinned content ("Pin content"
+searches blocks and cards). Pains without a pinned solution are flagged in the list. In Knowledge, a block's
+tiles are toggled with a click. The starting pins (27 solutions from the sheet's PRKW tab) are a proposal to review.
 
-**Scenariusze.** Zakładka Scenariusze: kroki z miniaturą slajdu, regułą wypełnienia („2–3 rozwiązania
-najlepiej pasujące do kafelków”) i warunkiem („tylko gdy: Vault albo On-premise”). Zmiany wchodzą do ofert
-po „Przelicz”. Teksty kroków mają wersję Vault; wersje SaaS i On-premise (`data_by_product`) są szkicami
-oznaczonymi w edytorze.
+**Scenarios.** The Scenarios tab: steps with a slide thumbnail, a fill rule ("2–3 solutions that best fit
+the client's tiles") and a condition ("only with: Vault or On-premise"). Offers pick up changes after
+"Recompute". Step copy has a Vault version; SaaS and On-premise versions (`data_by_product`) are drafts,
+marked in the editor.
 
-**Automat.** `POST /api/offers/generate` z `{"client": "...", "tiles": [...]}` robi to samo co ekran
-„Nowa oferta” (błąd 400 po polsku przy kafelku „wkrótce” albo złej liczbie kafelków). Dalej:
+**Automation.** `POST /api/offers/generate` with `{"client": "...", "tiles": [...]}` does what the
+"New offer" screen does (400 for a coming-soon tile or a wrong tile count). Also:
 `PUT /api/offers/:id/tiles`, `POST /api/offers/:id/recompute`, `GET/POST/PATCH/DELETE /api/tiles`,
-`GET/PUT /api/scenarios/:id`. Węzeł n8n pokazuje je w zasobie „Kafelki”.
+`GET/PUT /api/scenarios/:id`. The n8n node shows them under the "Tiles" resource.
 
-Istniejąca baza dostaje kafelki, scenariusze i bloki rozwiązań przy pierwszym starcie nowej wersji
-(tylko gdy nie ma jeszcze kafelków). Dane startowe: `seed/tiles.js` i `seed/scenarios.js`.
+An existing database gets tiles, scenarios and solution blocks on the first start of this version
+(only when it has no tiles yet). Seed data: `seed/tiles.js` and `seed/scenarios.js`.
 
-## Jak dodać nowy slajd
+## Adding a new slide
 
-1. W FigCraft narysuj ramkę (np. 1920×1080) i nazwij ją, np. `case-study`. Nazwa ramki to nazwa slajdu
-   w bibliotece i musi być unikalna w całej bibliotece (konflikt jest odrzucany z czytelnym komunikatem).
-2. Teksty, które mają się zmieniać, nazwij polami (tabela niżej). Reszta zostaje taka, jak ją narysujesz.
-3. Zapisz plik albo stronę jako JSON i przeciągnij do zakładki **Slajdy** (albo „Wklej JSON”).
-   Podmiana pliku o tej samej nazwie aktualizuje wszystkie oferty, które używają jego slajdów.
+1. In FigCraft, draw a frame (e.g. 1920×1080) and name it, e.g. `case-study`. The frame name is the slide's
+   name in the library and must be unique across the whole library (a clash is rejected with a clear message).
+2. Name the texts that should change as fields (table below). Everything else stays exactly as drawn.
+3. Save the file or page as JSON and drop it onto the **Slides** tab (or use "Paste JSON").
+   Replacing a file with the same name updates every offer that uses its slides.
 
-JSON nie niesie obrazków: slajdy z obrazkami wgrywaj jako `.figcraft`.
+JSON does not carry images: upload slides with images as `.figcraft`.
 
-Pod spodem wszystkie pliki są sklejane w jeden dokument (`file.import` w `figcraft-cli`) i z niego
-renderowane są oferty, więc slajdy z różnych plików mieszają się w jednym PDF.
+Under the hood all files are merged into one document (`file.import` in `figcraft-cli`) and offers are
+rendered from it, so slides from different files can be mixed in one PDF.
 
-Nazwy warstw:
+Layer names:
 
-| Nazwa warstwy | Co robi |
+| Layer name | What it does |
 |---|---|
-| `use-case` (ramka najwyższego poziomu) | nazwa slajdu w bibliotece |
-| `{{data.title}}` (tekst) | treść slajdu z edytora oferty |
-| `{{offer.client\|upper}}` | zmienna oferty, opcjonalnie wielkimi literami |
-| `Efekt dla biznesu: {{effect}}` | tekst stały + pole; pusty wynik ukrywa warstwę |
-| `#item` (ramka/grupa) | karta na blok. W środku `{{title}}`, `{{body}}`, `{{n}}` i pola bloku |
-| `#item:lines` | wiersz z pola `data.lines` (każda linia `etykieta \| wartość`): `{{title}}`, `{{value}}` |
-| `[[2:tekst]]` | styl 2. wyróżnienia z oryginalnego tekstu warstwy |
-| `\n` | nowa linia |
+| `use-case` (top-level frame) | the slide's name in the library |
+| `{{data.title}}` (text) | slide content from the offer editor |
+| `{{offer.client\|upper}}` | an offer variable, optionally upper-cased |
+| `Business impact: {{effect}}` | fixed text + a field; an empty result hides the layer |
+| `#item` (frame/group) | a card per block. Inside: `{{title}}`, `{{body}}`, `{{n}}` and the block's fields |
+| `#item:lines` | a row from the `data.lines` field (each line `label \| value`): `{{title}}`, `{{value}}` |
+| `[[2:text]]` | the style of the 2nd highlight in the layer's original text |
+| `\n` | a new line |
 
-W treści `**słowo**` dostaje styl pierwszego wyróżnienia z szablonu (w szablonie Gaius: czerwony akcent).
-Kart `#item` może być więcej niż bloków (nadmiar znika) albo mniej (ostatnia karta jest powielana).
-Najlepiej działa to w auto-layoucie (siatka albo lista), bo wtedy dodatkowe karty układają się same.
-Karty, które mają rosnąć z tekstem, ustaw na „hug” w pionie.
+In content, `**word**` gets the style of the template's first highlight (in the Gaius template: the red accent).
+There can be more `#item` cards than blocks (extras disappear) or fewer (the last card is repeated).
+This works best in auto layout (grid or list), because extra cards then arrange themselves.
+Set cards that should grow with their text to "hug" vertically.
 
-## Komponenty: wymienne karty dobierane przez AI
+## Components: swappable cards picked by AI
 
-Slajd może mieć sloty na gotowe karty z Figmy/FigCraft, które różnią się nie tylko tekstem
-(ikona, kolor, układ, np. karta z dużą liczbą zamiast ikony). Przykład w pliku startowym: slajd
-`dlaczego` ma 6 slotów, a zestaw `@dlaczego` (strona „Komponenty”) ma 19 kart: 9 argumentów
-w wersji zwykłej i zielonej (wyróżnionej) plus kartę „3 mies.”.
+A slide can have slots for ready-made cards from Figma/FigCraft that differ in more than text
+(icon, colour, layout, e.g. a card with a big number instead of an icon). Example in the starter file: the
+`why` slide has 6 slots, and the `@why` set (on the "Components" page) has 19 cards: 9 arguments in a
+regular and a green (highlighted) version, plus a "3 mo." stat card.
 
-1. W FigCraft narysuj ramkę najwyższego poziomu `@nazwa-zestawu`. Każda ramka w środku to jedna karta,
-   nazwa karty to jej klucz (id w bazie: `zestaw/klucz`). Ramki `@…` nie są slajdami.
-2. Na slajdzie miejsca na karty nazwij `#pick:nazwa-zestawu` (najlepiej w siatce auto-layout).
-   Wybrane karty wchodzą w ich miejsce w kolejności wyboru. Bez wyboru zostaje to, co narysowano.
-3. Teksty karty, które wolno zmienić pod klienta, nazwij `{{title}}`, `{{body}}`… Bez wartości zostaje
-   tekst z rysunku.
-4. Po wgraniu pliku karty pojawiają się w zakładce **Komponenty** (i w tabeli `components` w SQLite).
-   Tam opisujesz, co karta pokazuje, **kiedy ją wybrać**, kiedy nie, temat (warianty jednego argumentu
-   mają ten sam temat) i wariant. Zasady całego zestawu (np. „6 kart, dokładnie jedna wyróżniona”)
-   są w `component_sets`. Podmiana pliku odświeża tekst i pola kart, ale opisów nie rusza.
-5. W edytorze slajdu wybierasz karty ręcznie (miniatury + „kiedy”) albo klikasz **Dobierz karty (AI)**
-   z krótkim briefem. Claude (`STUDIO_AI_MODEL`, domyślnie `claude-opus-5-5`) czyta opisy z bazy,
-   zasady zestawu i zmienne oferty, wybiera karty, ustawia kolejność i pisze uzasadnienie przy każdej.
-   Ten sam kontekst dla innego agenta: `GET /api/slides/:id/pick-context`.
+1. In FigCraft, draw a top-level frame `@set-name`. Each frame inside is one card; the card's name is its key
+   (database id: `set/key`). `@…` frames are not slides.
+2. On the slide, name the card placeholders `#pick:set-name` (ideally in an auto-layout grid).
+   Picked cards take their places in pick order. With nothing picked, what was drawn stays.
+3. Name card texts that may be adapted to the client `{{title}}`, `{{body}}`… Without a value, the drawn
+   text stays.
+4. After uploading the file, the cards appear in the **Components** tab (and in the `components` table in SQLite).
+   There you describe what the card shows, **when to pick it**, when not to, its topic (variants of the same
+   argument share a topic) and its variant. Rules for the whole set (e.g. "6 cards, exactly one highlighted")
+   live in `component_sets`. Replacing the file refreshes the cards' text and fields but leaves descriptions alone.
+5. In the slide editor you pick cards by hand (thumbnails + "when") or click **Pick cards (AI)**
+   with a short brief. Claude (`STUDIO_AI_MODEL`, default `claude-opus-5-5`) reads the descriptions from the
+   database, the set rules and the offer variables, picks the cards, orders them and explains each choice.
+   The same context for another agent: `GET /api/slides/:id/pick-context`.
 
-`seed/build-components.mjs` pokazuje, jak zrobiono zestaw startowy (z kart slajdu „dlaczego”).
-Przy starcie baza bez komponentów dostaje nowy plik Gaius, opisy 19 kart i wybór kart w ofercie bazowej.
+`seed/build-components.mjs` shows how the starter set was made (from the cards on the "why" slide).
+On start, a database without components gets the new Gaius file, the descriptions of the 19 cards and
+a card selection in the base offer.
 
-## Uruchomienie lokalne bez Dockera
+## Running locally without Docker
 
-Potrzebny zainstalowany FigCraft. Na Windows `figcraft-cli.exe` jest wykrywany automatycznie, a w innym
-miejscu wskazuje go zmienna `FIGCRAFT_CLI`.
+You need FigCraft installed. On Windows `figcraft-cli.exe` is detected automatically; anywhere else,
+point the `FIGCRAFT_CLI` variable at it.
 
 ```powershell
 cd offer-studio; npm install; npm run dev
 ```
 
-Aplikacja wstaje na http://localhost:3000 bez hasła. Baza ląduje w `offer-studio/data/studio.db`.
+The app starts at http://localhost:3000 with no password. The database lives in `offer-studio/data/studio.db`.
 
-Testy (render PDF testują, gdy jest `figcraft-cli`):
+Tests (PDF rendering is tested when `figcraft-cli` is available):
 
 ```powershell
 cd offer-studio; npm test
 ```
 
-## W stacku (docker-compose / Coolify)
+## In the stack (docker-compose / Coolify)
 
-Obraz zawiera `figcraft-cli` z oficjalnego releasu FigCraft (suma SHA-256 sprawdzana przy buildzie)
-i font Figtree (`fonts/`, licencja OFL). W Coolify ustaw domenę dla `offer-studio`.
+The image includes `figcraft-cli` from the official FigCraft release (SHA-256 checked at build time)
+and the Figtree font (`fonts/`, OFL licence). In Coolify, set a domain for `offer-studio`.
 
-| Zmienna | Skąd | Do czego |
+| Variable | Source | Purpose |
 |---|---|---|
-| `STUDIO_PASSWORD` | `SERVICE_PASSWORD_STUDIO` | Hasło w przeglądarce (login dowolny) |
-| `STUDIO_API_TOKEN` | `SERVICE_PASSWORD_64_STUDIOAPI` | `Authorization: Bearer …` dla skryptów i n8n |
-| `FIGCRAFT_WEB_URL` | `SERVICE_URL_FIGCRAFT` | Link „Otwórz FigCraft” |
-| `FIGCRAFT_CLI` | `/usr/local/bin/figcraft-cli` | Ścieżka do figcraft-cli |
-| `STUDIO_DB` | `/data/studio.db` | Plik bazy (wolumen `offer-studio-data`) |
-| `STUDIO_SEED` | – | `false` wyłącza dane startowe przy pustej bazie |
-| `ANTHROPIC_API_KEY` | ustaw ręcznie | Dobór kart przez AI; bez klucza reszta działa |
-| `STUDIO_AI_MODEL` | `claude-opus-5-5` | Model do doboru kart |
+| `STUDIO_PASSWORD` | `SERVICE_PASSWORD_STUDIO` | Browser password (any username) |
+| `STUDIO_API_TOKEN` | `SERVICE_PASSWORD_64_STUDIOAPI` | `Authorization: Bearer …` for scripts and n8n |
+| `FIGCRAFT_WEB_URL` | `SERVICE_URL_FIGCRAFT` | "Open FigCraft" link |
+| `FIGCRAFT_CLI` | `/usr/local/bin/figcraft-cli` | Path to figcraft-cli |
+| `STUDIO_DB` | `/data/studio.db` | Database file (`offer-studio-data` volume) |
+| `STUDIO_SEED` | – | `false` disables starter data on an empty database |
+| `ANTHROPIC_API_KEY` | set by hand | AI card picking; everything else works without a key |
+| `STUDIO_AI_MODEL` | `claude-opus-5-5` | Model used for card picking |
 
-Bez `STUDIO_PASSWORD` i `STUDIO_API_TOKEN` aplikacja jest otwarta. Tak ma być tylko lokalnie.
+Without `STUDIO_PASSWORD` and `STUDIO_API_TOKEN` the app is open. That is only meant for local use.
 
-Przy pierwszym starcie nowej wersji na bazie z layoutami HTML baza migruje się sama: bloki i oferty
-zostają, dochodzi szablon Gaius, a oferta bazowa dostaje slajdy pod ten szablon.
+The starter data is loaded into an **empty** database only. An existing database keeps its content;
+to get the current starter content, start with an empty `offer-studio-data` volume.
 
-Podbicie FigCraft: w `Dockerfile` zmień `FIGCRAFT_VERSION` i obie sumy z `SHA256SUMS.txt` releasu.
+On the first start of a new version against a database with HTML layouts, the database migrates itself:
+blocks and offers stay, the Gaius template is added and the base offer gets slides for that template.
+
+Upgrading FigCraft: in the `Dockerfile`, change `FIGCRAFT_VERSION` and both checksums from the release's `SHA256SUMS.txt`.
 
 ### n8n
 
-n8n ze stacku ma wbudowane węzły **Offer Studio** i **Offer Studio Trigger** ([opis](../n8n/README.md)),
-z poświadczeniem wypełnionym automatycznie. Listę operacji i pól węzeł czyta na żywo z
-`GET /api/openapi.json`, który powstaje z tras serwera i opisów w `src/openapi.js`.
+The stack's n8n ships the **Offer Studio** and **Offer Studio Trigger** nodes ([details](../n8n/README.md)),
+with the credential filled in automatically. The node reads its list of operations and fields live from
+`GET /api/openapi.json`, which is built from the server routes and the descriptions in `src/openapi.js`.
 
-**Nowa trasa API = opis w `DOCS` w `src/openapi.js`.** Wtedy n8n pokaże ją z nazwą, polami i typami.
-Bez opisu też się pojawi, ale tylko z polem „Treść (JSON)”, a `npm test` zgłosi brak.
+**A new API route = a description in `DOCS` in `src/openapi.js`.** n8n then shows it with a name, fields and types.
+Without a description it still appears, but only with a "Body (JSON)" field, and `npm test` reports the gap.
 
-Przykłady: dopisanie use case'u z formularza, podmiana klienta i ceny w ofercie
-(`PATCH /api/offers/<id>`), pobranie PDF (`GET /api/offers/<id>/pdf`) i wysłanie go mailem.
+Examples: adding a use case from a form, changing the client and price of an offer
+(`PATCH /api/offers/<id>`), downloading the PDF (`GET /api/offers/<id>/pdf`) and emailing it.

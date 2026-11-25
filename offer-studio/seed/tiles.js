@@ -1,74 +1,73 @@
-// Kafelki (rola, segment, ból, produkt), bloki rozwiązań z zakładki PRKW i przypięcia treści do kafelków.
-// Źródło: arkusz „Gaius Work Templates.xlsx” (zakładki „Bóle (Fireflies)” i „PRKW”), przepisany jednorazowo.
-// Przypięcia bólów i segmentów do treści to wstępna propozycja: poprawia się je w zakładce Kafelki.
-// Plik generuje skrypt; poprawki rób w aplikacji albo tutaj ręcznie.
+// Tiles (role, segment, pain, product), solution blocks from the PRKW tab and content pinned to tiles.
+// Source: the sales sheet "Gaius Work Templates.xlsx" ("Bóle (Fireflies)" and "PRKW" tabs), translated once.
+// Pinning pains and segments to content is a starting proposal: review and fix it in the Tiles tab.
 
 export const tiles = [
   {
-    "id": "rola:champion",
-    "category": "rola",
+    "id": "role:champion",
+    "category": "role",
     "label": "Champion",
-    "description": "Zajawiona osoba w zespole, która wprowadza Gaius i musi przekonać kolegów.",
+    "description": "The enthusiast on the team who brings Gaius in and has to win over colleagues.",
     "quotes": [],
     "status": "active",
     "position": 0,
     "data": {}
   },
   {
-    "id": "rola:zarzad",
-    "category": "rola",
-    "label": "Zarząd",
-    "description": "Zarząd, partner zarządzający albo dyrektor, który podpisuje decyzję i budżet.",
+    "id": "role:board",
+    "category": "role",
+    "label": "Board",
+    "description": "The board, managing partner or director who signs off the decision and the budget.",
     "quotes": [],
     "status": "active",
     "position": 1,
     "data": {}
   },
   {
-    "id": "rola:cto",
-    "category": "rola",
+    "id": "role:cto",
+    "category": "role",
     "label": "CTO / CIO / CISO",
-    "description": "Zgoda techniczna: architektura, bezpieczeństwo, wdrożenie.",
+    "description": "Technical sign-off: architecture, security, deployment.",
     "quotes": [],
     "status": "soon",
     "position": 10,
     "data": {}
   },
   {
-    "id": "rola:gc",
-    "category": "rola",
-    "label": "Dyrektor prawny / GC",
-    "description": "Sponsor po stronie działu prawnego.",
+    "id": "role:gc",
+    "category": "role",
+    "label": "Head of Legal / GC",
+    "description": "Sponsor on the legal team side.",
     "quotes": [],
     "status": "soon",
     "position": 11,
     "data": {}
   },
   {
-    "id": "rola:budzet",
-    "category": "rola",
-    "label": "Właściciel budżetu",
-    "description": "Zwrot z inwestycji i przewidywalny koszt.",
+    "id": "role:budget",
+    "category": "role",
+    "label": "Budget owner",
+    "description": "Return on investment and a predictable cost.",
     "quotes": [],
     "status": "soon",
     "position": 12,
     "data": {}
   },
   {
-    "id": "rola:dpo",
-    "category": "rola",
+    "id": "role:dpo",
+    "category": "role",
     "label": "DPO / compliance",
-    "description": "Dane osobowe i zgodność z regulacjami.",
+    "description": "Personal data and regulatory compliance.",
     "quotes": [],
     "status": "soon",
     "position": 13,
     "data": {}
   },
   {
-    "id": "segment:kancelaria",
+    "id": "segment:law-firm",
     "category": "segment",
-    "label": "Kancelaria",
-    "description": "Kancelaria prawna, od małej po dużą.",
+    "label": "Law firm",
+    "description": "A law firm, from small to large.",
     "quotes": [],
     "status": "active",
     "position": 0,
@@ -77,214 +76,214 @@ export const tiles = [
   {
     "id": "segment:in-house",
     "category": "segment",
-    "label": "Dział prawny in-house",
-    "description": "Dział prawny w firmie albo grupie kapitałowej.",
+    "label": "In-house legal team",
+    "description": "A legal team inside a company or a group.",
     "quotes": [],
     "status": "active",
     "position": 1,
     "data": {}
   },
   {
-    "id": "segment:administracja",
+    "id": "segment:public-sector",
     "category": "segment",
-    "label": "Administracja publiczna",
-    "description": "Urzędy, uczelnie, spółki komunalne, sądy.",
+    "label": "Public administration",
+    "description": "Public offices, universities, municipal companies, courts.",
     "quotes": [],
     "status": "active",
     "position": 2,
     "data": {}
   },
   {
-    "id": "segment:finanse",
+    "id": "segment:finance",
     "category": "segment",
-    "label": "Banki i finanse",
-    "description": "Banki spółdzielcze, ubezpieczenia, leasing, fintech.",
+    "label": "Banks and finance",
+    "description": "Cooperative banks, insurance, leasing, fintech.",
     "quotes": [],
     "status": "soon",
     "position": 3,
     "data": {}
   },
   {
-    "id": "segment:doradcy",
+    "id": "segment:tax-advisors",
     "category": "segment",
-    "label": "Doradcy podatkowi",
-    "description": "Biura i działy podatkowe.",
+    "label": "Tax advisors",
+    "description": "Tax advisory firms and tax teams.",
     "quotes": [],
     "status": "soon",
     "position": 4,
     "data": {}
   },
   {
-    "id": "segment:notariusze",
+    "id": "segment:notaries",
     "category": "segment",
-    "label": "Notariusze",
-    "description": "Kancelarie notarialne.",
+    "label": "Notaries",
+    "description": "Notary offices.",
     "quotes": [],
     "status": "soon",
     "position": 5,
     "data": {}
   },
   {
-    "id": "segment:masowe",
+    "id": "segment:mass-claims",
     "category": "segment",
-    "label": "Kancelarie masowe i windykacja",
-    "description": "Setki lub tysiące podobnych spraw, komornicy.",
+    "label": "Mass claims and debt collection",
+    "description": "Hundreds or thousands of similar matters, bailiffs.",
     "quotes": [],
     "status": "soon",
     "position": 6,
     "data": {}
   },
   {
-    "id": "bol:poufnosc",
-    "category": "bol",
-    "label": "Poufność",
-    "description": "Umowy i know-how nie mogą wyjść poza firmę.",
+    "id": "pain:confidentiality",
+    "category": "pain",
+    "label": "Confidentiality",
+    "description": "Contracts and know-how must not leave the organisation.",
     "quotes": [
-      "działy prawne są coraz bardziej świadome… własnego know-how… na własnej infrastrukturze",
-      "tajemnice przedsiębiorstwa… żeby… model… nie nauczył się na tych danych",
-      "polskie, lokalne i mamy na tym kontrolę"
+      "legal teams are increasingly aware… of their own know-how… on their own infrastructure",
+      "trade secrets… so that… the model… doesn’t learn from this data",
+      "Polish, local, and under our control"
     ],
     "status": "active",
     "position": 0,
     "data": {}
   },
   {
-    "id": "bol:shadow-ai",
-    "category": "bol",
+    "id": "pain:shadow-ai",
+    "category": "pain",
     "label": "Shadow AI",
-    "description": "Ludzie i tak wklejają dokumenty do darmowych czatów, a firma nie ma nad tym kontroli.",
+    "description": "People paste documents into free chatbots anyway, and the organisation has no control over it.",
     "quotes": [
-      "wiem, że i tak będą wrzucać",
-      "część ludzi korzysta z narzędzi AI… na prywatnych telefonach czy kontach e-mailowych",
-      "mając dzisiaj dostęp tylko do zewnętrznych narzędzi, nawet nie jesteśmy w stanie uregulować tego"
+      "I know they’ll upload it anyway",
+      "some people use AI tools… on private phones or email accounts",
+      "with access to external tools only, we can’t even regulate it"
     ],
     "status": "active",
     "position": 1,
     "data": {}
   },
   {
-    "id": "bol:powtarzalne-dokumenty",
-    "category": "bol",
-    "label": "Powtarzalne dokumenty",
-    "description": "NDA, umowy powierzenia i te same pisma przygotowywane od zera.",
+    "id": "pain:repetitive-documents",
+    "category": "pain",
+    "label": "Repetitive documents",
+    "description": "NDAs, data processing agreements and the same letters drafted from scratch.",
     "quotes": [
-      "oczekiwań… od zarządu… powtarzalnych czynności… niezliczoną ilość NDA-ek",
-      "NDA… umowy powierzenia… klasyczne kejsy… bardzo często",
-      "nie samemu nie przeszukiwać, nie pisać za każdym razem tego samego"
+      "expectations… from the board… repetitive tasks… countless NDAs",
+      "NDAs… data processing agreements… classic cases… very often",
+      "not searching everything ourselves, not writing the same thing every time"
     ],
     "status": "active",
     "position": 2,
     "data": {}
   },
   {
-    "id": "bol:presja-zarzadu",
-    "category": "bol",
-    "label": "Presja zarządu",
-    "description": "Więcej pracy bez nowych etatów i oczekiwanie zwrotu z AI.",
+    "id": "pain:board-pressure",
+    "category": "pain",
+    "label": "Board pressure",
+    "description": "More work without new hires, and the board expects a return on AI.",
     "quotes": [
-      "ograniczyć liczbę prawników niż ją zwiększyć",
-      "dużo firm szuka zwrotu z inwestycji w AI"
+      "reduce the number of lawyers rather than increase it",
+      "many companies are looking for a return on their AI investment"
     ],
     "status": "active",
     "position": 3,
     "data": {}
   },
   {
-    "id": "bol:chatgpt-tylko-informacja",
-    "category": "bol",
-    "label": "ChatGPT tylko informuje",
-    "description": "Ogólne AI daje informację, ale nie pomaga tworzyć i sprawdzać dokumentów.",
+    "id": "pain:chatgpt-only-informs",
+    "category": "pain",
+    "label": "ChatGPT only informs",
+    "description": "General AI gives information but does not help draft and check documents.",
     "quotes": [
-      "czat GPT… tylko daje informację… chcielibyśmy… coś, co nam pomoże tworzyć dokumenty"
+      "ChatGPT… only gives information… we’d like… something that helps us create documents"
     ],
     "status": "active",
     "position": 4,
     "data": {}
   },
   {
-    "id": "bol:zmyslone-orzeczenia",
-    "category": "bol",
-    "label": "Zmyślone orzeczenia",
-    "description": "Ogólne AI zmyśla orzeczenia i przepisy, więc wszystko trzeba sprawdzać.",
+    "id": "pain:hallucinated-citations",
+    "category": "pain",
+    "label": "Hallucinated citations",
+    "description": "General AI makes up rulings and statutes, so everything has to be checked.",
     "quotes": [
-      "pięć zaproponowanych orzeczeń, trzy nie istniały, a dwa nie dotyczyły danej sprawy",
-      "Numery przepisów są nieprawidłowo podawane, łącznie z takimi, których nie ma w danym akcie",
-      "Cały czas zmyśla… nigdy temu narzędziu się nie ufa"
+      "five suggested rulings, three didn’t exist and two weren’t about the case",
+      "Statute numbers are wrong, including ones that aren’t in the act at all",
+      "It keeps making things up… you never trust that tool"
     ],
     "status": "active",
     "position": 5,
     "data": {}
   },
   {
-    "id": "bol:archiwum",
-    "category": "bol",
-    "label": "Archiwum nie do przeszukania",
-    "description": "Opinie, umowy i maile leżą na dysku, w SharePoincie i Outlooku, a szuka się ich po nazwach plików.",
+    "id": "pain:unsearchable-archive",
+    "category": "pain",
+    "label": "Unsearchable archive",
+    "description": "Opinions, contracts and emails sit on drives, SharePoint and Outlook, found only by file name.",
     "quotes": [
-      "szukamy sobie po naszym dysku i po nazwach najczęściej",
-      "szukaj po Windowsie… to jest bzdura… nic po prostu nie można znaleźć",
-      "Z Outlookiem niestety problem… archiwum… on i tak go nie indeksuje"
+      "we search our drive, mostly by file names",
+      "Windows search… is nonsense… you simply can’t find anything",
+      "Outlook is a problem… the archive… it doesn’t index it anyway"
     ],
     "status": "active",
     "position": 6,
     "data": {}
   },
   {
-    "id": "bol:kopiowanie-do-worda",
-    "category": "bol",
-    "label": "Kopiowanie do Worda",
-    "description": "Tekst z czatu trzeba przenosić do Worda i ręcznie formatować.",
+    "id": "pain:copy-to-word",
+    "category": "pain",
+    "label": "Copying into Word",
+    "description": "Chat output has to be moved into Word and formatted by hand.",
     "quotes": [
-      "to ciągle bazowało na jednak czacie i potem… muszę wrzucić do Worda… i sformatować",
-      "formatowanie zajmuje mi na tyle dużo czasu"
+      "it was still based on the chat and then… I have to paste it into Word… and format it",
+      "formatting takes me so much time"
     ],
     "status": "active",
     "position": 7,
     "data": {}
   },
   {
-    "id": "bol:skala-grupy",
-    "category": "bol",
-    "label": "Skala w grupach kapitałowych",
-    "description": "Wiele spółek i zespołów prawnych, a dokumenty trzeba obsłużyć jednym standardem.",
+    "id": "pain:group-scale",
+    "category": "pain",
+    "label": "Scale across a group",
+    "description": "Many companies and legal teams, and documents must follow one standard.",
     "quotes": [
-      "załadowani plikami w dużej ilości… prawie 500 [spółek]… musimy to zrobić dla 500 spółek"
+      "loaded with files in large numbers… almost 500 [companies]… we have to do it for 500 companies"
     ],
     "status": "active",
     "position": 8,
     "data": {}
   },
   {
-    "id": "bol:szablony-w-skali",
-    "category": "bol",
-    "label": "Szablony w skali",
-    "description": "Dobre szablony istnieją, ale trzeba je ręcznie wypełniać danymi z setek spraw.",
+    "id": "pain:templates-at-scale",
+    "category": "pain",
+    "label": "Templates at scale",
+    "description": "Good templates exist, but they must be filled by hand with data from hundreds of matters.",
     "quotes": [
-      "problemem jest… skala… te szablony są dobrze przygotowane, natomiast je trzeba wypełnić odpowiednimi danymi",
-      "kopiują treść skargi, wklejają… do nakładki gaius… wklejają do pisma"
+      "the problem is… scale… the templates are well prepared, but they need to be filled with the right data",
+      "they copy the complaint, paste it… into the Gaius overlay… paste it into the letter"
     ],
     "status": "active",
     "position": 9,
     "data": {}
   },
   {
-    "id": "bol:wyszukiwanie-orzecznictwa",
-    "category": "bol",
-    "label": "Słabe wyszukiwanie orzecznictwa",
-    "description": "W LEX i Legalis często brakuje orzeczeń albo trudno je znaleźć.",
+    "id": "pain:weak-case-law-search",
+    "category": "pain",
+    "label": "Weak case-law search",
+    "description": "LEX and Legalis often miss rulings or make them hard to find.",
     "quotes": [
-      "często na Legalisie czy [Leksie] brak jest po prostu orzeczeń",
-      "dużo słabsze niż oczekiwałem"
+      "LEX or Legalis often simply lack the rulings",
+      "much weaker than I expected"
     ],
     "status": "active",
     "position": 10,
     "data": {}
   },
   {
-    "id": "produkt:saas",
-    "category": "produkt",
+    "id": "product:saas",
+    "category": "product",
     "label": "SaaS",
-    "description": "Gaius w chmurze, plany lite, standard i pro.",
+    "description": "Gaius in the cloud: lite, standard and pro plans.",
     "quotes": [],
     "status": "active",
     "position": 0,
@@ -293,10 +292,10 @@ export const tiles = [
     }
   },
   {
-    "id": "produkt:vault",
-    "category": "produkt",
+    "id": "product:vault",
+    "category": "product",
     "label": "Vault",
-    "description": "Prywatne środowisko Gaius Vault dla działu albo kancelarii.",
+    "description": "A private Gaius Vault environment for a legal team or law firm.",
     "quotes": [],
     "status": "active",
     "position": 1,
@@ -305,10 +304,10 @@ export const tiles = [
     }
   },
   {
-    "id": "produkt:on-prem",
-    "category": "produkt",
+    "id": "product:on-prem",
+    "category": "product",
     "label": "On-premise",
-    "description": "Vault w infrastrukturze klienta, bez publicznej chmury.",
+    "description": "Vault on the client’s own infrastructure, no public cloud.",
     "quotes": [],
     "status": "active",
     "position": 2,
@@ -320,514 +319,514 @@ export const tiles = [
 
 export const solutionBlocks = [
   {
-    "id": "rz-zrodla",
-    "type": "rozwiazanie",
-    "title": "Odpowiedzi ze sprawdzalnymi źródłami",
-    "body": "Gaius odpowiada na podstawie bazy źródeł prawa aktualizowanej codziennie i podaje przepisy oraz orzeczenia, na których się opiera.",
+    "id": "sol-sourced-answers",
+    "type": "solution",
+    "title": "Answers with verifiable sources",
+    "body": "Gaius answers from a database of legal sources updated daily and cites the statutes and rulings it relies on.",
     "data": {
-      "problem": "Ogólne AI zmyśla orzeczenia i numery przepisów, więc każdą odpowiedź trzeba sprawdzać od zera.",
-      "effect": "Każde cytowanie sprawdzisz w źródle od razu, zamiast szukać, czy orzeczenie w ogóle istnieje.",
-      "wartosc": "Mniejsze ryzyko błędnego cytatu w piśmie do sądu lub opinii dla klienta, czyli mniejsze ryzyko wpadki zawodowej.",
+      "problem": "General AI makes up rulings and statute numbers, so every answer has to be checked from scratch.",
+      "effect": "You check every citation at its source right away instead of wondering whether the ruling exists at all.",
+      "value": "Less risk of a wrong citation in a court filing or client opinion, so less risk of a professional slip.",
       "order": 0
     },
     "tags": [
-      "bol:zmyslone-orzeczenia",
-      "bol:wyszukiwanie-orzecznictwa",
-      "segment:kancelaria",
+      "pain:hallucinated-citations",
+      "pain:weak-case-law-search",
+      "segment:law-firm",
       "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-przeglad-nda",
-    "type": "rozwiazanie",
-    "title": "Przegląd NDA względem Waszych standardów",
-    "body": "Gaius porównuje umowę kontrahenta z Waszymi standardami (skill przygotowany na Waszym wzorze lub playbooku) i wskazuje zapisy do zmiany.",
+    "id": "sol-nda-review",
+    "type": "solution",
+    "title": "NDA review against your standards",
+    "body": "Gaius compares the counterparty’s contract with your standards (a skill built on your template or playbook) and flags the clauses to change.",
     "data": {
-      "problem": "Dział prawny dostaje niezliczone NDA i umowy powierzenia na wzorach kontrahentów i czyta każdą od początku.",
-      "effect": "Prawnik zatwierdza listę odchyleń zamiast czytać całą umowę.",
-      "wartosc": "Dział obsługuje więcej umów bez nowego etatu, co odpowiada na presję zarządu.",
+      "problem": "The legal team receives countless NDAs and data processing agreements on counterparties’ templates and reads each one from the start.",
+      "effect": "The lawyer approves a list of deviations instead of reading the whole contract.",
+      "value": "The team handles more contracts without a new hire, which answers the board’s pressure.",
       "order": 1
     },
     "tags": [
-      "bol:powtarzalne-dokumenty",
-      "bol:presja-zarzadu",
+      "pain:repetitive-documents",
+      "pain:board-pressure",
       "segment:in-house",
-      "segment:kancelaria"
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-archiwum-po-tresci",
-    "type": "rozwiazanie",
-    "title": "Wyszukiwanie w archiwum po treści",
-    "body": "Gaius łączy się z SharePoint, OneDrive, Google Drive, Outlookiem i Gmailem i odpowiada na podstawie treści Waszych dokumentów, bez budowania drugiej bazy.",
+    "id": "sol-archive-search",
+    "type": "solution",
+    "title": "Search your archive by content",
+    "body": "Gaius connects to SharePoint, OneDrive, Google Drive, Outlook and Gmail and answers from the content of your documents, without building a second database.",
     "data": {
-      "problem": "Wiedza firmy leży w setkach opinii, umów i maili, ale szuka się jej po nazwach plików, a Outlook nie indeksuje archiwum.",
-      "effect": "Wcześniejszą opinię, klauzulę czy korespondencję znajdziesz po treści, a nie po nazwie pliku.",
-      "wartosc": "Zespół korzysta z tego, co już wypracował, zamiast pisać to samo od nowa, a wiedza nie znika razem z odchodzącym pracownikiem.",
+      "problem": "Company knowledge sits in hundreds of opinions, contracts and emails, but it is searched by file name and Outlook does not index the archive.",
+      "effect": "You find an earlier opinion, clause or email by its content, not by its file name.",
+      "value": "The team builds on what it has already done instead of rewriting it, and knowledge doesn’t leave with departing staff.",
       "order": 2
     },
     "tags": [
-      "bol:archiwum",
-      "segment:kancelaria",
+      "pain:unsearchable-archive",
+      "segment:law-firm",
       "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-oficjalne-ai",
-    "type": "rozwiazanie",
-    "title": "Oficjalne, kontrolowane AI dla zespołu",
-    "body": "Gaius jako oficjalne narzędzie AI dla całego zespołu, tak wygodne jak czat, ale z kontrolą nad tym, gdzie trafiają dane (SaaS w EOG albo Gaius Vault w sieci firmy).",
+    "id": "sol-official-ai",
+    "type": "solution",
+    "title": "Official, controlled AI for the team",
+    "body": "Gaius as the official AI tool for the whole team: as convenient as a chatbot, but with control over where data goes (SaaS in the EEA or Gaius Vault on the company network).",
     "data": {
-      "problem": "Pracownicy i tak wklejają dokumenty do darmowych czatów na prywatnych kontach, a firma nie ma nad tym kontroli.",
-      "effect": "Ludzie dostają narzędzie, z którego i tak chcą korzystać, a IT i compliance wiedzą, co się dzieje z dokumentami.",
-      "wartosc": "Firma może wprowadzić politykę korzystania z AI i ją egzekwować, zamiast udawać, że problemu nie ma.",
+      "problem": "Employees paste documents into free chatbots on private accounts anyway, and the organisation has no control over it.",
+      "effect": "People get a tool they want to use anyway, and IT and compliance know what happens to documents.",
+      "value": "The organisation can introduce an AI policy and enforce it instead of pretending there is no problem.",
       "order": 3
     },
     "tags": [
-      "bol:shadow-ai",
-      "bol:poufnosc",
+      "pain:shadow-ai",
+      "pain:confidentiality",
       "segment:in-house",
-      "segment:administracja"
+      "segment:public-sector"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-analiza-akt",
-    "type": "rozwiazanie",
-    "title": "Analiza akt: terminy, roszczenia, ryzyka",
-    "body": "Gaius analizuje akta, wypisuje terminy przedawnienia, roszczenia i ryzyka w tabeli z opisem i wskazuje, które działania są pilne.",
+    "id": "sol-case-file-analysis",
+    "type": "solution",
+    "title": "Case file analysis: deadlines, claims, risks",
+    "body": "Gaius analyses the case file, lists limitation periods, claims and risks in a table with descriptions and shows which actions are urgent.",
     "data": {
-      "problem": "W aktach procesowych łatwo przeoczyć termin przedawnienia lub roszczenie, a ich wypisanie z setek stron trwa godzinami.",
-      "effect": "Masz przegląd sprawy w jednej tabeli zamiast notatek z całych akt.",
-      "wartosc": "Mniejsze ryzyko przeoczonego terminu, a więc odpowiedzialności zawodowej i utraty klienta.",
+      "problem": "In litigation files it is easy to miss a limitation period or a claim, and extracting them from hundreds of pages takes hours.",
+      "effect": "You get an overview of the matter in one table instead of notes from the whole file.",
+      "value": "Less risk of a missed deadline, and so of professional liability and losing the client.",
       "order": 4
     },
     "tags": [
-      "bol:presja-zarzadu",
-      "segment:kancelaria"
+      "pain:board-pressure",
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-pismo-w-wordzie",
-    "type": "rozwiazanie",
-    "title": "Projekt pisma od razu w Wordzie",
-    "body": "Gaius pracuje na Waszych wzorach i dokumentach i przygotowuje projekt pisma na podstawie akt, także bezpośrednio we wtyczce do Worda.",
+    "id": "sol-draft-in-word",
+    "type": "solution",
+    "title": "Drafts straight in Word",
+    "body": "Gaius works on your templates and documents and drafts letters from the case file, also directly in the Word add-in.",
     "data": {
-      "problem": "ChatGPT tylko daje informację: tekst z czatu trzeba kopiować do Worda i ręcznie formatować, a pisma i tak powstają od zera.",
-      "effect": "Koniec przeklejania i formatowania, projekt powstaje w formie, w której i tak go wysyłasz.",
-      "wartosc": "Czas prawnika idzie na merytorykę i strategię, a nie na pracę biurową.",
+      "problem": "ChatGPT only gives information: chat text has to be copied into Word and formatted by hand, and letters are still written from scratch.",
+      "effect": "No more copying and formatting: the draft is created in the form you send it in.",
+      "value": "Lawyers spend their time on substance and strategy, not office work.",
       "order": 5
     },
     "tags": [
-      "bol:chatgpt-tylko-informacja",
-      "bol:kopiowanie-do-worda",
-      "bol:powtarzalne-dokumenty",
-      "segment:kancelaria",
+      "pain:chatgpt-only-informs",
+      "pain:copy-to-word",
+      "pain:repetitive-documents",
+      "segment:law-firm",
       "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-szablony-masowe",
-    "type": "rozwiazanie",
-    "title": "Wypełnianie szablonów danymi ze spraw",
-    "body": "Gaius wyciąga dane z dokumentów sprawy (skarg, nakazów, pism) i uzupełnia nimi Wasze szablony.",
+    "id": "sol-template-filling",
+    "type": "solution",
+    "title": "Filling templates with case data",
+    "body": "Gaius extracts data from the case documents (complaints, orders, letters) and fills your templates with it.",
     "data": {
-      "problem": "W sprawach masowych dobre szablony istnieją, ale trzeba je ręcznie wypełniać danymi z setek dokumentów.",
-      "effect": "Asystent zatwierdza gotowe pismo zamiast przepisywać dane.",
-      "wartosc": "Kancelaria obsługuje więcej spraw tym samym zespołem, co przy sprawach masowych przekłada się wprost na marżę.",
+      "problem": "In mass matters good templates exist, but they must be filled by hand with data from hundreds of documents.",
+      "effect": "An assistant approves a finished letter instead of retyping data.",
+      "value": "The firm handles more matters with the same team, which in mass claims goes straight to the margin.",
       "order": 6
     },
     "tags": [
-      "bol:szablony-w-skali",
-      "segment:kancelaria"
+      "pain:templates-at-scale",
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-klauzule-niedozwolone",
-    "type": "rozwiazanie",
-    "title": "Wykrywanie klauzul niedozwolonych",
-    "body": "Gaius wykrywa w umowach i regulaminach zapisy, które mogą być uznane za niedozwolone, i wskazuje, co zmienić.",
+    "id": "sol-unfair-terms",
+    "type": "solution",
+    "title": "Detecting unfair contract terms",
+    "body": "Gaius finds clauses in contracts and terms of service that may be considered unfair and shows what to change.",
     "data": {
-      "problem": "Wzorce umów i regulaminy dla konsumentów mogą zawierać klauzule niedozwolone, a ręczne sprawdzanie każdego wzorca po zmianach jest żmudne.",
-      "effect": "Wzorzec sprawdzisz przed publikacją albo po każdej zmianie, bez czytania go od nowa.",
-      "wartosc": "Mniejsze ryzyko sporów z konsumentami, postępowań UOKiK i kar za niedozwolone klauzule.",
+      "problem": "Consumer contract templates and terms of service may contain unfair clauses, and checking every template after each change by hand is tedious.",
+      "effect": "You check a template before publishing or after each change without reading it from the start.",
+      "value": "Less risk of consumer disputes, competition authority proceedings and fines for unfair clauses.",
       "order": 7
     },
     "tags": [
-      "bol:powtarzalne-dokumenty",
+      "pain:repetitive-documents",
       "segment:in-house",
-      "segment:kancelaria"
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-pismo-dla-urzednika",
-    "type": "rozwiazanie",
-    "title": "Projekt pisma dla urzędnika",
-    "body": "Gaius przygotowuje urzędnikowi analizę prawną i projekt pisma na aktualnych przepisach, a szkolenie Gaius Administracja uczy zespół z niego korzystać.",
+    "id": "sol-public-office-drafts",
+    "type": "solution",
+    "title": "Draft decisions for public officials",
+    "body": "Gaius prepares a legal analysis and a draft letter on current law for the official, and Gaius Administration training teaches the team to use it.",
     "data": {
-      "problem": "W urzędzie jeden prawnik obsługuje cały wydział, a urzędnicy czekają na jego opinię, podczas gdy biegną terminy z KPA.",
-      "effect": "Prawnik dostaje do weryfikacji gotowy projekt zamiast pustej kartki, a urzędnik nie stoi w kolejce.",
-      "wartosc": "Sprawy załatwiane są szybciej, z mniejszym ryzykiem przekroczenia terminu i skargi na bezczynność.",
+      "problem": "In a public office one lawyer serves a whole department, and officials wait for their opinion while administrative deadlines run.",
+      "effect": "The lawyer reviews a ready draft instead of a blank page, and the official doesn’t wait in a queue.",
+      "value": "Matters are handled faster, with less risk of missing a deadline or a complaint about inaction.",
       "order": 8
     },
     "tags": [
-      "bol:presja-zarzadu",
-      "bol:chatgpt-tylko-informacja",
-      "segment:administracja"
+      "pain:board-pressure",
+      "pain:chatgpt-only-informs",
+      "segment:public-sector"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-staly-koszt",
-    "type": "rozwiazanie",
-    "title": "Stały koszt bez limitów użytkowników",
-    "body": "Gaius Vault: licencja miesięczna per jednostka obliczeniowa, bez opłat za użytkownika i bez tokenów, z pilotażem przed decyzją.",
+    "id": "sol-fixed-cost",
+    "type": "solution",
+    "title": "A fixed cost without user limits",
+    "body": "Gaius Vault: a monthly licence per compute unit, no per-user fees and no tokens, with a pilot before the decision.",
     "data": {
-      "problem": "Narzędzia AI liczone per użytkownik lub za tokeny dają nieprzewidywalne rachunki, a limity hamują korzystanie.",
-      "effect": "Cały zespół korzysta bez liczenia zapytań, a budżet jest znany z góry.",
-      "wartosc": "Koszt na użytkownika spada z każdą kolejną osobą, a decyzja zakupowa jest prostsza dla CFO i zarządu.",
+      "problem": "AI tools priced per user or per token bring unpredictable bills, and limits hold back usage.",
+      "effect": "The whole team uses it without counting queries, and the budget is known in advance.",
+      "value": "The cost per user falls with every additional person, and the purchase decision is simpler for the CFO and the board.",
       "order": 9
     },
     "tags": [
-      "bol:presja-zarzadu",
-      "bol:skala-grupy"
+      "pain:board-pressure",
+      "pain:group-scale"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-weryfikacja-cytowan",
-    "type": "rozwiazanie",
-    "title": "Weryfikacja cytowań w pismach",
-    "body": "Gaius weryfikuje cytowania w gotowym dokumencie: sygnatury orzeczeń, przepisy i ich aktualność.",
+    "id": "sol-citation-check",
+    "type": "solution",
+    "title": "Checking citations in filings",
+    "body": "Gaius verifies citations in a finished document: case numbers, statutes and whether they are still current.",
     "data": {
-      "problem": "Pismo przeciwnika, aplikanta albo wygenerowane w ChatGPT może zawierać przekręcone sygnatury i nieaktualne przepisy, a sprawdzenie każdego cytatu zajmuje godziny.",
-      "effect": "Dostajesz listę cytatów do poprawy zamiast sprawdzać każdy ręcznie.",
-      "wartosc": "Słabe punkty pisma przeciwnika znajdujesz szybciej, a własne pisma wychodzą bez błędów, które podważają wiarygodność.",
+      "problem": "A filing by the other side, a trainee or ChatGPT may contain garbled case numbers and outdated statutes, and checking every citation takes hours.",
+      "effect": "You get a list of citations to fix instead of checking each one by hand.",
+      "value": "You find weak points in the other side’s filing faster, and your own filings go out without errors that undermine credibility.",
       "order": 10
     },
     "tags": [
-      "bol:zmyslone-orzeczenia",
-      "segment:kancelaria",
+      "pain:hallucinated-citations",
+      "segment:law-firm",
       "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-ocr",
-    "type": "rozwiazanie",
-    "title": "OCR: skany jak zwykłe dokumenty",
-    "body": "Gaius rozpoznaje tekst ze skanów (OCR) i analizuje je jak zwykłe dokumenty.",
+    "id": "sol-ocr",
+    "type": "solution",
+    "title": "OCR: scans become normal documents",
+    "body": "Gaius recognises text in scans (OCR) and analyses them like any other document.",
     "data": {
-      "problem": "Akta, stare umowy i korespondencja to często skany PDF, których nie da się przeszukać ani przeanalizować.",
-      "effect": "Skan staje się dokumentem, który można przeszukać, streścić i porównać.",
-      "wartosc": "Archiwum papierowe da się wykorzystać bez przepisywania dokumentów.",
+      "problem": "Case files, old contracts and correspondence are often scanned PDFs that cannot be searched or analysed.",
+      "effect": "A scan becomes a document you can search, summarise and compare.",
+      "value": "The paper archive becomes usable without retyping documents.",
       "order": 11
     },
     "tags": [
-      "bol:archiwum",
-      "segment:kancelaria",
-      "segment:administracja"
+      "pain:unsearchable-archive",
+      "segment:law-firm",
+      "segment:public-sector"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-anonimizacja",
-    "type": "rozwiazanie",
-    "title": "Automatyczna anonimizacja",
-    "body": "Gaius automatycznie anonimizuje tekst i wskazuje dane, które usunął.",
+    "id": "sol-anonymisation",
+    "type": "solution",
+    "title": "Automatic anonymisation",
+    "body": "Gaius anonymises the text automatically and shows the data it removed.",
     "data": {
-      "problem": "Przed publikacją decyzji w BIP, przekazaniem dokumentów podwykonawcy albo użyciem sprawy na szkoleniu trzeba ręcznie usunąć dane osobowe.",
-      "effect": "Prawnik sprawdza zanonimizowany tekst zamiast zaczerniać go ręcznie.",
-      "wartosc": "Szybsze udostępnianie dokumentów i mniejsze ryzyko ujawnienia danych przy publikacji.",
+      "problem": "Before publishing a decision, sharing documents with a subcontractor or using a case in training, personal data has to be removed by hand.",
+      "effect": "The lawyer checks the anonymised text instead of redacting it by hand.",
+      "value": "Faster document sharing and less risk of exposing data on publication.",
       "order": 12
     },
     "tags": [
-      "bol:poufnosc",
-      "segment:administracja",
-      "segment:kancelaria"
+      "pain:confidentiality",
+      "segment:public-sector",
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-maile-klientow",
-    "type": "rozwiazanie",
-    "title": "Odpowiedzi na maile klientów ze skrzynki",
-    "body": "Gaius łączy się z Gmailem i Outlookiem, analizuje wiadomość z załącznikami i przygotowuje projekt odpowiedzi z podstawą prawną.",
+    "id": "sol-client-email",
+    "type": "solution",
+    "title": "Answer client emails from the inbox",
+    "body": "Gaius connects to Gmail and Outlook, analyses the message with its attachments and drafts a reply with the legal basis.",
     "data": {
-      "problem": "Pytania klientów przychodzą mailem, a przygotowanie odpowiedzi wymaga kopiowania treści i załączników do innego narzędzia.",
-      "effect": "Odpowiadasz klientowi z poziomu skrzynki, bez przenoszenia plików.",
-      "wartosc": "Szybsza obsługa klientów przy tym samym zespole, a krótkie porady przestają zajmować cały dzień.",
+      "problem": "Client questions arrive by email, and answering them means copying the text and attachments into another tool.",
+      "effect": "You answer the client from your inbox without moving files.",
+      "value": "Faster client service with the same team, and short advice no longer takes a whole day.",
       "order": 13
     },
     "tags": [
-      "bol:kopiowanie-do-worda",
-      "segment:kancelaria"
+      "pain:copy-to-word",
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-skille-z-zespolem",
-    "type": "rozwiazanie",
-    "title": "Skille budowane razem z zespołem",
-    "body": "Skille budowane razem z zespołem w trzech warsztatach: zebranie potrzeb, praca na konkretnym przykładzie, poprawki po testach.",
+    "id": "sol-team-skills",
+    "type": "solution",
+    "title": "Skills built together with the team",
+    "body": "Skills built with the team in three workshops: gathering needs, working on a real example, fixes after testing.",
     "data": {
-      "problem": "Zespół nie ma czasu uczyć się nowego narzędzia, a gdy coś działa inaczej niż zwykle, wraca do starych nawyków.",
-      "effect": "Narzędzie od początku robi to, co zespół robi na co dzień, według jego standardu.",
-      "wartosc": "Licencja jest faktycznie używana, więc inwestycja w AI się zwraca.",
+      "problem": "The team has no time to learn a new tool, and when something works differently than usual, people go back to old habits.",
+      "effect": "From day one the tool does what the team does every day, to its own standard.",
+      "value": "The licence actually gets used, so the AI investment pays off.",
       "order": 14
     },
     "tags": [
-      "bol:presja-zarzadu",
+      "pain:board-pressure",
       "segment:in-house",
-      "segment:kancelaria"
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-krs",
-    "type": "rozwiazanie",
-    "title": "Weryfikacja reprezentacji w KRS",
-    "body": "Gaius sprawdza w KRS zarząd, wspólników i sposób reprezentacji oraz porównuje je z umową.",
+    "id": "sol-krs-check",
+    "type": "solution",
+    "title": "Checking signatories in the company register",
+    "body": "Gaius checks the board, shareholders and representation rules in the company register (KRS) and compares them with the contract.",
     "data": {
-      "problem": "Przed podpisaniem umowy trzeba sprawdzić, czy osoby po stronie kontrahenta mogą go reprezentować, a ręczne porównywanie z KRS jest żmudne.",
-      "effect": "Od razu wiesz, czy podpisy pod umową wystarczą.",
-      "wartosc": "Mniejsze ryzyko umowy podpisanej przez osobę bez umocowania i sporu o jej ważność.",
+      "problem": "Before signing a contract you must check that the counterparty’s signatories can represent it, and comparing with the company register by hand is tedious.",
+      "effect": "You know right away whether the signatures on the contract are enough.",
+      "value": "Less risk of a contract signed by someone without authority and a dispute over its validity.",
       "order": 15
     },
     "tags": [
-      "bol:powtarzalne-dokumenty",
+      "pain:repetitive-documents",
       "segment:in-house",
-      "segment:kancelaria"
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-kio",
-    "type": "rozwiazanie",
-    "title": "Orzecznictwo KIO z sygnaturami",
-    "body": "Gaius wyszukuje i weryfikuje orzeczenia KIO w kontekście konkretnego postępowania.",
+    "id": "sol-procurement-rulings",
+    "type": "solution",
+    "title": "Procurement appeal rulings with case numbers",
+    "body": "Gaius finds and verifies KIO rulings in the context of a specific tender.",
     "data": {
-      "problem": "Termin na odwołanie do KIO jest krótki, a orzecznictwo Izby trzeba przeszukiwać ręcznie.",
-      "effect": "Argumenty z orzecznictwa KIO masz z sygnaturami, bez przekopywania wyszukiwarki.",
-      "wartosc": "Lepiej przygotowane odwołanie albo odpowiedź na nie w czasie, który zostaje.",
+      "problem": "The deadline for a procurement appeal (KIO) is short, and the board’s rulings have to be searched by hand.",
+      "effect": "You get arguments from KIO case law with case numbers, without digging through the search engine.",
+      "value": "A better prepared appeal, or reply to one, in the time that is left.",
       "order": 16
     },
     "tags": [
-      "bol:wyszukiwanie-orzecznictwa",
-      "segment:kancelaria",
-      "segment:administracja"
+      "pain:weak-case-law-search",
+      "segment:law-firm",
+      "segment:public-sector"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-interpretacje",
-    "type": "rozwiazanie",
-    "title": "Interpretacje podatkowe bez zmyśleń",
-    "body": "Gaius wyszukuje interpretacje podatkowe i orzecznictwo, a w gotowej opinii weryfikuje cytowane interpretacje.",
+    "id": "sol-tax-rulings",
+    "type": "solution",
+    "title": "Tax rulings without made-up answers",
+    "body": "Gaius finds tax rulings and case law, and checks the cited rulings in a finished opinion.",
     "data": {
-      "problem": "Doradca szuka interpretacji indywidualnych w wyszukiwarce Eureka, a ogólne AI je zmyśla albo podaje nieaktualne.",
-      "effect": "Szybciej znajdujesz interpretacje pasujące do stanu faktycznego klienta, z sygnaturą do sprawdzenia.",
-      "wartosc": "Opinia dla klienta oparta na aktualnym stanowisku organów, przygotowana w krótszym czasie.",
+      "problem": "Advisors search individual tax rulings in the official search engine, and general AI makes them up or cites outdated ones.",
+      "effect": "You find rulings that fit the client’s facts faster, with a case number to check.",
+      "value": "A client opinion based on the authorities’ current position, prepared in less time.",
       "order": 17
     },
     "tags": [
-      "bol:zmyslone-orzeczenia",
-      "bol:wyszukiwanie-orzecznictwa",
-      "segment:doradcy"
+      "pain:hallucinated-citations",
+      "pain:weak-case-law-search",
+      "segment:tax-advisors"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-knf-dora",
-    "type": "rozwiazanie",
-    "title": "Zgodność procedur z KNF, DORA i AML",
-    "body": "Gaius sprawdza dokumenty według zestawu zasad (np. wymogów regulacji) i wskazuje zapisy, które ich nie spełniają.",
+    "id": "sol-regulatory-compliance",
+    "type": "solution",
+    "title": "Procedures checked against KNF, DORA and AML",
+    "body": "Gaius checks documents against a set of rules (e.g. regulatory requirements) and flags the clauses that don’t meet them.",
     "data": {
-      "problem": "Każda nowa rekomendacja KNF, DORA czy przepisy AML wymagają sprawdzenia, które procedury i umowy wewnętrzne trzeba zmienić.",
-      "effect": "Dostajesz listę rozbieżności zamiast czytać wszystkie polityki od nowa.",
-      "wartosc": "Szybsze dostosowanie do regulacji i mniejsze ryzyko zastrzeżeń przy kontroli KNF.",
+      "problem": "Every new KNF recommendation, DORA or AML rule means checking which internal procedures and contracts must change.",
+      "effect": "You get a list of gaps instead of rereading every policy.",
+      "value": "Faster regulatory alignment and less risk of findings in a regulator’s inspection.",
       "order": 18
     },
     "tags": [
-      "bol:presja-zarzadu",
-      "segment:finanse"
+      "pain:board-pressure",
+      "segment:finance"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-audio",
-    "type": "rozwiazanie",
-    "title": "Praca na nagraniach rozpraw i spotkań",
-    "body": "Gaius przyjmuje pliki audio i pozwala pracować na ich treści: wyszukiwać, streśczać, cytować.",
+    "id": "sol-audio",
+    "type": "solution",
+    "title": "Working on hearing and meeting recordings",
+    "body": "Gaius accepts audio files and lets you work on their content: search, summarise, quote.",
     "data": {
-      "problem": "Nagrania rozpraw albo spotkań trzeba odsłuchiwać godzinami, żeby znaleźć jedną wypowiedź.",
-      "effect": "Potrzebny fragment nagrania znajdujesz po treści.",
-      "wartosc": "Mniej godzin na odsłuch, więcej na argumentację.",
+      "problem": "Hearing or meeting recordings have to be listened to for hours to find one statement.",
+      "effect": "You find the part of the recording you need by its content.",
+      "value": "Fewer hours of listening, more time for arguments.",
       "order": 19
     },
     "tags": [
-      "bol:archiwum",
-      "segment:kancelaria"
+      "pain:unsearchable-archive",
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-ksc",
-    "type": "rozwiazanie",
-    "title": "Przegląd umów z dostawcami pod KSC",
-    "body": "Gaius analizuje umowy z dostawcami pod kątem wymogów UKSC i wskazuje te, które wymagają aneksu.",
+    "id": "sol-cybersecurity-contracts",
+    "type": "solution",
+    "title": "Supplier contracts reviewed for cybersecurity law",
+    "body": "Gaius analyses supplier contracts against the cybersecurity requirements and flags the ones that need an annex.",
     "data": {
-      "problem": "Nowe przepisy o krajowym systemie cyberbezpieczeństwa wymagają przejrzenia wszystkich umów z dostawcami i sprawdzenia, które trzeba zmienić.",
-      "effect": "Zamiast czytać każdą umowę, dostajesz listę umów do zmiany z brakującymi zapisami.",
-      "wartosc": "Organizacja spełnia obowiązki wobec łańcucha dostaw w terminie, bez zlecania zewnętrznej kancelarii przeglądu całego portfela.",
+      "problem": "New national cybersecurity rules require reviewing every supplier contract and checking which ones must change.",
+      "effect": "Instead of reading every contract, you get a list of contracts to change with the missing clauses.",
+      "value": "The organisation meets its supply-chain obligations on time, without paying an outside firm to review the whole portfolio.",
       "order": 20
     },
     "tags": [
-      "bol:skala-grupy",
-      "bol:powtarzalne-dokumenty",
+      "pain:group-scale",
+      "pain:repetitive-documents",
       "segment:in-house",
-      "segment:administracja"
+      "segment:public-sector"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-pip",
-    "type": "rozwiazanie",
-    "title": "Masowy przegląd umów pod reformę PIP",
-    "body": "Gaius analizuje nawet 5 tys. umów jednocześnie pod kątem reformy PIP i przygotowuje projekty aneksów.",
+    "id": "sol-labour-inspection",
+    "type": "solution",
+    "title": "Bulk contract review for the labour inspection reform",
+    "body": "Gaius analyses up to 5,000 contracts at once against the reform and drafts the annexes.",
     "data": {
-      "problem": "Reforma PIP wymaga przejrzenia nawet tysięcy umów (np. zleceń i B2B) i przygotowania aneksów, a ręcznie zajęłoby to miesiące.",
-      "effect": "Cały portfel umów przejrzany w jednym przebiegu, z listą umów do zmiany i gotowymi aneksami.",
-      "wartosc": "Mniejsze ryzyko negatywnych ustaleń i kar po kontroli PIP.",
+      "problem": "The labour inspection reform requires reviewing up to thousands of contracts (e.g. civil-law and B2B) and drafting annexes, which would take months by hand.",
+      "effect": "The whole contract portfolio reviewed in one pass, with a list of contracts to change and ready annexes.",
+      "value": "Less risk of negative findings and fines after a labour inspection.",
       "order": 21
     },
     "tags": [
-      "bol:skala-grupy",
-      "bol:szablony-w-skali",
+      "pain:group-scale",
+      "pain:templates-at-scale",
       "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-mercosur",
-    "type": "rozwiazanie",
-    "title": "Ulgi z umowy UE–Mercosur",
-    "body": "Gaius sprawdza produkty organizacji pod kątem ulg wynikających z umowy UE–Mercosur.",
+    "id": "sol-mercosur",
+    "type": "solution",
+    "title": "EU–Mercosur tariff relief",
+    "body": "Gaius checks the organisation’s products for relief under the EU–Mercosur agreement.",
     "data": {
-      "problem": "Firma nie wie, czy na jej produkty przysługuje ulga z umowy UE–Mercosur, a samodzielna analiza umowy jest pracochłonna.",
-      "effect": "Wiesz, które produkty mogą korzystać z ulgi, bez studiowania umowy międzynarodowej.",
-      "wartosc": "Niższe cła i przewaga cenowa nad konkurencją, która z ulg nie korzysta.",
+      "problem": "The company doesn’t know whether its products qualify for relief under the EU–Mercosur agreement, and analysing the agreement is laborious.",
+      "effect": "You know which products can use the relief without studying an international agreement.",
+      "value": "Lower duties and a price advantage over competitors who don’t use the relief.",
       "order": 22
     },
     "tags": [
-      "bol:presja-zarzadu",
+      "pain:board-pressure",
       "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-ustalenia-z-maili",
-    "type": "rozwiazanie",
-    "title": "Umowa kontra ustalenia z maili",
-    "body": "Gaius porównuje ostateczną wersję umowy z wątkiem mailowym i wskazuje ustalenia, których w niej brakuje.",
+    "id": "sol-email-commitments",
+    "type": "solution",
+    "title": "Contract versus what was agreed by email",
+    "body": "Gaius compares the final contract with the email thread and flags agreed points that are missing from it.",
     "data": {
-      "problem": "Ustalenia z negocjacji są rozsiane po długim wątku mailowym i łatwo je pominąć w ostatecznej wersji umowy.",
-      "effect": "Przed podpisem masz listę rozbieżności między umową a ustaleniami.",
-      "wartosc": "Mniej sporów o to, co było ustalone, i mniej aneksów po podpisaniu.",
+      "problem": "What was agreed in negotiations is scattered across a long email thread and easy to miss in the final contract.",
+      "effect": "Before signing you have a list of gaps between the contract and what was agreed.",
+      "value": "Fewer disputes about what was agreed and fewer annexes after signing.",
       "order": 23
     },
     "tags": [
-      "bol:powtarzalne-dokumenty",
-      "bol:archiwum",
+      "pain:repetitive-documents",
+      "pain:unsearchable-archive",
       "segment:in-house",
-      "segment:kancelaria"
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-rejestr-umow",
-    "type": "rozwiazanie",
-    "title": "Rejestr umów z rozproszonych plików",
-    "body": "Gaius wyciąga umowy z rozproszonych dokumentów i porządkuje je w jednym miejscu, gotowe do przeszukania.",
+    "id": "sol-contract-register",
+    "type": "solution",
+    "title": "A contract register from scattered files",
+    "body": "Gaius pulls contracts out of scattered documents and organises them in one searchable place.",
     "data": {
-      "problem": "Umowy są rozproszone po dyskach, mailach i folderach, a firma nie ma ich rejestru, więc nie wie, co ją wiąże.",
-      "effect": "Każdą umowę i jej kluczowe warunki znajdziesz w jednym miejscu.",
-      "wartosc": "Kontrola nad zobowiązaniami firmy (terminy, kary, okresy wypowiedzenia), także przy audycie lub due diligence.",
+      "problem": "Contracts are scattered across drives, mailboxes and folders, and the company has no register, so it doesn’t know what binds it.",
+      "effect": "You find every contract and its key terms in one place.",
+      "value": "Control over the company’s obligations (deadlines, penalties, notice periods), also in an audit or due diligence.",
       "order": 24
     },
     "tags": [
-      "bol:archiwum",
-      "bol:skala-grupy",
+      "pain:unsearchable-archive",
+      "pain:group-scale",
       "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-wezwanie-do-zaplaty",
-    "type": "rozwiazanie",
-    "title": "Analiza wezwania do zapłaty",
-    "body": "Agent Gaius analizuje zasadność roszczenia, wskazuje argumenty za i przeciw oraz ryzyka procesowe, przygotowuje tabelę tez ze źródłami i szkic odpowiedzi.",
+    "id": "sol-payment-demand",
+    "type": "solution",
+    "title": "Analysing a payment demand",
+    "body": "A Gaius agent assesses whether the claim is justified, lists arguments for and against and the litigation risks, and prepares a table of points with sources and a draft reply.",
     "data": {
-      "problem": "Ocena wezwania do zapłaty wymaga ustalenia podstaw prawnych, argumentów obu stron i ryzyk, a potem napisania odpowiedzi, co zajmuje wiele godzin.",
-      "effect": "Zlecasz zadanie jak zewnętrznej kancelarii i dostajesz kompletną analizę do sprawdzenia.",
-      "wartosc": "Mniej spraw przekazywanych na zewnątrz i szybsza decyzja: płacić, negocjować czy się bronić.",
+      "problem": "Assessing a payment demand means establishing the legal basis, both sides’ arguments and the risks, then writing a reply, which takes many hours.",
+      "effect": "You hand it over like to an outside firm and get a complete analysis to check.",
+      "value": "Fewer matters sent outside and a faster decision: pay, negotiate or defend.",
       "order": 25
     },
     "tags": [
-      "bol:presja-zarzadu",
-      "bol:chatgpt-tylko-informacja",
+      "pain:board-pressure",
+      "pain:chatgpt-only-informs",
       "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
   },
   {
-    "id": "rz-moc-tez",
-    "type": "rozwiazanie",
-    "title": "Ocena mocy tez z orzecznictwa",
-    "body": "Gaius ocenia moc tez na tle orzecznictwa i wskazuje źródła za i przeciw.",
+    "id": "sol-argument-strength",
+    "type": "solution",
+    "title": "How strong is the case law behind an argument",
+    "body": "Gaius assesses the strength of the point against the case law and shows sources for and against.",
     "data": {
-      "problem": "Argument w piśmie opiera się na tezie z orzeczenia, ale nie wiadomo, czy linia orzecznicza nadal ją wspiera.",
-      "effect": "Przed złożeniem pisma wiesz, które argumenty są mocne, a które łatwo podważyć.",
-      "wartosc": "Lepsza strategia procesowa i mniejsze ryzyko przegranej na słabym argumencie.",
+      "problem": "An argument in a filing rests on a point from a ruling, but it is unclear whether the line of case law still supports it.",
+      "effect": "Before filing you know which arguments are strong and which are easy to challenge.",
+      "value": "A better litigation strategy and less risk of losing on a weak argument.",
       "order": 26
     },
     "tags": [
-      "bol:zmyslone-orzeczenia",
-      "bol:wyszukiwanie-orzecznictwa",
-      "segment:kancelaria",
+      "pain:hallucinated-citations",
+      "pain:weak-case-law-search",
+      "segment:law-firm",
       "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
@@ -835,165 +834,165 @@ export const solutionBlocks = [
   }
 ];
 
-// id bloku albo karty -> kafelki do dopisania do jej `tags`
+// block or card id -> tiles to add to its `tags`
 export const tileTags = {
-  "uc-pilne-pismo": [
-    "bol:presja-zarzadu",
-    "bol:zmyslone-orzeczenia",
+  "uc-urgent-letter": [
+    "pain:board-pressure",
+    "pain:hallucinated-citations",
     "segment:in-house",
-    "segment:kancelaria"
+    "segment:law-firm"
   ],
-  "uc-zmiana-prawa": [
-    "bol:skala-grupy",
-    "bol:powtarzalne-dokumenty",
+  "uc-law-change": [
+    "pain:group-scale",
+    "pain:repetitive-documents",
     "segment:in-house",
-    "segment:administracja"
+    "segment:public-sector"
   ],
-  "uc-dokument-przed-wysylka": [
-    "bol:zmyslone-orzeczenia",
-    "segment:kancelaria",
+  "uc-document-check": [
+    "pain:hallucinated-citations",
+    "segment:law-firm",
     "segment:in-house"
   ],
-  "uc-umowa-do-podpisu": [
-    "bol:powtarzalne-dokumenty",
+  "uc-contract-to-sign": [
+    "pain:repetitive-documents",
     "segment:in-house",
-    "segment:kancelaria"
+    "segment:law-firm"
   ],
-  "uc-powracajacy-temat": [
-    "bol:archiwum",
-    "segment:kancelaria",
+  "uc-recurring-topic": [
+    "pain:unsearchable-archive",
+    "segment:law-firm",
     "segment:in-house"
   ],
-  "uc-pytanie-od-biznesu": [
-    "bol:presja-zarzadu",
-    "bol:chatgpt-tylko-informacja",
+  "uc-business-question": [
+    "pain:board-pressure",
+    "pain:chatgpt-only-informs",
     "segment:in-house"
   ],
-  "pl-prywatne-srodowisko": [
-    "bol:poufnosc"
+  "pl-private-environment": [
+    "pain:confidentiality"
   ],
-  "pl-odpowiedzi-ze-zrodlami": [
-    "bol:zmyslone-orzeczenia"
+  "pl-sourced-answers": [
+    "pain:hallucinated-citations"
   ],
-  "pl-standard-pracy": [
-    "bol:shadow-ai",
-    "bol:powtarzalne-dokumenty"
+  "pl-team-standard": [
+    "pain:shadow-ai",
+    "pain:repetitive-documents"
   ],
-  "sg-szybsze-odpowiedzi": [
-    "bol:presja-zarzadu"
+  "sg-faster-answers": [
+    "pain:board-pressure"
   ],
-  "sg-wiecej-dokumentow": [
-    "bol:skala-grupy"
+  "sg-more-documents": [
+    "pain:group-scale"
   ],
-  "sg-wiedza-trudna": [
-    "bol:archiwum"
+  "sg-hard-to-reuse": [
+    "pain:unsearchable-archive"
   ],
-  "sg-powtarzalne-zadania": [
-    "bol:powtarzalne-dokumenty"
+  "sg-repetitive-tasks": [
+    "pain:repetitive-documents"
   ],
-  "cmp-dane": [
-    "bol:poufnosc"
+  "cmp-data": [
+    "pain:confidentiality"
   ],
-  "cmp-zrodla": [
-    "bol:wyszukiwanie-orzecznictwa"
+  "cmp-sources": [
+    "pain:weak-case-law-search"
   ],
-  "cmp-weryfikacja": [
-    "bol:zmyslone-orzeczenia"
+  "cmp-verification": [
+    "pain:hallucinated-citations"
   ],
-  "cmp-wiedza": [
-    "bol:archiwum"
+  "cmp-knowledge": [
+    "pain:unsearchable-archive"
   ],
-  "cmp-wdrozenie": [
-    "bol:presja-zarzadu"
+  "cmp-rollout": [
+    "pain:board-pressure"
   ],
-  "cmp-skalowanie": [
-    "bol:skala-grupy"
+  "cmp-scaling": [
+    "pain:group-scale"
   ],
   "cmp-word": [
-    "bol:kopiowanie-do-worda"
+    "pain:copy-to-word"
   ],
-  "dlaczego/bez-blokady": [
-    "bol:presja-zarzadu",
-    "bol:skala-grupy",
-    "rola:zarzad"
+  "why/no-lock-in": [
+    "pain:board-pressure",
+    "pain:group-scale",
+    "role:board"
   ],
-  "dlaczego/bezpieczny-start": [
-    "bol:presja-zarzadu",
-    "rola:zarzad"
+  "why/no-lock-in-highlight": [
+    "pain:board-pressure",
+    "pain:group-scale",
+    "role:board"
   ],
-  "dlaczego/jedna-usluga": [
-    "bol:presja-zarzadu",
-    "rola:zarzad"
+  "why/safe-start": [
+    "pain:board-pressure",
+    "role:board"
   ],
-  "dlaczego/jedno-srodowisko": [
-    "bol:wyszukiwanie-orzecznictwa",
-    "bol:archiwum",
-    "rola:champion"
+  "why/safe-start-highlight": [
+    "pain:board-pressure",
+    "role:board"
   ],
-  "dlaczego/know-how-organizacji": [
-    "bol:archiwum",
-    "bol:powtarzalne-dokumenty",
-    "rola:champion"
+  "why/one-service": [
+    "pain:board-pressure",
+    "role:board"
   ],
-  "dlaczego/odpowiedzi-ze-zrodlami": [
-    "bol:zmyslone-orzeczenia",
-    "rola:champion"
+  "why/one-service-highlight": [
+    "pain:board-pressure",
+    "role:board"
   ],
-  "dlaczego/on-premise": [
-    "bol:poufnosc",
-    "produkt:on-prem",
-    "produkt:vault"
+  "why/one-environment": [
+    "pain:weak-case-law-search",
+    "pain:unsearchable-archive",
+    "role:champion"
   ],
-  "dlaczego/prywatne-legal-ai": [
-    "bol:poufnosc",
-    "bol:shadow-ai"
+  "why/one-environment-highlight": [
+    "pain:weak-case-law-search",
+    "pain:unsearchable-archive",
+    "role:champion"
   ],
-  "dlaczego/wdrozenie-rutyna": [
-    "bol:shadow-ai",
-    "rola:champion"
+  "why/organization-know-how": [
+    "pain:unsearchable-archive",
+    "pain:repetitive-documents",
+    "role:champion"
   ],
-  "dlaczego/bez-blokady-wyroznienie": [
-    "bol:presja-zarzadu",
-    "bol:skala-grupy",
-    "rola:zarzad"
+  "why/organization-know-how-highlight": [
+    "pain:unsearchable-archive",
+    "pain:repetitive-documents",
+    "role:champion"
   ],
-  "dlaczego/bezpieczny-start-wyroznienie": [
-    "bol:presja-zarzadu",
-    "rola:zarzad"
+  "why/sourced-answers": [
+    "pain:hallucinated-citations",
+    "role:champion"
   ],
-  "dlaczego/jedna-usluga-wyroznienie": [
-    "bol:presja-zarzadu",
-    "rola:zarzad"
+  "why/sourced-answers-highlight": [
+    "pain:hallucinated-citations",
+    "role:champion"
   ],
-  "dlaczego/jedno-srodowisko-wyroznienie": [
-    "bol:wyszukiwanie-orzecznictwa",
-    "bol:archiwum",
-    "rola:champion"
+  "why/on-premise": [
+    "pain:confidentiality",
+    "product:on-prem",
+    "product:vault"
   ],
-  "dlaczego/know-how-organizacji-wyroznienie": [
-    "bol:archiwum",
-    "bol:powtarzalne-dokumenty",
-    "rola:champion"
+  "why/on-premise-highlight": [
+    "pain:confidentiality",
+    "product:on-prem",
+    "product:vault"
   ],
-  "dlaczego/odpowiedzi-ze-zrodlami-wyroznienie": [
-    "bol:zmyslone-orzeczenia",
-    "rola:champion"
+  "why/private-legal-ai": [
+    "pain:confidentiality",
+    "pain:shadow-ai"
   ],
-  "dlaczego/on-premise-wyroznienie": [
-    "bol:poufnosc",
-    "produkt:on-prem",
-    "produkt:vault"
+  "why/private-legal-ai-highlight": [
+    "pain:confidentiality",
+    "pain:shadow-ai"
   ],
-  "dlaczego/prywatne-legal-ai-wyroznienie": [
-    "bol:poufnosc",
-    "bol:shadow-ai"
+  "why/rollout-routine": [
+    "pain:shadow-ai",
+    "role:champion"
   ],
-  "dlaczego/wdrozenie-rutyna-wyroznienie": [
-    "bol:shadow-ai",
-    "rola:champion"
+  "why/rollout-routine-highlight": [
+    "pain:shadow-ai",
+    "role:champion"
   ],
-  "dlaczego/pilotaz-3-miesiace": [
-    "bol:presja-zarzadu",
-    "rola:zarzad"
+  "why/pilot-3-months": [
+    "pain:board-pressure",
+    "role:board"
   ]
 };

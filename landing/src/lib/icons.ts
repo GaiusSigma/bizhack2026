@@ -1,4 +1,4 @@
-// Ścieżki ikon (stroke, viewBox 24x24) z projektu w Claude Design.
+// Icon paths (stroke, viewBox 24x24) from the Claude Design project.
 export const icons = {
   mail: 'M3 5h18v14H3z M3 7l9 6 9-6',
   mic: 'M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z M5 10a7 7 0 0 0 14 0 M12 17v5',

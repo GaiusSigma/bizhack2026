@@ -1,8 +1,8 @@
-// Offer Studio: wspólne narzędzia frontendu (DOM, API, okienka, stan) dla app.js i widoków w views/.
+// Offer Studio: shared frontend helpers (DOM, API, dialogs, state) for app.js and the views in views/.
 
-// Wspólny stan modułów: zamknięcie okienka i odświeżenie bieżącego widoku po zmianach z API.
+// Shared module state: closing the dialog and refreshing the current view after API changes.
 export const ui = { onModalClose: null, refresh: null };
-// ------------------------------------------------------------------ narzędzia
+// ------------------------------------------------------------------ utilities
 export const $ = (sel, root = document) => root.querySelector(sel);
 
 export function h(tag, attrs = {}, ...children) {
@@ -46,17 +46,20 @@ export const debounce = (fn, ms = 450) => {
   return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
 };
 
-// Pole statusu zapisu („zapisywanie…”, „zapisano”, błąd).
+// "1 slide", "3 slides".
+const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+// Save status indicator ("saving…", "saved", error).
 export function saver(statusEl, fn, ms) {
   return debounce(async (...a) => {
-    statusEl.textContent = 'zapisywanie…';
+    statusEl.textContent = 'saving…';
     statusEl.className = 'status';
     try {
       await fn(...a);
-      statusEl.textContent = 'zapisano';
+      statusEl.textContent = 'saved';
       statusEl.className = 'status ok';
     } catch (e) {
-      statusEl.textContent = 'błąd';
+      statusEl.textContent = 'error';
       statusEl.className = 'status err';
       toast(e.message, true);
     }
@@ -70,8 +73,8 @@ export function autosize(t) {
   return t;
 }
 
-// Edytor pól klucz → wartość (dla `data` bloków, slajdów i ofert).
-// `hints` to klucze, które warto pokazać od razu (np. pola wyczytane z szablonu).
+// Key → value field editor (for the `data` of blocks, slides and offers).
+// `hints` are keys worth showing right away (e.g. fields read from the template).
 export function kvEditor(obj, hints, onChange) {
   const rows = [];
   const types = {};
@@ -82,12 +85,12 @@ export function kvEditor(obj, hints, onChange) {
       if (!k) continue;
       let v = r.v.value;
       if (types[k] === 'number' && v.trim() !== '' && !isNaN(Number(v))) v = Number(v);
-      else if (types[k] === 'json') { try { v = JSON.parse(v); } catch { /* zostaje tekst */ } }
+      else if (types[k] === 'json') { try { v = JSON.parse(v); } catch { /* keep it as text */ } }
       else if (types[k] === 'boolean') v = v.trim() === 'true';
       if (v === '' && !(k in obj)) continue;
       out[k] = v;
     }
-    // klucze usunięte z listy -> null (API usuwa je przy scalaniu)
+    // keys removed from the list -> null (the API deletes them when merging)
     for (const k of Object.keys(obj)) if (!(k in out)) out[k] = null;
     return out;
   };
@@ -98,10 +101,10 @@ export function kvEditor(obj, hints, onChange) {
     else if (typeof v === 'number') types[k] = 'number';
     else if (typeof v === 'boolean') types[k] = 'boolean';
     const r = {
-      k: h('input', { value: k, placeholder: 'klucz', oninput: fire }),
+      k: h('input', { value: k, placeholder: 'key', oninput: fire }),
       v: autosize(h('textarea', { rows: 1, oninput: fire }, String(v ?? ''))),
     };
-    const del = h('button', { class: 'icon', title: 'Usuń pole', onclick: () => { rows.splice(rows.indexOf(r), 1); row.remove(); fire(); } }, '×');
+    const del = h('button', { class: 'icon', title: 'Delete field', onclick: () => { rows.splice(rows.indexOf(r), 1); row.remove(); fire(); } }, '×');
     const row = h('div', { class: 'r' }, r.k, r.v, del);
     rows.push(r);
     list.append(row);
@@ -109,7 +112,7 @@ export function kvEditor(obj, hints, onChange) {
   };
   for (const [k, v] of Object.entries(obj)) addRow(k, v);
   for (const k of hints || []) if (!(k in obj)) addRow(k, '');
-  return h('div', { class: 'kv' }, list, h('div', {}, h('button', { class: 'btn sm', onclick: () => addRow().k.focus() }, '+ pole')));
+  return h('div', { class: 'kv' }, list, h('div', {}, h('button', { class: 'btn sm', onclick: () => addRow().k.focus() }, '+ field')));
 }
 
 export function modal(content) {
@@ -123,7 +126,7 @@ export function modal(content) {
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').hidden) $('#modal').click(); });
 
 export async function download(path, fallbackName) {
-  toast('Generuję…');
+  toast('Generating…');
   try {
     const res = await fetch(`/api${path}`);
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
@@ -131,13 +134,13 @@ export async function download(path, fallbackName) {
     const url = URL.createObjectURL(await res.blob());
     h('a', { href: url, download: name }).click();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    toast('Gotowe');
+    toast('Done');
   } catch (e) {
     toast(e.message, true);
   }
 }
 
-// ------------------------------------------------------------------ stan i routing
+// ------------------------------------------------------------------ state and routing
 export const state = { blocks: [], offers: [], templates: [], library: [], components: [], componentSets: [], tiles: [], scenarios: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
 
 export async function loadAll() {
@@ -147,13 +150,14 @@ export async function loadAll() {
   ]);
 }
 
-export const slugify = (s) => String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L')
+// Strips accents; \u0142/\u0141 (Polish l with stroke) do not decompose under NFKD, so map them by hand.
+export const slugify = (s) => String(s).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\u0142/g, 'l').replace(/\u0141/g, 'L')
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
 export const UPLOAD_ACCEPT = '.figcraft,.json,.fig,.penpot,.sketch,.svg';
 
 export const go = (...parts) => { location.hash = `#/${parts.filter((p) => p != null && p !== '').map(encodeURIComponent).join('/')}`; };
 
-// Kafelki po id i etykiety kategorii (wspólne dla ekranów ofert i kafelków).
-export const CATEGORY_LABELS = { rola: 'Kim jest rozmówca', segment: 'Segment', bol: 'Bóle klienta', produkt: 'Produkt / skala' };
+// Tiles by id and category labels (shared by the offer and tile screens).
+export const CATEGORY_LABELS = { role: 'Who you are talking to', segment: 'Segment', pain: 'Client pains', product: 'Product / scale' };
 export const tileById = (id) => state.tiles.find((t) => t.id === id);
-export const tileLabel = (id) => tileById(id)?.label || `${id} (usunięty kafelek)`;
+export const tileLabel = (id) => tileById(id)?.label || `${id} (deleted tile)`;

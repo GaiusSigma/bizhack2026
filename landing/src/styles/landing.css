@@ -1,6 +1,6 @@
-/* Landing Gaius-Lex: generator ofert (projekt z Claude Design, system Gaius-Lex). */
+/* Gaius-Lex landing: offer generator (designed in Claude Design, Gaius-Lex design system). */
 
-/* ---------- Animacje ---------- */
+/* ---------- Animations ---------- */
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(206, 94, 100, .5); } 100% { box-shadow: 0 0 0 12px rgba(206, 94, 100, 0); } }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -25,7 +25,7 @@
 
 [hidden] { display: none !important; }
 
-/* ---------- Układ ---------- */
+/* ---------- Layout ---------- */
 .wrap { max-width: 1280px; margin: 0 auto; padding-inline: 32px; }
 .section { padding-block: 96px; }
 .section--white { background: var(--surface); }
@@ -36,7 +36,7 @@
 .stack-48 { display: flex; flex-direction: column; gap: 48px; }
 .section-head { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
 
-/* ---------- Typografia ---------- */
+/* ---------- Typography ---------- */
 .overline {
   font-size: 11px; line-height: 16px; font-weight: 700; letter-spacing: 1.54px; text-transform: uppercase;
   color: var(--rose-deep); display: flex; gap: 8px; align-items: center;
@@ -52,7 +52,7 @@
 .fineprint .icon { flex: 0 0 16px; }
 .fineprint--tight { font-size: 12px; }
 
-/* ---------- Przyciski i kafelki ---------- */
+/* ---------- Buttons and tiles ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 44px; padding: 0 20px; border: 0; cursor: pointer;
@@ -75,7 +75,7 @@
 .tile--48 { width: 48px; height: 48px; }
 .tile--56 { width: 56px; height: 56px; }
 
-/* ---------- Nagłówek ---------- */
+/* ---------- Header ---------- */
 .topbar { border-bottom: 1px solid var(--line); background: #fff; }
 .topbar__inner { padding-block: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
 .brand { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
@@ -141,6 +141,21 @@
 .chip[aria-pressed='true'], .role-pick[aria-pressed='true'] { background: var(--rose-soft); border-color: var(--rose-deep); }
 .role-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .role-pick { min-height: 52px; padding: 10px 14px; font-size: 15px; font-weight: 600; gap: 10px; }
+.role-pick:disabled { cursor: not-allowed; color: var(--muted); background: var(--sand); border-style: dashed; }
+.role-pick .soon { margin-left: auto; }
+
+/* „Coming soon”: segmenty i role, dla których jeszcze nie piszemy ofert */
+.soon {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap;
+  color: var(--muted); border: 1px solid var(--line); background: #fff; padding: 2px 6px;
+}
+.segments { display: flex; flex-direction: column; gap: 12px; }
+.segments__list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.segment {
+  display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px;
+  border: 1px solid var(--rose-deep); background: var(--rose-soft); color: var(--ink); font-size: 14px; font-weight: 600;
+}
+.segment--soon { border: 1px dashed var(--parchment); background: transparent; color: var(--muted); font-weight: 500; }
 
 .voice { display: flex; align-items: center; gap: 20px; padding: 20px; background: var(--sand); border: 1px solid var(--line); }
 .voice__btn {
@@ -266,7 +281,7 @@
 .fact__title { font-size: 18px; font-weight: 800; color: var(--ink); }
 .fact__text { font-size: 15px; line-height: 22px; }
 
-/* ---------- Obawy ---------- */
+/* ---------- Concerns ---------- */
 .fears { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 1px; background: var(--raised); border: 1px solid var(--raised); }
 .fear { background: var(--ink); padding: 40px; display: flex; flex-direction: column; gap: 16px; }
 .fear__top { display: flex; justify-content: space-between; align-items: center; }
@@ -281,7 +296,7 @@
 .concern__title { font-size: 18px; font-weight: 800; }
 .concern__text { font-size: 15px; line-height: 22px; color: var(--line); }
 
-/* ---------- Role ---------- */
+/* ---------- Roles ---------- */
 .role-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .role-card { background: #fff; padding: 32px; display: flex; flex-direction: column; gap: 12px; }
 .role-card__title { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 800; letter-spacing: -0.44px; color: var(--ink); }
@@ -290,8 +305,11 @@
 .role-card__text { line-height: 24px; }
 .role-card__gets { line-height: 24px; font-weight: 600; color: var(--ink); display: flex; gap: 8px; align-items: flex-start; }
 .role-card__gets .icon { flex: 0 0 18px; margin-top: 3px; }
+.role-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.role-card--soon { background: var(--sand); }
+.role-card--soon .role-card__title, .role-card--soon .role-card__gets, .role-card--soon .role-card__text { color: var(--muted); }
 
-/* ---------- Wyniki ---------- */
+/* ---------- Results ---------- */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .stat { background: #fff; padding: 32px; display: flex; flex-direction: column; gap: 10px; }
 .stat__label { font-size: 14px; color: var(--muted); }
@@ -299,7 +317,7 @@
 .stat__before.is-struck { text-decoration: line-through; }
 .stat__after { font-size: 48px; line-height: 1; font-weight: 800; letter-spacing: -1.44px; color: var(--ink); }
 
-/* ---------- Stopka ---------- */
+/* ---------- Footer ---------- */
 .footer { background: var(--ink); color: var(--line); }
 .footer__inner { padding-block: 48px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 24px; align-items: center; }
 .footer__brand { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }

@@ -1,5 +1,5 @@
 * text=auto
-# Skrypty i konfiguracja trafiają do kontenerów Linux: zawsze LF.
+# Scripts and config end up in Linux containers: always LF.
 *.sh text eol=lf
 *.conf text eol=lf
 Dockerfile text eol=lf

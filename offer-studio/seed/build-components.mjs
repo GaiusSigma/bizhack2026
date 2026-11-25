@@ -1,9 +1,9 @@
-// Jednorazowy generator: dokłada do seed/gaius-template.figcraft stronę „Komponenty” z zestawem
-// `@dlaczego` (warianty kart do slajdu „dlaczego”) i zamienia karty slajdu na sloty `#pick:dlaczego`.
-// Zostawiony w repo, żeby było widać, jak powstał plik startowy. Na co dzień komponenty rysuje się
-// ręcznie w FigCraft/Figmie: ramka najwyższego poziomu `@nazwa-zestawu`, w niej karty (nazwa karty = klucz).
+// One-off generator: adds a "Components" page with the `@why` set (card variants for the "why" slide)
+// to seed/gaius-template.figcraft and turns the slide's cards into `#pick:why` slots.
+// Kept in the repo to show how the starter file was made. Day to day, components are drawn by hand
+// in FigCraft/Figma: a top-level frame `@set-name` with the cards inside (card name = key).
 //
-//   node seed/build-components.mjs <wejście.figcraft> <wyjście.figcraft>
+//   node seed/build-components.mjs <input.figcraft> <output.figcraft>
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,7 +11,7 @@ import { join, resolve } from 'node:path';
 import { unzipSync } from 'fflate';
 
 const [, , input, output] = process.argv;
-if (!input || !output) throw new Error('użycie: node seed/build-components.mjs <wejście.figcraft> <wyjście.figcraft>');
+if (!input || !output) throw new Error('usage: node seed/build-components.mjs <input.figcraft> <output.figcraft>');
 const WIN_CLI = 'C:\\Program Files\\ArtCraft\\FigCraft\\figcraft-cli.exe';
 const CLI = process.env.FIGCRAFT_CLI || (process.platform === 'win32' && existsSync(WIN_CLI) ? WIN_CLI : 'figcraft-cli');
 
@@ -26,12 +26,12 @@ const find = (id, pred) => {
   return out;
 };
 
-const slide = Object.values(N).find((n) => n.name === 'dlaczego' && n.type === 'frame');
+const slide = Object.values(N).find((n) => n.name === 'why' && n.type === 'frame');
 const grid = find(slide.id, (n) => n.name === 'Frame 62')[0];
 const cards = kids(grid.id).map(node).filter((n) => n.name === '#item');
-if (cards.length !== 6) throw new Error(`oczekiwano 6 kart #item, jest ${cards.length}`);
+if (cards.length !== 6) throw new Error(`expected 6 #item cards, found ${cards.length}`);
 
-// Części karty: ikona (ramka 72×72), pasek (Rectangle 4), teksty {{title}} / {{body}}, rząd (Frame 51).
+// Card parts: icon (72×72 frame), bar (Rectangle 4), {{title}} / {{body}} texts, row (Frame 51).
 const parts = (card) => {
   const icon = find(card.id, (n) => n.type === 'frame' && n.width === 72 && n.height === 72)[0];
   return {
@@ -45,30 +45,30 @@ const parts = (card) => {
     green: (card.fills || []).some((f) => f.type === 'solid' && f.color.g > 0.6 && f.color.r < 0.3),
   };
 };
-const [A, B, C, D, E, F] = cards.map(parts); // kolejność jak na slajdzie
+const [A, B, C, D, E, F] = cards.map(parts); // in slide order
 
 const BEIGE = { card: [{ type: 'solid', color: '#F3EDE2', opacity: 0.6 }], text: '#1D1F21', bar: '#36A82C', barW: 4, icon: '#36A82C' };
 const GREEN = { card: ['#36A82C'], text: '#FFFFFF', bar: '#E5DCCD', barW: 2, icon: '#E5DCCD' };
 
-// [klucz, karta źródłowa, wariant, tytuł?, treść?, liczba?]
+// [key, source card, variant, title?, body?, stat?]
 const SPEC = [
-  ['prywatne-legal-ai', A], ['jedno-srodowisko', B], ['wdrozenie-rutyna', C],
-  ['bez-blokady', D], ['jedna-usluga', E], ['bezpieczny-start', F],
-  ['odpowiedzi-ze-zrodlami', B, null, 'Odpowiedzi, które da się sprawdzić',
-    'Każda odpowiedź prowadzi do przepisu, orzeczenia, cytatu albo dokumentu, więc prawnik weryfikuje ją w kilka sekund.'],
-  ['know-how-organizacji', C, null, 'Know-how pracuje przy każdej sprawie',
-    'Wcześniejsze opinie, pisma i wzory wracają do obiegu, zamiast leżeć w folderach i skrzynkach mailowych.'],
-  ['on-premise', A, null, 'On-premise albo model hybrydowy',
-    'Środowisko w infrastrukturze klienta, bez wysyłania dokumentów do publicznej chmury. Dla banków, ubezpieczycieli i sektora publicznego.'],
+  ['private-legal-ai', A], ['one-environment', B], ['rollout-routine', C],
+  ['no-lock-in', D], ['one-service', E], ['safe-start', F],
+  ['sourced-answers', B, null, 'Answers you can check',
+    'Every answer links to a statute, ruling, quote or document, so a lawyer can verify it in seconds.'],
+  ['organization-know-how', C, null, 'Know-how at work on every matter',
+    'Past opinions, briefs and templates get reused instead of sitting in folders and inboxes.'],
+  ['on-premise', A, null, 'On-premise or hybrid',
+    'Runs on your own infrastructure, with no documents sent to a public cloud. Built for banks, insurers and the public sector.'],
 ];
 
 const steps = [];
 const add = (command, params, as) => steps.push(as ? { command, as, params } : { command, params });
-add('page.add', { name: 'Komponenty' }, 'kp');
+add('page.add', { name: 'Components' }, 'kp');
 add('page.select', { id: { $ref: 'kp' } });
 const total = SPEC.length * 2 + 1;
 add('frame.create', {
-  x: 0, y: 0, width: 1710, height: 400, name: '@dlaczego',
+  x: 0, y: 0, width: 1710, height: 400, name: '@why',
   props: {
     fills: ['#FFFFFF'], layout: 'grid', gridColumns: 3, gridRows: Math.ceil(total / 3),
     columnTracks: ['1fr', '1fr', '1fr'], rowTracks: Array(Math.ceil(total / 3)).fill('auto'),
@@ -97,15 +97,15 @@ const card = (key, src, look, { title, body, stat } = {}) => {
   }
 };
 for (const [key, src, , title, body] of SPEC) card(key, src, BEIGE, { title, body });
-for (const [key, src, , title, body] of SPEC) card(`${key}-wyroznienie`, src, GREEN, { title, body });
-card('pilotaz-3-miesiace', F, BEIGE, {
-  title: 'Pilotaż bez ryzyka',
-  body: 'Trzy miesiące na realnych sprawach, z możliwością rezygnacji. O pełnym wdrożeniu decydujesz po zobaczeniu efektów.',
-  stat: '3 mies.',
+for (const [key, src, , title, body] of SPEC) card(`${key}-highlight`, src, GREEN, { title, body });
+card('pilot-3-months', F, BEIGE, {
+  title: 'A risk-free pilot',
+  body: 'Three months on real matters, with the option to walk away. You decide on a full rollout after seeing the results.',
+  stat: '3 mo.',
 });
 
-// Karty slajdu „dlaczego” stają się slotami na komponenty z zestawu `@dlaczego`.
-for (const c of cards) add('node.set', { ids: [c.id], props: { name: '#pick:dlaczego' } });
+// The cards on the "why" slide become slots for components from the `@why` set.
+for (const c of cards) add('node.set', { ids: [c.id], props: { name: '#pick:why' } });
 add('page.select', { id: doc.pages[0] });
 
 const dir = mkdtempSync(join(tmpdir(), 'build-components-'));
@@ -113,4 +113,4 @@ writeFileSync(join(dir, 'steps.json'), JSON.stringify(steps, null, 1));
 const out = execFileSync(CLI, ['run', join(dir, 'steps.json'), '--in', resolve(input), '--out', resolve(output)], { encoding: 'utf8' });
 const failed = out.split('\n').filter((l) => l.includes('"ok":false'));
 if (failed.length) throw new Error(failed.join('\n'));
-console.log(`zapisano ${output}: ${total} komponentów w @dlaczego, ${steps.length} kroków`);
+console.log(`wrote ${output}: ${total} components in @why, ${steps.length} steps`);

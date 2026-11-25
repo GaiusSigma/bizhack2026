@@ -1,10 +1,10 @@
 #!/bin/sh
-# Uruchamiany przez entrypoint obrazu nginx przy każdym starcie kontenera.
-# Wpisuje do index.html adres serwera współpracy FigCraft:
+# Run by the nginx image entrypoint on every container start.
+# Writes the FigCraft collaboration server URL into index.html:
 #   <meta name="figcraft-server" content="wss://figcraft.example.com/sync/">
-# dzięki czemu aplikacja w przeglądarce sama wie, gdzie publikować i dołączać do plików.
+# so the browser app knows where to publish and join files.
 #
-# Adres bierze z FIGCRAFT_SERVER_URL, a gdy go brak, wylicza z FIGCRAFT_PUBLIC_URL
+# The URL comes from FIGCRAFT_SERVER_URL or, if unset, is derived from FIGCRAFT_PUBLIC_URL
 # (https://host -> wss://host/sync/, http://host -> ws://host/sync/).
 set -eu
 
@@ -21,18 +21,18 @@ if [ -z "$url" ] && [ -n "${FIGCRAFT_PUBLIC_URL:-}" ]; then
 fi
 
 if [ -z "$url" ]; then
-  echo "figcraft-web: brak FIGCRAFT_SERVER_URL / FIGCRAFT_PUBLIC_URL, pomijam meta figcraft-server"
+  echo "figcraft-web: no FIGCRAFT_SERVER_URL / FIGCRAFT_PUBLIC_URL, skipping the figcraft-server meta tag"
   exit 0
 fi
 
 case "$url" in
   ws://*|wss://*) ;;
-  *) echo "figcraft-web: FIGCRAFT_SERVER_URL musi zaczynać się od ws:// lub wss:// (jest: $url)" >&2; exit 1 ;;
+  *) echo "figcraft-web: FIGCRAFT_SERVER_URL must start with ws:// or wss:// (got: $url)" >&2; exit 1 ;;
 esac
 case "$url" in
-  *[\"\<\>\&\|\ ]*) echo "figcraft-web: niedozwolone znaki w adresie serwera: $url" >&2; exit 1 ;;
+  *[\"\<\>\&\|\ ]*) echo "figcraft-web: invalid characters in the server URL: $url" >&2; exit 1 ;;
 esac
 
 sed -i "s|<meta charset=\"utf-8\">|<meta charset=\"utf-8\"><meta name=\"figcraft-server\" content=\"$url\">|" "$HTML_DIR/index.html"
-grep -q 'name="figcraft-server"' "$HTML_DIR/index.html" || { echo "figcraft-web: nie udało się wstawić meta do index.html" >&2; exit 1; }
-echo "figcraft-web: serwer współpracy = $url"
+grep -q 'name="figcraft-server"' "$HTML_DIR/index.html" || { echo "figcraft-web: failed to insert the meta tag into index.html" >&2; exit 1; }
+echo "figcraft-web: collaboration server = $url"

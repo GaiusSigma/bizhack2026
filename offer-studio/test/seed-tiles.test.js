@@ -6,10 +6,10 @@ import { tiles, solutionBlocks, tileTags } from '../seed/tiles.js';
 import { scenarios } from '../seed/scenarios.js';
 import { parseTemplate } from '../src/figcraft.js';
 
-const TILE_RE = /^(rola|segment|bol|produkt):[a-z0-9][a-z0-9-]{0,59}$/;
+const TILE_RE = /^(role|segment|pain|product):[a-z0-9][a-z0-9-]{0,59}$/;
 const ids = (cat, status) => tiles.filter((t) => t.category === cat && (!status || t.status === status)).map((t) => t.id).sort();
 
-test('kafelki: id i kategorie poprawne, statusy wg ustaleń', () => {
+test('tiles: valid ids and categories, statuses as agreed', () => {
   for (const t of tiles) {
     assert.match(t.id, TILE_RE, t.id);
     assert.ok(t.id.startsWith(`${t.category}:`), t.id);
@@ -17,11 +17,11 @@ test('kafelki: id i kategorie poprawne, statusy wg ustaleń', () => {
     assert.ok(['active', 'soon'].includes(t.status), t.id);
   }
   assert.equal(new Set(tiles.map((t) => t.id)).size, tiles.length, 'powtórzone id');
-  assert.deepEqual(ids('rola', 'active'), ['rola:champion', 'rola:zarzad']);
-  assert.deepEqual(ids('rola', 'soon'), ['rola:budzet', 'rola:cto', 'rola:dpo', 'rola:gc']);
-  assert.deepEqual(ids('segment', 'active'), ['segment:administracja', 'segment:in-house', 'segment:kancelaria']);
-  assert.deepEqual(ids('produkt'), ['produkt:on-prem', 'produkt:saas', 'produkt:vault']);
-  const pains = tiles.filter((t) => t.category === 'bol');
+  assert.deepEqual(ids('role', 'active'), ['role:board', 'role:champion']);
+  assert.deepEqual(ids('role', 'soon'), ['role:budget', 'role:cto', 'role:dpo', 'role:gc']);
+  assert.deepEqual(ids('segment', 'active'), ['segment:in-house', 'segment:law-firm', 'segment:public-sector']);
+  assert.deepEqual(ids('product'), ['product:on-prem', 'product:saas', 'product:vault']);
+  const pains = tiles.filter((t) => t.category === 'pain');
   assert.equal(pains.length, 11);
   for (const p of pains) {
     assert.equal(p.status, 'active', p.id);
@@ -29,26 +29,26 @@ test('kafelki: id i kategorie poprawne, statusy wg ustaleń', () => {
   }
 });
 
-test('rozwiązania: 27 bloków PRKW, każdy przypięty do >= 1 bólu', () => {
+test('solutions: 27 PRKW blocks, each pinned to >= 1 pain', () => {
   assert.equal(solutionBlocks.length, 27);
   for (const b of solutionBlocks) {
-    assert.equal(b.type, 'rozwiazanie');
-    assert.match(b.id, /^rz-[a-z0-9-]+$/);
+    assert.equal(b.type, 'solution');
+    assert.match(b.id, /^sol-[a-z0-9-]+$/);
     assert.ok(b.title && b.title.length <= 60, `${b.id}: tytuł`);
     assert.ok(b.body, `${b.id}: brak rozwiązania`);
     assert.ok(b.data.effect && b.data.problem, `${b.id}: brak korzyści albo problemu`);
-    assert.ok(b.tags.some((t) => t.startsWith('bol:')), `${b.id}: brak bólu`);
+    assert.ok(b.tags.some((t) => t.startsWith('pain:')), `${b.id}: brak bólu`);
   }
 });
 
-test('pokrycie: każdy ból ma >= 1 blok rozwiazanie albo use_case', () => {
-  const counted = seed.blocks.filter((b) => ['rozwiazanie', 'use_case'].includes(b.type));
-  for (const p of tiles.filter((t) => t.category === 'bol')) {
+test('coverage: every pain has >= 1 solution or use_case block', () => {
+  const counted = seed.blocks.filter((b) => ['solution', 'use_case'].includes(b.type));
+  for (const p of tiles.filter((t) => t.category === 'pain')) {
     assert.ok(counted.some((b) => b.tags.includes(p.id)), `${p.id}: żaden blok go nie rozwiązuje`);
   }
 });
 
-test('przypięcia: każde id w tileTags istnieje w seedzie, każdy tag to istniejący kafelek', () => {
+test('pinning: every id in tileTags exists in the seed, every tag is an existing tile', () => {
   const known = new Set([...seed.blocks.map((b) => b.id), ...seed.components.map((c) => c.id)]);
   const tileIds = new Set(tiles.map((t) => t.id));
   for (const [id, tags] of Object.entries(tileTags)) {
@@ -56,15 +56,15 @@ test('przypięcia: każde id w tileTags istnieje w seedzie, każdy tag to istnie
     for (const t of tags) assert.ok(tileIds.has(t), `${id}: nieznany kafelek ${t}`);
   }
   for (const b of solutionBlocks) for (const t of b.tags) assert.ok(tileIds.has(t), `${b.id}: nieznany kafelek ${t}`);
-  // seed ma już dopisane przypięcia
-  assert.ok(seed.blocks.find((b) => b.id === 'uc-pilne-pismo').tags.some((t) => t.startsWith('bol:')));
+  // the seed already has the pins applied
+  assert.ok(seed.blocks.find((b) => b.id === 'uc-urgent-letter').tags.some((t) => t.startsWith('pain:')));
   assert.deepEqual(seed.tiles, tiles);
 });
 
 // ------------------------------------------------------------------ scenariusze
 const frames = Object.fromEntries(parseTemplate(readFileSync(new URL(`../seed/${TEMPLATE.file}`, import.meta.url))).frames.map((f) => [f.name, f]));
 
-test('scenariusze: każda ramka istnieje w szablonie, a klucze data i data_by_product są polami ramki', () => {
+test('scenarios: every frame exists in the template, and data and data_by_product keys are frame fields', () => {
   for (const sc of scenarios) {
     for (const st of sc.steps) {
       const f = frames[st.frame];
@@ -79,11 +79,11 @@ test('scenariusze: każda ramka istnieje w szablonie, a klucze data i data_by_pr
   }
 });
 
-test('scenariusze: fill i when poprawne', () => {
-  assert.deepEqual(scenarios.map((s) => s.id).sort(), ['rola:champion', 'rola:zarzad']);
+test('scenarios: valid fill and when', () => {
+  assert.deepEqual(scenarios.map((s) => s.id).sort(), ['role:board', 'role:champion']);
   const types = new Set(seed.blocks.map((b) => b.type));
   const sets = new Set(seed.component_sets.map((c) => c.id));
-  const products = new Set(tiles.filter((t) => t.category === 'produkt').map((t) => t.id));
+  const products = new Set(tiles.filter((t) => t.category === 'product').map((t) => t.id));
   for (const sc of scenarios) {
     const keys = sc.steps.map((s) => s.key);
     assert.equal(new Set(keys).size, keys.length, `${sc.id}: powtórzone klucze kroków`);

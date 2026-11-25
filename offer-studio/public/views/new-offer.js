@@ -1,16 +1,16 @@
-// Nowa oferta z kafelków: sprzedawca opisuje klienta (rola, segment, bóle, produkt),
-// a prezentacja składa się według scenariusza roli. Ten sam wybór kafelków służy do „Zmień kafelki”.
+// New offer from tiles: the salesperson describes the client (role, segment, pains, product),
+// and the deck is built from the role's scenario. The same tile picker serves "Change tiles".
 import { $, CATEGORY_LABELS, api, go, h, loadAll, state, toast } from '../lib.js';
 import { cleanSelection } from '../selection.js';
 
 export const MAX_PAINS = 5;
-const WEIGHTS = { bol: 3, segment: 2, rola: 1, produkt: 1 };
-const COVERAGE_TYPES = ['rozwiazanie', 'use_case'];
+const WEIGHTS = { pain: 3, segment: 2, role: 1, product: 1 };
+const COVERAGE_TYPES = ['solution', 'use_case'];
 
-// Te same reguły co src/generate.js (dobór po stronie serwera); tu tylko do podpowiedzi na żywo.
+// The same rules as src/generate.js (the server picks); here only for live hints.
 export const selectionOf = (ids) => {
   const of = (cat) => ids.filter((id) => id.startsWith(`${cat}:`));
-  return { role: of('rola')[0], segment: of('segment')[0], product: of('produkt')[0], pains: of('bol') };
+  return { role: of('role')[0], segment: of('segment')[0], product: of('product')[0], pains: of('pain') };
 };
 export function scoreTags(tags, sel) {
   const chosen = new Set([sel.role, sel.segment, sel.product, ...sel.pains]);
@@ -21,22 +21,22 @@ export const segmentOk = (tags, sel) => {
   const segs = (tags || []).filter((t) => t.startsWith('segment:'));
   return !segs.length || segs.includes(sel.segment);
 };
-// Bóle, dla których w bazie jest treść pasująca do segmentu (rozwiązanie albo przypadek użycia).
+// Pains that have content fitting the segment (a solution or a use case).
 export const painsWithContent = (sel) => sel.pains.filter((p) => state.blocks.some((b) =>
   COVERAGE_TYPES.includes(b.type) && b.tags.includes(p) && segmentOk(b.tags, sel)));
 
-// Wybór kafelków. `selected` = lista id; onChange dostaje nową listę.
+// Tile picker. `selected` = list of ids; onChange gets the new list.
 export function tilePicker(selected, onChange) {
   let ids = cleanSelection(selected, state.tiles);
   const root = h('div', { class: 'tile-picker' });
   const render = () => {
     root.replaceChildren(...Object.entries(CATEGORY_LABELS).map(([cat, title]) => {
       const tiles = state.tiles.filter((t) => t.category === cat).sort((a, b) => (a.status === 'soon') - (b.status === 'soon') || a.position - b.position);
-      const multi = cat === 'bol';
+      const multi = cat === 'pain';
       const count = ids.filter((id) => id.startsWith(`${cat}:`)).length;
       return h('section', { class: 'tp-cat' },
         h('div', { class: 'tp-head' }, h('h3', {}, title),
-          h('span', { class: 'hint' }, multi ? `wybierz od 1 do ${MAX_PAINS} · wybrano ${count}` : 'wybierz jeden')),
+          h('span', { class: 'hint' }, multi ? `pick 1 to ${MAX_PAINS} · ${count} selected` : 'pick one')),
         h('div', { class: `tp-tiles ${multi ? 'multi' : ''}` }, tiles.map((t) => {
           const on = ids.includes(t.id);
           const soon = t.status === 'soon';
@@ -47,7 +47,7 @@ export function tilePicker(selected, onChange) {
             onclick: () => {
               if (multi) {
                 if (on) ids = ids.filter((x) => x !== t.id);
-                else if (count >= MAX_PAINS) return toast(`Najwyżej ${MAX_PAINS} bólów. Odznacz któryś, żeby dodać nowy.`, true);
+                else if (count >= MAX_PAINS) return toast(`At most ${MAX_PAINS} pains. Deselect one to add another.`, true);
                 else ids = [...ids, t.id];
               } else ids = [...ids.filter((x) => !x.startsWith(`${cat}:`)), t.id];
               render();
@@ -56,7 +56,7 @@ export function tilePicker(selected, onChange) {
           },
           h('span', { class: 'tile-label' }, t.label),
           multi && t.description ? h('span', { class: 'tile-desc' }, t.description) : null,
-          soon ? h('span', { class: 'soon-tag' }, 'wkrótce') : null);
+          soon ? h('span', { class: 'soon-tag' }, 'coming soon') : null);
         })));
     }));
   };
@@ -64,36 +64,36 @@ export function tilePicker(selected, onChange) {
   return root;
 }
 
-// Podsumowanie na żywo: scenariusz, liczba slajdów, bóle z treścią.
+// Live summary: scenario, slide count, pains with content.
 export function selectionSummary(ids) {
   const sel = selectionOf(ids);
   const scenario = state.scenarios.find((s) => s.id === sel.role);
   const missing = [];
-  if (!sel.role) missing.push('rolę');
-  if (!sel.segment) missing.push('segment');
-  if (!sel.product) missing.push('produkt');
-  if (!sel.pains.length) missing.push('co najmniej jeden ból');
-  if (missing.length) return { ok: false, text: `Wybierz jeszcze: ${missing.join(', ')}.` };
-  if (!scenario) return { ok: false, text: 'Dla tej roli nie ma jeszcze scenariusza.' };
+  if (!sel.role) missing.push('a role');
+  if (!sel.segment) missing.push('a segment');
+  if (!sel.product) missing.push('a product');
+  if (!sel.pains.length) missing.push('at least one pain');
+  if (missing.length) return { ok: false, text: `Still to pick: ${missing.join(', ')}.` };
+  if (!scenario) return { ok: false, text: 'There is no scenario for this role yet.' };
   const chosen = new Set(ids);
   const steps = scenario.steps.filter((st) => !st.when?.any?.length || st.when.any.some((t) => chosen.has(t)));
   const withContent = painsWithContent(sel);
   const lacking = sel.pains.filter((p) => !withContent.includes(p)).map((p) => state.tiles.find((t) => t.id === p)?.label || p);
   return {
     ok: true,
-    text: `Scenariusz ${scenario.name} · ${steps.length} slajdów · bóle z gotową treścią: ${withContent.length} z ${sel.pains.length}`,
-    warn: lacking.length ? `Brak treści dla: ${lacking.join(', ')}. Oferta powstanie, ale tego bólu nie rozwiąże.` : '',
+    text: `${scenario.name} scenario · ${steps.length} slides · pains with ready content: ${withContent.length} of ${sel.pains.length}`,
+    warn: lacking.length ? `No content for: ${lacking.join(', ')}. The offer will be created, but it won't solve this pain.` : '',
   };
 }
 
 export async function viewNewOffer() {
   const firstActive = (cat) => state.tiles.find((t) => t.category === cat && t.status === 'active')?.id;
-  let ids = ['rola', 'segment', 'produkt'].map(firstActive).filter(Boolean);
-  const client = h('input', { placeholder: 'np. Kancelaria Nowak i Wspólnicy', class: 'client-input' });
+  let ids = ['role', 'segment', 'product'].map(firstActive).filter(Boolean);
+  const client = h('input', { placeholder: 'e.g. Nowak & Partners Law Firm', class: 'client-input' });
   const summary = h('div', { class: 'summary-text' });
   const warn = h('div', { class: 'summary-warn' });
   const create = h('button', { class: 'btn primary big', onclick: async () => {
-    if (!client.value.trim()) { client.focus(); return toast('Podaj nazwę klienta', true); }
+    if (!client.value.trim()) { client.focus(); return toast('Enter the client name', true); }
     create.disabled = true;
     try {
       const o = await api('POST', '/offers/generate', { client: client.value.trim(), tiles: ids });
@@ -103,7 +103,7 @@ export async function viewNewOffer() {
       toast(e.message, true);
       create.disabled = false;
     }
-  } }, 'Utwórz ofertę');
+  } }, 'Create offer');
   const update = () => {
     const s = selectionSummary(ids);
     summary.textContent = s.text;
@@ -114,10 +114,10 @@ export async function viewNewOffer() {
   update();
   $('#view').replaceChildren(h('div', { class: 'new-offer' },
     h('div', { class: 'no-inner' },
-      h('a', { class: 'back', href: '#/offers' }, '← Wszystkie oferty'),
-      h('h1', {}, 'Nowa oferta'),
-      h('p', { class: 'lead' }, 'Opisz klienta po rozmowie. Prezentacja ułoży się sama według roli rozmówcy, a każdy slajd pokaże, dlaczego się w niej znalazł.'),
-      h('label', { class: 'f' }, 'Klient'), client,
+      h('a', { class: 'back', href: '#/offers' }, '← All offers'),
+      h('h1', {}, 'New offer'),
+      h('p', { class: 'lead' }, 'Describe the client after the call. The deck builds itself from the contact\'s role, and every slide shows why it is there.'),
+      h('label', { class: 'f' }, 'Client'), client,
       picker),
     h('div', { class: 'summary-bar' }, h('div', { class: 'summary-copy' }, summary, warn), create)));
   client.focus();

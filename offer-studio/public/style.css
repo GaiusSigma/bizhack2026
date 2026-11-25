@@ -103,7 +103,7 @@ code { font-family: var(--mono); font-size: 12px; background: #f3f3f3; padding: 
 #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 8px; z-index: 200; max-width: 80vw; }
 #toast.err { background: var(--danger); }
 
-/* biblioteka slajdów */
+/* slide library */
 .library { max-width: 1400px; }
 .dropzone { border: 2px dashed #d5d5d5; border-radius: 10px; padding: 22px; text-align: center; background: #fff; margin: 6px 0 12px; }
 .dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
@@ -125,7 +125,7 @@ button.lib-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(-
 .frame-pick { display: grid; grid-template-columns: 180px 1fr; gap: 12px; align-items: start; }
 .frame-pick img, .frame-pick .shot-error { width: 180px; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 6px; }
 
-/* komponenty: karty z zestawów @… (opisy dla AI) i wybór kart na slajd */
+/* components: cards from @… sets (descriptions for the AI) and card picking for a slide */
 .comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .comp-card { margin: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; text-align: left; font: inherit; padding: 0; }
 button.comp-card { cursor: pointer; }
@@ -151,16 +151,16 @@ button.comp-card:disabled { opacity: .45; cursor: default; box-shadow: none; bor
 .ai-note { font-size: 12px; background: #f4f8f3; border-radius: 6px; padding: 6px 8px; }
 #modal .dlg:has(.comp-grid) { width: min(1150px, calc(100vw - 32px)); }
 
-/* ---------------------------------------------------------------- kafelki i oferty z kafelków */
+/* ---------------------------------------------------------------- tiles and offers from tiles */
 .nav-sep { color: var(--muted); font-size: 12px; margin: 0 2px 0 14px; align-self: center; }
 .back { color: var(--muted); text-decoration: none; font-size: 13px; }
 .back:hover { color: var(--ink); }
 .btn.big { padding: 9px 18px; font-size: 15px; font-weight: 600; }
 .chip.tile-chip { background: #f1f1f1; color: var(--ink); font-size: 12px; padding: 1px 8px; margin: 2px 4px 2px 0; }
-.chip.tile-chip.bol { background: var(--accent-soft); color: #9c3a40; }
+.chip.tile-chip.pain { background: var(--accent-soft); color: #9c3a40; }
 .chip.tile-chip.segment { background: #eef3fb; color: #2d5a9a; }
-.chip.tile-chip.rola { background: #f3eefb; color: #5b3d99; }
-.chip.tile-chip.produkt { background: #eef7ee; color: #2f6b34; }
+.chip.tile-chip.role { background: #f3eefb; color: #5b3d99; }
+.chip.tile-chip.product { background: #eef7ee; color: #2f6b34; }
 .chip.tile-chip.small { font-size: 11px; padding: 0 6px; }
 .chip.tile-chip.gone { background: #eee; color: var(--muted); text-decoration: line-through; }
 .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 9px; background: #fff4e0; color: #8a5a00; margin-left: 8px; vertical-align: 1px; }
@@ -168,7 +168,7 @@ button.comp-card:disabled { opacity: .45; cursor: default; box-shadow: none; bor
 .hint.warn { color: #8a5a00; }
 .legacy-note { background: #fff8e8; border: 1px solid #f3e1b5; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-bottom: 12px; }
 
-/* lista ofert */
+/* offer list */
 .offer-list { flex: 1; overflow: auto; padding: 28px 32px 60px; }
 .ol-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
 .ol-head h1 { margin: 0; font-size: 24px; flex: 1; }
@@ -179,7 +179,7 @@ button.comp-card:disabled { opacity: .45; cursor: default; box-shadow: none; bor
 .oc-top b { font-size: 15px; }
 .oc-name { color: var(--muted); font-size: 13px; }
 
-/* nowa oferta */
+/* new offer */
 .new-offer { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .no-inner { flex: 1; overflow: auto; padding: 24px 32px 40px; max-width: 1100px; width: 100%; margin: 0 auto; }
 .no-inner h1 { margin: 8px 0 4px; font-size: 26px; }
@@ -204,7 +204,7 @@ button.comp-card:disabled { opacity: .45; cursor: default; box-shadow: none; bor
 .tiles-dlg .tile-picker { margin-top: 10px; }
 #modal .dlg:has(.tiles-dlg) { width: min(1000px, calc(100vw - 32px)); }
 
-/* oferta: trzy kolumny */
+/* offer: three columns */
 .client-col { width: 300px; flex: 0 0 300px; border-right: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 16px 18px 60px; }
 .cc-tiles { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
 .cc-row { display: flex; align-items: center; gap: 8px; }
@@ -246,7 +246,7 @@ details.advanced summary { cursor: pointer; color: var(--muted); font-size: 13px
 }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 
-/* kafelki: zakładka, chipy w Wiedzy, scenariusze */
+/* tiles: tab, chips in Knowledge, scenarios */
 .list .item.soon { opacity: .7; }
 .tl-group { display: flex; justify-content: space-between; align-items: center; }
 .item-tiles { margin-top: 2px; }

@@ -1,20 +1,20 @@
 #!/bin/sh
-# Generuje /etc/figcraft-server/server.toml ze zmiennych środowiskowych i uruchamia serwer.
-# Opis wszystkich kluczy: server.md w releasie FigCraft (sekcja z tabelą ustawień).
+# Generates /etc/figcraft-server/server.toml from environment variables and starts the server.
+# All keys are described in server.md in the FigCraft release (the settings table).
 #
 #   FIGCRAFT_PUBLIC_URL     https://figcraft.example.com  -> public_url = wss://figcraft.example.com/sync/
-#   FIGCRAFT_OPEN_PUBLISH   true/false (domyślnie false: publikować można tylko z kluczem serwera)
-#   FIGCRAFT_TEAM_FILES     edit/comment/view (lista plików zespołu; puste = wyłączona)
-#   FIGCRAFT_MAX_FILE_MB    największy plik w MiB (domyślnie wg serwera)
+#   FIGCRAFT_OPEN_PUBLISH   true/false (default false: publishing needs the server key)
+#   FIGCRAFT_TEAM_FILES     edit/comment/view (team file list; empty = off)
+#   FIGCRAFT_MAX_FILE_MB    largest file in MiB (default: the server's own)
 #
-# Dodatkowe polecenia administracyjne, np. adres z kluczem do publikowania:
-#   docker exec <kontener> figcraft-server --config /etc/figcraft-server/server.toml key
+# Extra admin commands, e.g. the URL with the publishing key:
+#   docker exec <container> figcraft-server --config /etc/figcraft-server/server.toml key
 set -eu
 
 CONFIG=/etc/figcraft-server/server.toml
 
 toml_str() {
-  # Zwraca wartość jako bezpieczny string TOML.
+  # Returns the value as a safe TOML string.
   printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"
 }
 
@@ -27,7 +27,7 @@ toml_str() {
     case "$base" in
       https://*) ws="wss://${base#https://}/sync/" ;;
       http://*)  ws="ws://${base#http://}/sync/" ;;
-      *) echo "FIGCRAFT_PUBLIC_URL musi zaczynać się od http:// lub https://" >&2; exit 1 ;;
+      *) echo "FIGCRAFT_PUBLIC_URL must start with http:// or https://" >&2; exit 1 ;;
     esac
     echo "public_url = $(toml_str "$ws")"
     echo "web_url = $(toml_str "$base/")"
@@ -47,7 +47,7 @@ toml_str() {
 
   if [ -n "${FIGCRAFT_MAX_FILE_MB:-}" ]; then
     case "$FIGCRAFT_MAX_FILE_MB" in
-      *[!0-9]*) echo "FIGCRAFT_MAX_FILE_MB musi być liczbą" >&2; exit 1 ;;
+      *[!0-9]*) echo "FIGCRAFT_MAX_FILE_MB must be a number" >&2; exit 1 ;;
       *) echo "max_file_mb = $FIGCRAFT_MAX_FILE_MB" ;;
     esac
   fi

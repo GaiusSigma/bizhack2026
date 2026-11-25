@@ -1,16 +1,16 @@
-// Warstwa danych: jeden plik SQLite (node:sqlite, bez natywnych zależności).
+// Data layer: a single SQLite file (node:sqlite, no native dependencies).
 //
 // Model:
-//   blocks    – jednostki wiedzy (use case, problem, krok wdrożenia, wiersz porównania...).
-//               `type` i `tags` są dowolnymi stringami, a pola specyficzne dla typu siedzą w `data` (JSON).
-//   templates – szablony prezentacji: pliki .figcraft (BLOB). Każda ramka najwyższego poziomu = slajd szablonu.
-//   offers    – oferta: nazwa, szablon i zmienne (`data`, np. klient, cena).
-//   slides    – uporządkowane slajdy oferty: slajd szablonu (`frame`) + treść + bloki (lista id albo zapytanie)
-//               + `picks`: komponenty wybrane do slotów `#pick:<zestaw>` ({zestaw: [{component, data}]}).
-//   components     – karty narysowane w FigCraft (ramka `@zestaw`, w niej karty) z opisem dla AI:
-//                    co pokazuje, kiedy ją wybrać, kiedy nie, temat (warianty jednego argumentu), tagi.
-//                    Wiersze zakłada i aktualizuje synchronizacja z biblioteką; opisy pisze człowiek albo AI.
-//   component_sets – zasady zestawu dla AI (np. „dokładnie jedna karta wyróżniona”).
+//   blocks    – knowledge units (use case, problem, rollout step, comparison row...).
+//               `type` and `tags` are free-form strings; type-specific fields live in `data` (JSON).
+//   templates – presentation templates: .figcraft files (BLOB). Every top-level frame = a template slide.
+//   offers    – offer: name, template and variables (`data`, e.g. client, price).
+//   slides    – ordered offer slides: template slide (`frame`) + content + blocks (list of ids or a query)
+//               + `picks`: components picked for `#pick:<set>` slots ({set: [{component, data}]}).
+//   components     – cards drawn in FigCraft (an `@set` frame holding the cards) with a description for the AI:
+//                    what it shows, when to pick it, when to avoid it, topic (variants of one argument), tags.
+//                    Rows are created and updated by the library sync; descriptions are written by a human or the AI.
+//   component_sets – set rules for the AI (e.g. "exactly one highlighted card").
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes } from 'node:crypto';
 
@@ -56,65 +56,65 @@ CREATE TABLE IF NOT EXISTS slides (
   query TEXT,
   picks TEXT NOT NULL DEFAULT '{}',
   hidden INTEGER NOT NULL DEFAULT 0,
-  origin TEXT,                             -- JSON {step, matched}: skąd slajd przyszedł przy generowaniu z kafelków
-  locked INTEGER NOT NULL DEFAULT 0,       -- 1: poprawiony ręcznie, przeliczenie go nie rusza
+  origin TEXT,                             -- JSON {step, label, matched}: where a tile-generated slide came from
+  locked INTEGER NOT NULL DEFAULT 0,       -- 1: edited by hand, recompute leaves it alone
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS slides_offer ON slides(offer_id, position);
 
 CREATE TABLE IF NOT EXISTS components (
-  id TEXT PRIMARY KEY,                     -- "<zestaw>/<nazwa karty>", np. dlaczego/on-premise
+  id TEXT PRIMARY KEY,                     -- "<set>/<card name>", e.g. why/on-premise
   set_name TEXT NOT NULL,
   key TEXT NOT NULL,
-  source TEXT,                             -- plik biblioteki (templates.id)
-  title TEXT NOT NULL DEFAULT '',          -- krótka nazwa dla ludzi
-  description TEXT NOT NULL DEFAULT '',    -- co karta pokazuje (treść, wygląd)
-  use_when TEXT NOT NULL DEFAULT '',       -- kiedy AI ma ją wybrać
-  avoid_when TEXT NOT NULL DEFAULT '',     -- kiedy jej nie wybierać
-  topic TEXT NOT NULL DEFAULT '',          -- warianty tego samego argumentu mają ten sam temat
-  variant TEXT NOT NULL DEFAULT '',        -- np. zwykla, wyroznienie, liczba
+  source TEXT,                             -- library file (templates.id)
+  title TEXT NOT NULL DEFAULT '',          -- short name for humans
+  description TEXT NOT NULL DEFAULT '',    -- what the card shows (content, look)
+  use_when TEXT NOT NULL DEFAULT '',       -- when the AI should pick it
+  avoid_when TEXT NOT NULL DEFAULT '',     -- when not to pick it
+  topic TEXT NOT NULL DEFAULT '',          -- variants of the same argument share a topic
+  variant TEXT NOT NULL DEFAULT '',        -- e.g. regular, highlight, stat
   tags TEXT NOT NULL DEFAULT '[]',
-  data TEXT NOT NULL DEFAULT '{}',         -- stałe nadpisania pól {{...}} karty
-  figma_text TEXT NOT NULL DEFAULT '',     -- tekst narysowany w FigCraft (z synchronizacji)
-  fields TEXT NOT NULL DEFAULT '[]',       -- pola {{...}} karty (z synchronizacji)
-  missing INTEGER NOT NULL DEFAULT 0,      -- 1: karty nie ma już w bibliotece
+  data TEXT NOT NULL DEFAULT '{}',         -- fixed overrides of the card's {{...}} fields
+  figma_text TEXT NOT NULL DEFAULT '',     -- text drawn in FigCraft (from sync)
+  fields TEXT NOT NULL DEFAULT '[]',       -- the card's {{...}} fields (from sync)
+  missing INTEGER NOT NULL DEFAULT 0,      -- 1: the card is no longer in the library
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS components_set ON components(set_name);
 
 CREATE TABLE IF NOT EXISTS tiles (
-  id TEXT PRIMARY KEY,                     -- "<kategoria>:<slug>", np. bol:poufnosc
-  category TEXT NOT NULL,                  -- rola | segment | bol | produkt
+  id TEXT PRIMARY KEY,                     -- "<category>:<slug>", e.g. pain:confidentiality
+  category TEXT NOT NULL,                  -- role | segment | pain | product
   label TEXT NOT NULL DEFAULT '',
   description TEXT NOT NULL DEFAULT '',
-  quotes TEXT NOT NULL DEFAULT '[]',       -- cytaty klientów
+  quotes TEXT NOT NULL DEFAULT '[]',       -- client quotes
   status TEXT NOT NULL DEFAULT 'active',   -- active | soon
   position INTEGER NOT NULL DEFAULT 0,
-  data TEXT NOT NULL DEFAULT '{}',         -- np. {price} dla produktu
+  data TEXT NOT NULL DEFAULT '{}',         -- e.g. {price} for a product
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS scenarios (
-  id TEXT PRIMARY KEY,                     -- id kafelka roli, np. rola:zarzad
+  id TEXT PRIMARY KEY,                     -- role tile id, e.g. role:board
   name TEXT NOT NULL DEFAULT '',
-  steps TEXT NOT NULL DEFAULT '[]',        -- kroki: [{key, label, frame, data, data_by_product, fill, when}]
+  steps TEXT NOT NULL DEFAULT '[]',        -- steps: [{key, label, frame, data, data_by_product, fill, when}]
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS component_sets (
-  id TEXT PRIMARY KEY,                     -- nazwa zestawu bez @
+  id TEXT PRIMARY KEY,                     -- set name without @
   title TEXT NOT NULL DEFAULT '',
-  rules TEXT NOT NULL DEFAULT '',          -- zasady doboru dla AI
+  rules TEXT NOT NULL DEFAULT '',          -- picking rules for the AI
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 `;
 
-// Opis tabel: które kolumny są JSON-em, które wolno ustawiać przez API, domyślne sortowanie.
+// Table spec: which columns are JSON, which can be set via the API, default sort order.
 export const TABLES = {
   blocks: {
     fields: ['type', 'title', 'body', 'data', 'tags'],
@@ -161,11 +161,11 @@ export const TABLES = {
   },
 };
 
-export const TILE_CATEGORIES = ['rola', 'segment', 'bol', 'produkt'];
-export const TILE_ID_RE = /^(rola|segment|bol|produkt):[a-z0-9][a-z0-9-]{0,59}$/;
-const SCENARIO_ID_RE = /^rola:[a-z0-9][a-z0-9-]{0,59}$/;
+export const TILE_CATEGORIES = ['role', 'segment', 'pain', 'product'];
+export const TILE_ID_RE = /^(role|segment|pain|product):[a-z0-9][a-z0-9-]{0,59}$/;
+const SCENARIO_ID_RE = /^role:[a-z0-9][a-z0-9-]{0,59}$/;
 
-// Pola komponentu, które opisuje człowiek (reszta przychodzi z synchronizacji z biblioteką).
+// Component fields described by a human (the rest comes from the library sync).
 export const COMPONENT_EDITABLE = ['title', 'description', 'use_when', 'avoid_when', 'topic', 'variant', 'tags', 'data'];
 
 export class HttpError extends Error {
@@ -193,7 +193,7 @@ export function slugify(s) {
 }
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
-// Komponenty mają id "<zestaw>/<karta>" (oba człony po slugify).
+// Components have the id "<set>/<card>" (both parts slugified).
 const COMPONENT_ID_RE = /^[a-z0-9][a-z0-9-]{0,59}\/[a-z0-9][a-z0-9-]{0,79}$/;
 const ID_RES = { components: COMPONENT_ID_RE, tiles: TILE_ID_RE, scenarios: SCENARIO_ID_RE };
 const idOk = (table, id) => (ID_RES[table] || ID_RE).test(id);
@@ -211,9 +211,9 @@ export function openDb(path) {
   return store;
 }
 
-// v1 (layouty HTML) -> v2 (szablony FigCraft): bloki i oferty zostają, slajdy dostają kolumnę `frame`.
-// v2 -> v3: slajdy dostają `picks` (komponenty); tabele components i component_sets tworzy SCHEMA.
-// Zwraca wersję, z której zmigrowano (0 = nowa baza albo już aktualna).
+// v1 (HTML layouts) -> v2 (FigCraft templates): blocks and offers stay, slides get a `frame` column.
+// v2 -> v3: slides get `picks` (components); the components and component_sets tables are created by SCHEMA.
+// Returns the version migrated from (0 = new or already up-to-date database).
 function migrate(db) {
   const version = db.prepare('PRAGMA user_version').get().user_version;
   const has = (t) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t);
@@ -227,7 +227,7 @@ function migrate(db) {
       for (const t of ['layouts', 'assets', 'settings']) if (has(t)) db.exec(`DROP TABLE ${t}`);
     }
     if (!cols('slides').includes('picks')) db.exec("ALTER TABLE slides ADD COLUMN picks TEXT NOT NULL DEFAULT '{}'");
-    // v3 -> v4: slajdy dostają pochodzenie i blokadę; tabele tiles i scenarios tworzy SCHEMA.
+    // v3 -> v4: slides get origin and lock; SCHEMA creates the tiles and scenarios tables.
     if (!cols('slides').includes('origin')) db.exec('ALTER TABLE slides ADD COLUMN origin TEXT');
     if (!cols('slides').includes('locked')) db.exec('ALTER TABLE slides ADD COLUMN locked INTEGER NOT NULL DEFAULT 0');
     db.exec('COMMIT');
@@ -243,7 +243,7 @@ export class Store {
     this.db = db;
   }
 
-  // ------------------------------------------------------------ ogólne CRUD
+  // ------------------------------------------------------------ generic CRUD
   decode(table, row) {
     if (!row) return row;
     const t = TABLES[table];
@@ -281,14 +281,14 @@ export class Store {
 
   mustGet(table, id) {
     const row = this.get(table, id);
-    if (!row) throw new HttpError(404, `${table}/${id}: nie ma takiego rekordu`);
+    if (!row) throw new HttpError(404, `${table}/${id}: no such record`);
     return row;
   }
 
   insert(table, obj, idPrefix = '') {
     const id = obj.id ?? newId(idPrefix);
-    if (!idOk(table, id)) throw new HttpError(400, `Niepoprawne id "${id}" (litery, cyfry, . _ -, max 80 znaków)`);
-    if (this.get(table, id)) throw new HttpError(409, `${table}/${id} już istnieje`);
+    if (!idOk(table, id)) throw new HttpError(400, `Invalid id "${id}" (letters, digits, . _ -, max 80 characters)`);
+    if (this.get(table, id)) throw new HttpError(409, `${table}/${id} already exists`);
     const ts = now();
     const row = { ...this.encode(table, obj), id, created_at: obj.created_at ?? ts, updated_at: obj.updated_at ?? ts };
     const cols = Object.keys(row);
@@ -298,8 +298,8 @@ export class Store {
     return this.get(table, id);
   }
 
-  // PATCH: pola podane w `patch` zastępują stare. Wyjątek: obiekt `data` jest łączony płytko
-  // (klucz z wartością null usuwa pole), chyba że `replaceData` = true.
+  // PATCH: fields given in `patch` replace the old ones. Exception: the `data` object is shallow-merged
+  // (a key set to null removes the field), unless `replaceData` = true.
   update(table, id, patch, { replaceData = false } = {}) {
     const current = this.mustGet(table, id);
     const merged = { ...patch };
@@ -324,10 +324,10 @@ export class Store {
 
   remove(table, id) {
     const r = this.db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
-    if (!r.changes) throw new HttpError(404, `${table}/${id}: nie ma takiego rekordu`);
+    if (!r.changes) throw new HttpError(404, `${table}/${id}: no such record`);
   }
 
-  // Transakcja; zagnieżdżona działa jako SAVEPOINT (błąd w środku cofa ją, a wyjątek idzie dalej).
+  // Transaction; a nested one runs as a SAVEPOINT (an error inside rolls it back and is rethrown).
   tx(fn) {
     const depth = (this.txDepth ||= 0);
     const sp = `sp${depth}`;
@@ -345,7 +345,8 @@ export class Store {
     }
   }
 
-  // ------------------------------------------------------------ bloki
+
+  // ------------------------------------------------------------ knowledge blocks
   listBlocks({ type, tag, q } = {}) {
     const where = [];
     const p = {};
@@ -363,15 +364,15 @@ export class Store {
     return { types: types.map((r) => ({ ...r })), tags: tags.map((r) => ({ ...r })) };
   }
 
-  // ------------------------------------------------------------ szablony
+  // ------------------------------------------------------------ templates
   templateFile(id) {
     const r = this.db.prepare('SELECT file, updated_at FROM templates WHERE id = ?').get(id);
-    if (!r) throw new HttpError(404, `templates/${id}: nie ma takiego szablonu`);
+    if (!r) throw new HttpError(404, `templates/${id}: no such template`);
     return { file: Buffer.from(r.file), updated_at: r.updated_at };
   }
 
   putTemplate({ id, name, file, created_at, updated_at }) {
-    if (!ID_RE.test(id)) throw new HttpError(400, `Niepoprawne id szablonu "${id}"`);
+    if (!ID_RE.test(id)) throw new HttpError(400, `Invalid template id "${id}"`);
     const ts = now();
     this.db
       .prepare(
@@ -382,10 +383,10 @@ export class Store {
     return this.get('templates', id);
   }
 
-  // ------------------------------------------------------------ komponenty
-  // Synchronizacja z biblioteką: `found` = [{id, set, key, source, title, text, fields}] ze wszystkich plików.
-  // Nowe karty dostają wiersz (opis pusty, do uzupełnienia), istniejące tylko tekst/pola/źródło,
-  // a karty, których już nie ma, są oznaczane `missing` (opisy zostają, gdyby wróciły).
+  // ------------------------------------------------------------ components
+  // Library sync: `found` = [{id, set, key, source, title, text, fields}] from all files.
+  // New cards get a row (empty description, to be filled in), existing ones only text/fields/source,
+  // and cards that are gone are marked `missing` (descriptions stay in case they come back).
   syncComponents(found) {
     const stats = { added: [], missing: [] };
     this.tx(() => {
@@ -420,22 +421,22 @@ export class Store {
     return this.list('components', where.join(' AND '), p);
   }
 
-  // ------------------------------------------------------------ oferty i slajdy
+  // ------------------------------------------------------------ offers and slides
   getOffer(id) {
     const offer = this.mustGet('offers', id);
     offer.slides = this.list('slides', 'offer_id = :id', { id });
     return offer;
   }
 
-  // Wykonuje plan z mergeRecompute (src/generate.js) w jednej transakcji. Nie ustawia `locked`:
-  // przeliczenie to jedyna zmiana slajdów, która nie oznacza ich jako poprawionych ręcznie.
+  // Runs a mergeRecompute plan (src/generate.js) in one transaction. Never sets `locked`:
+  // recompute is the only slide change that does not mark slides as edited by hand.
   applyRecompute(offerId, { create = [], remove = [], hide = [], unhide = [], order = [] }) {
     this.mustGet('offers', offerId);
     const setHidden = (id, hidden) => {
       const cur = this.get('slides', id);
       if (!cur || cur.offer_id !== offerId) return;
       const { auto_hidden: _a, ...origin } = cur.origin || {};
-      // origin.auto_hidden odróżnia ukrycie przez przeliczenie od ukrycia ręcznego
+      // origin.auto_hidden tells a recompute hide apart from a manual one
       this.db.prepare('UPDATE slides SET hidden = ?, origin = ? WHERE id = ?')
         .run(hidden ? 1 : 0, JSON.stringify(hidden ? { ...origin, auto_hidden: true } : origin), id);
     };
@@ -468,7 +469,7 @@ export class Store {
   reorderSlides(offerId, ids) {
     const existing = this.list('slides', 'offer_id = :id', { id: offerId }).map((s) => s.id);
     if (ids.length !== existing.length || !ids.every((i) => existing.includes(i))) {
-      throw new HttpError(400, 'Lista id musi zawierać dokładnie wszystkie slajdy tej oferty');
+      throw new HttpError(400, 'The id list must contain exactly all slides of this offer');
     }
     this.tx(() => {
       const st = this.db.prepare('UPDATE slides SET position = ? WHERE id = ?');
@@ -481,7 +482,7 @@ export class Store {
   duplicateOffer(id, name) {
     const src = this.getOffer(id);
     return this.tx(() => {
-      const copy = this.insert('offers', { name: name || `${src.name} (kopia)`, template_id: src.template_id, data: src.data }, src.name);
+      const copy = this.insert('offers', { name: name || `${src.name} (copy)`, template_id: src.template_id, data: src.data }, src.name);
       for (const s of src.slides) {
         const { id: _i, offer_id: _o, created_at: _c, updated_at: _u, ...rest } = s;
         this.insert('slides', { ...rest, offer_id: copy.id }, 'slide');
@@ -494,9 +495,9 @@ export class Store {
     this.db.prepare(`UPDATE ${table} SET updated_at = ? WHERE id = ?`).run(now(), id);
   }
 
-  // Kafelki (v4) dla baz, które ich jeszcze nie mają: kafelki, scenariusze, bloki rozwiązań
-  // i przypięcia kafelków do istniejącej treści (dopisywane do tagów, nic nie jest usuwane).
-  // Działa tylko przy pustej tabeli tiles, więc kolejne starty nic nie zmieniają.
+  // Tiles (v4) for databases that have none yet: tiles, scenarios, solution blocks, and tiles pinned
+  // to existing content (appended to tags, nothing is removed). Runs only while the tiles table is empty,
+  // so later starts change nothing.
   ensureTiles(seed) {
     const counts = { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 };
     if (this.db.prepare('SELECT 1 FROM tiles LIMIT 1').get()) return counts;
@@ -504,7 +505,7 @@ export class Store {
       for (const t of seed.tiles || []) { this.upsert('tiles', t); counts.tiles++; }
       for (const sc of seed.scenarios || []) if (!this.get('scenarios', sc.id)) { this.upsert('scenarios', sc); counts.scenarios++; }
       for (const b of seed.solutionBlocks || []) if (!this.get('blocks', b.id)) { this.upsert('blocks', b); counts.blocks++; }
-      // Kolejność z seeda (np. kroki wdrożenia): generator rozstrzyga nią remisy.
+      // Order from the seed (e.g. rollout steps): the generator breaks ties with it.
       for (const b of seed.blocks || []) {
         const cur = b.data?.order != null && this.get('blocks', b.id);
         if (cur && cur.data?.order == null) this.update('blocks', b.id, { data: { order: b.data.order } });
@@ -526,7 +527,7 @@ export class Store {
     return !this.db.prepare('SELECT 1 FROM templates LIMIT 1').get() && !this.db.prepare('SELECT 1 FROM blocks LIMIT 1').get();
   }
 
-  // ------------------------------------------------------------ eksport / import
+  // ------------------------------------------------------------ export / import
   exportAll() {
     const templates = this.db
       .prepare('SELECT * FROM templates ORDER BY id')
@@ -547,14 +548,14 @@ export class Store {
     };
   }
 
-  // mode = 'merge' (wstaw albo nadpisz rekordy o tych samych id, reszty nie rusza)
-  //      | 'replace' (wyczyść wszystko i wczytaj tylko to, co w pliku)
-  // Eksport v1 (layouty HTML) wczytuje bloki i oferty; layouty, obrazki i motyw pomija.
-  // Eksport v2 nie ma komponentów: po imporcie dopisze je synchronizacja z biblioteką.
+  // mode = 'merge' (insert or overwrite records with the same ids, leave the rest alone)
+  //      | 'replace' (clear everything and load only what is in the file)
+  // A v1 export (HTML layouts) loads blocks and offers; layouts, images and the theme are skipped.
+  // A v2 export has no components: the library sync adds them after the import.
   importAll(dump, mode = 'merge') {
-    if (!dump || dump.format !== 'offer-studio') throw new HttpError(400, 'To nie jest eksport offer-studio (brak format: "offer-studio")');
-    if (![1, 2, 3, 4].includes(dump.version)) throw new HttpError(400, `Nieobsługiwana wersja eksportu: ${dump.version}`);
-    if (!['merge', 'replace'].includes(mode)) throw new HttpError(400, 'mode: merge albo replace');
+    if (!dump || dump.format !== 'offer-studio') throw new HttpError(400, 'This is not an offer-studio export (missing format: "offer-studio")');
+    if (![1, 2, 3, 4].includes(dump.version)) throw new HttpError(400, `Unsupported export version: ${dump.version}`);
+    if (!['merge', 'replace'].includes(mode)) throw new HttpError(400, 'mode: merge or replace');
     const slides = (dump.slides || []).map((s) => (dump.version === 1 ? { ...s, frame: s.layout_id } : s));
     const counts = {};
     this.tx(() => {
@@ -566,7 +567,7 @@ export class Store {
         this.putTemplate({ ...t, file: Buffer.from(t.file_base64, 'base64') });
         counts.templates++;
       }
-      // Kolejność ma znaczenie: slajdy wskazują na oferty.
+      // Order matters: slides point to offers.
       for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides], ['components', dump.components], ['component_sets', dump.component_sets], ['tiles', dump.tiles], ['scenarios', dump.scenarios]]) {
         counts[table] = 0;
         for (const item of items || []) {
@@ -579,12 +580,12 @@ export class Store {
   }
 
   upsert(table, item) {
-    if (!item.id || !idOk(table, item.id)) throw new HttpError(400, `${table}: rekord bez poprawnego id`);
+    if (!item.id || !idOk(table, item.id)) throw new HttpError(400, `${table}: record without a valid id`);
     const ts = now();
     const row = { ...this.encode(table, item), id: item.id, created_at: item.created_at ?? ts, updated_at: item.updated_at ?? ts };
     const cols = Object.keys(row);
     const updates = cols.filter((c) => c !== 'id' && c !== 'created_at').map((c) => `${c} = excluded.${c}`);
-    // ON CONFLICT DO UPDATE (a nie INSERT OR REPLACE), żeby nie odpalać ON DELETE CASCADE na slajdach.
+    // ON CONFLICT DO UPDATE (not INSERT OR REPLACE), so ON DELETE CASCADE doesn't fire on slides.
     this.db
       .prepare(
         `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map((c) => `:${c}`).join(', ')})

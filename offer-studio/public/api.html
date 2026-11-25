@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,93 +16,93 @@
 </head>
 <body>
 <h1>Offer Studio API</h1>
-<p>Wszystko, co robi interfejs, da się zrobić przez REST/JSON. Slajdy, podgląd i PDF renderuje FigCraft z biblioteki slajdów (pliki <code>.figcraft</code>/JSON). Każda zmiana odświeża otwarte podglądy ofert.</p>
+<p>Everything the UI does can be done over REST/JSON. Slides, previews and PDFs are rendered by FigCraft from the slide library (<code>.figcraft</code>/JSON files). Every change refreshes any open offer previews.</p>
 
-<h2>Logowanie</h2>
-<p><code>Authorization: Bearer &lt;STUDIO_API_TOKEN&gt;</code> (skrypty, n8n) albo Basic auth z hasłem <code>STUDIO_PASSWORD</code> (dowolny login).</p>
+<h2>Authentication</h2>
+<p><code>Authorization: Bearer &lt;STUDIO_API_TOKEN&gt;</code> (scripts, n8n) or Basic auth with the password <code>STUDIO_PASSWORD</code> (any username).</p>
 
-<h2>Bloki wiedzy</h2>
+<h2>Knowledge blocks</h2>
 <table>
-<tr><td>GET /api/blocks?type=&amp;tag=&amp;q=</td><td>Lista, z filtrami</td></tr>
-<tr><td>POST /api/blocks</td><td>Nowy blok albo tablica bloków. <code>type</code> wymagany; opcjonalnie własne <code>id</code></td></tr>
-<tr><td>GET /api/blocks/:id</td><td>Jeden blok</td></tr>
-<tr><td>PATCH /api/blocks/:id</td><td>Zmiana pól. <code>data</code> jest scalane (klucz = null usuwa pole); <code>?replace=1</code> zastępuje całe <code>data</code></td></tr>
-<tr><td>DELETE /api/blocks/:id</td><td>Usunięcie</td></tr>
-<tr><td>GET /api/meta</td><td>Typy i tagi w użyciu, adres FigCraft web</td></tr>
+<tr><td>GET /api/blocks?type=&amp;tag=&amp;q=</td><td>List, with filters</td></tr>
+<tr><td>POST /api/blocks</td><td>A new block or an array of blocks. <code>type</code> is required; a custom <code>id</code> is optional</td></tr>
+<tr><td>GET /api/blocks/:id</td><td>A single block</td></tr>
+<tr><td>PATCH /api/blocks/:id</td><td>Update fields. <code>data</code> is merged (key = null deletes the field); <code>?replace=1</code> replaces the whole <code>data</code></td></tr>
+<tr><td>DELETE /api/blocks/:id</td><td>Delete</td></tr>
+<tr><td>GET /api/meta</td><td>Types and tags in use, FigCraft web URL</td></tr>
 </table>
 <pre>curl -X POST $URL/api/blocks -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" -d '{
   "id": "uc-due-diligence",
   "type": "use_case",
-  "title": "Due diligence spółki",
-  "body": "Gaius przegląda dokumenty spółki i zbiera ryzyka w raport.",
-  "data": { "effect": "krótszy czas przeglądu i pełna lista ryzyk." },
-  "tags": ["vault", "kancelaria"]
+  "title": "Company due diligence",
+  "body": "Gaius reviews the company documents and collects the risks into a report.",
+  "data": { "effect": "shorter review time and a complete list of risks." },
+  "tags": ["vault", "law-firm"]
 }'</pre>
 
-<h2>Oferty i slajdy</h2>
+<h2>Offers and slides</h2>
 <table>
-<tr><td>GET /api/offers</td><td>Lista ofert</td></tr>
+<tr><td>GET /api/offers</td><td>List of offers</td></tr>
 <tr><td>POST /api/offers</td><td><code>{name, data, slides?: [...]}</code></td></tr>
-<tr><td>GET /api/offers/:id</td><td>Oferta ze slajdami</td></tr>
-<tr><td>PATCH /api/offers/:id</td><td>Np. <code>{"data": {"client": "ACME S.A.", "price": "12 000"}}</code></td></tr>
-<tr><td>POST /api/offers/:id/duplicate</td><td>Kopia oferty ze slajdami (opcjonalnie <code>{name}</code>)</td></tr>
-<tr><td>DELETE /api/offers/:id</td><td>Usunięcie oferty i jej slajdów</td></tr>
-<tr><td>POST /api/offers/:id/slides</td><td><code>{frame, data, block_ids?, query?, position?}</code>; <code>frame</code> to nazwa slajdu w bibliotece</td></tr>
-<tr><td>PATCH /api/slides/:id</td><td>Zmiana slajdu (<code>data</code> scalane jak w blokach)</td></tr>
-<tr><td>DELETE /api/slides/:id</td><td>Usunięcie slajdu</td></tr>
-<tr><td>PUT /api/offers/:id/order</td><td><code>{"ids": [...]}</code>: nowa kolejność wszystkich slajdów</td></tr>
-<tr><td>GET /api/offers/:id/preview</td><td>Render podglądu (PNG każdego slajdu): <code>{key, ms, slides: [{id, frame, hidden, url, error?}]}</code></td></tr>
-<tr><td>GET /api/offers/:id/pdf</td><td>PDF z FigCraft (<code>?download=0</code> otwiera w przeglądarce); ukryte slajdy pomija</td></tr>
-<tr><td>GET /api/offers/:id/figcraft</td><td>Gotowa oferta jako plik <code>.figcraft</code> do ręcznych poprawek</td></tr>
+<tr><td>GET /api/offers/:id</td><td>An offer with its slides</td></tr>
+<tr><td>PATCH /api/offers/:id</td><td>E.g. <code>{"data": {"client": "ACME Ltd", "price": "12,000"}}</code></td></tr>
+<tr><td>POST /api/offers/:id/duplicate</td><td>Copy of an offer with its slides (optionally <code>{name}</code>)</td></tr>
+<tr><td>DELETE /api/offers/:id</td><td>Delete an offer and its slides</td></tr>
+<tr><td>POST /api/offers/:id/slides</td><td><code>{frame, data, block_ids?, query?, position?}</code>; <code>frame</code> is the slide name in the library</td></tr>
+<tr><td>PATCH /api/slides/:id</td><td>Update a slide (<code>data</code> is merged as for blocks)</td></tr>
+<tr><td>DELETE /api/slides/:id</td><td>Delete a slide</td></tr>
+<tr><td>PUT /api/offers/:id/order</td><td><code>{"ids": [...]}</code>: the new order of all slides</td></tr>
+<tr><td>GET /api/offers/:id/preview</td><td>Render a preview (a PNG of each slide): <code>{key, ms, slides: [{id, frame, hidden, url, error?}]}</code></td></tr>
+<tr><td>GET /api/offers/:id/pdf</td><td>PDF from FigCraft (<code>?download=0</code> opens it in the browser); hidden slides are skipped</td></tr>
+<tr><td>GET /api/offers/:id/figcraft</td><td>The finished offer as a <code>.figcraft</code> file for manual touch-ups</td></tr>
 </table>
-<p>Bloki na slajdzie: <code>block_ids</code> (konkretne bloki w tej kolejności) albo <code>query</code>, np. <code>{"type": "use_case", "tag": "kancelaria", "limit": 6}</code>.</p>
-<pre>curl -X PATCH $URL/api/offers/gaius-vault-bazowa -H "Authorization: Bearer $TOKEN" \
-  -H "content-type: application/json" -d '{"data": {"client": "ACME S.A."}}'
+<p>Blocks on a slide: <code>block_ids</code> (specific blocks in that order) or <code>query</code>, e.g. <code>{"type": "use_case", "tag": "law-firm", "limit": 6}</code>.</p>
+<pre>curl -X PATCH $URL/api/offers/gaius-vault-base -H "Authorization: Bearer $TOKEN" \
+  -H "content-type: application/json" -d '{"data": {"client": "ACME Ltd"}}'
 
-curl -o oferta.pdf $URL/api/offers/gaius-vault-bazowa/pdf -H "Authorization: Bearer $TOKEN"</pre>
+curl -o offer.pdf $URL/api/offers/gaius-vault-base/pdf -H "Authorization: Bearer $TOKEN"</pre>
 
-<h2>Biblioteka slajdów (FigCraft)</h2>
+<h2>Slide library (FigCraft)</h2>
 <table>
-<tr><td>GET /api/library</td><td>Wszystkie slajdy: <code>[{frame, source, source_name, width, height, fields, slots, thumb}]</code></td></tr>
-<tr><td>GET /api/templates</td><td>Pliki ze slajdami (z listą slajdów każdego pliku)</td></tr>
-<tr><td>GET /api/templates/:id/file</td><td>Plik <code>.figcraft</code> do edycji w FigCraft</td></tr>
-<tr><td>POST /api/templates</td><td>multipart: <code>file</code> (.figcraft, .json, .fig, .penpot, .sketch, .svg), opcjonalnie <code>id</code> i <code>name</code>. Istniejące <code>id</code> = podmiana pliku</td></tr>
-<tr><td>POST /api/templates?id=&amp;name=</td><td>z <code>content-type: application/json</code>: sam JSON strony/dokumentu FigCraft (albo Figma REST API)</td></tr>
+<tr><td>GET /api/library</td><td>All slides: <code>[{frame, source, source_name, width, height, fields, slots, thumb}]</code></td></tr>
+<tr><td>GET /api/templates</td><td>Slide files (each with its list of slides)</td></tr>
+<tr><td>GET /api/templates/:id/file</td><td>The <code>.figcraft</code> file, for editing in FigCraft</td></tr>
+<tr><td>POST /api/templates</td><td>multipart: <code>file</code> (.figcraft, .json, .fig, .penpot, .sketch, .svg), optionally <code>id</code> and <code>name</code>. An existing <code>id</code> = replace the file</td></tr>
+<tr><td>POST /api/templates?id=&amp;name=</td><td>with <code>content-type: application/json</code>: the raw JSON of a FigCraft page/document (or of the Figma REST API)</td></tr>
 <tr><td>PATCH /api/templates/:id</td><td><code>{"name": "..."}</code></td></tr>
-<tr><td>DELETE /api/templates/:id</td><td>Usunięcie pliku i jego slajdów z biblioteki</td></tr>
+<tr><td>DELETE /api/templates/:id</td><td>Delete the file and its slides from the library</td></tr>
 </table>
-<p>Każda ramka najwyższego poziomu (ze wszystkich stron) to slajd; nazwa ramki musi być unikalna w całej bibliotece (konflikt = 409). Pola wiąże się nazwami warstw: <code>{{data.title}}</code> (treść slajdu), <code>{{offer.client|upper}}</code> (zmienna oferty), <code>#item</code> (karta na blok, w środku <code>{{title}}</code>, <code>{{body}}</code>, <code>{{n}}</code> i pola bloku, np. <code>{{effect}}</code>), <code>#item:lines</code> (wiersz z pola <code>data.lines</code>: <code>etykieta | wartość</code>), <code>[[2:tekst]]</code> (styl 2. wyróżnienia). W treści <code>**słowo**</code> dostaje styl 1. wyróżnienia. Pusty wynik ukrywa warstwę.</p>
+<p>Every top-level frame (across all pages) is a slide; frame names must be unique across the whole library (a conflict = 409). Fields are bound by layer names: <code>{{data.title}}</code> (slide content), <code>{{offer.client|upper}}</code> (offer variable), <code>#item</code> (a card per block, containing <code>{{title}}</code>, <code>{{body}}</code>, <code>{{n}}</code> and the block's fields, e.g. <code>{{effect}}</code>), <code>#item:lines</code> (a row from the <code>data.lines</code> field: <code>label | value</code>), <code>[[2:text]]</code> (the style of the 2nd highlight). In content, <code>**word**</code> gets the style of the 1st highlight. An empty result hides the layer.</p>
 <pre>curl -X POST $URL/api/templates -H "Authorization: Bearer $TOKEN" -F file=@case-study.figcraft
 
 curl -X POST "$URL/api/templates?id=case-study&amp;name=Case%20study" -H "Authorization: Bearer $TOKEN"   -H "content-type: application/json" --data-binary @case-study.json</pre>
 
-<h2>Komponenty (wymienne karty) i dobór przez AI</h2>
-<p>Ramka najwyższego poziomu nazwana <code>@zestaw</code> (np. <code>@dlaczego</code>) nie jest slajdem, tylko zestawem kart: każda ramka w środku to gotowa karta (własna ikona, kolor, układ), nazwa = klucz. Id karty: <code>zestaw/klucz</code> (po slugify). Na slajdzie miejsca na karty nazywa się <code>#pick:zestaw</code>. Wybrane karty wchodzą w miejsce slotów w kolejności wyboru; bez wyboru slajd pokazuje to, co narysowano. Teksty kart nazwane <code>{{title}}</code>, <code>{{body}}</code>… można nadpisać; bez wartości zostaje tekst z rysunku.</p>
-<p>Opisy kart siedzą w SQLite (tabela <code>components</code>): co karta pokazuje, kiedy ją wybrać, kiedy nie, temat (warianty jednego argumentu), wariant, tagi. Wiersze zakłada synchronizacja z biblioteką przy wgraniu pliku; opisy zostają przy podmianie pliku. Zasady zestawu: tabela <code>component_sets</code>.</p>
+<h2>Components (interchangeable cards) and card picking by AI</h2>
+<p>A top-level frame named <code>@set</code> (e.g. <code>@why</code>) is not a slide but a set of cards: every frame inside it is a ready-made card (its own icon, colour, layout), and its name is the key. A card's id is <code>set/key</code> (slugified). On a slide, card placeholders are named <code>#pick:set</code>. Picked cards fill the slots in the order they were picked; with nothing picked, the slide shows what was drawn. Card texts named <code>{{title}}</code>, <code>{{body}}</code>… can be overridden; with no value, the drawn text stays.</p>
+<p>Card descriptions live in SQLite (the <code>components</code> table): what the card shows, when to pick it, when to avoid it, its topic (variants of one argument), variant and tags. Rows are created by syncing with the library when a file is uploaded; descriptions are kept when the file is replaced. Set rules: the <code>component_sets</code> table.</p>
 <table>
-<tr><td>GET /api/components?set=&amp;missing=1</td><td>Karty z opisami i miniaturą (<code>missing=1</code>: także te, których już nie ma w bibliotece)</td></tr>
-<tr><td>GET /api/components/:zestaw/:klucz</td><td>Jedna karta</td></tr>
-<tr><td>PATCH /api/components/:zestaw/:klucz</td><td>Opis: <code>title, description, use_when, avoid_when, topic, variant, tags, data</code> (<code>data</code> = stałe nadpisania pól karty)</td></tr>
-<tr><td>GET /api/component-sets</td><td>Zestawy z zasadami</td></tr>
-<tr><td>PATCH /api/component-sets/:id</td><td><code>{"title": "...", "rules": "Dokładnie 6 kart, jedna wyróżniona…"}</code></td></tr>
-<tr><td>PATCH /api/slides/:id</td><td>Ręczny wybór: <code>{"picks": {"dlaczego": [{"component": "dlaczego/on-premise", "data": {"title": "…"}}, …]}}</code></td></tr>
-<tr><td>GET /api/slides/:id/pick-context</td><td>Wszystko, czego potrzebuje agent do wyboru: oferta, slajd, liczba slotów, zasady i opisy kart (np. dla n8n z własnym modelem)</td></tr>
-<tr><td>POST /api/slides/:id/pick</td><td>Dobór przez Claude: <code>{"brief": "bank, boją się chmury", "apply": true}</code> → <code>{picks, note, warnings, slide}</code>. <code>apply: false</code> tylko podpowiada. Wymaga <code>ANTHROPIC_API_KEY</code></td></tr>
+<tr><td>GET /api/components?set=&amp;missing=1</td><td>Cards with descriptions and a thumbnail (<code>missing=1</code>: also those no longer in the library)</td></tr>
+<tr><td>GET /api/components/:set/:key</td><td>A single card</td></tr>
+<tr><td>PATCH /api/components/:set/:key</td><td>Description: <code>title, description, use_when, avoid_when, topic, variant, tags, data</code> (<code>data</code> = fixed overrides of the card's fields)</td></tr>
+<tr><td>GET /api/component-sets</td><td>Sets with their rules</td></tr>
+<tr><td>PATCH /api/component-sets/:id</td><td><code>{"title": "...", "rules": "Exactly 6 cards, one highlighted…"}</code></td></tr>
+<tr><td>PATCH /api/slides/:id</td><td>Manual picks: <code>{"picks": {"why": [{"component": "why/on-premise", "data": {"title": "…"}}, …]}}</code></td></tr>
+<tr><td>GET /api/slides/:id/pick-context</td><td>Everything an agent needs to pick cards: the offer, the slide, the number of slots, rules and card descriptions (e.g. for n8n with its own model)</td></tr>
+<tr><td>POST /api/slides/:id/pick</td><td>Card picking by Claude: <code>{"brief": "bank, wary of the cloud", "apply": true}</code> → <code>{picks, note, warnings, slide}</code>. <code>apply: false</code> only suggests. Requires <code>ANTHROPIC_API_KEY</code></td></tr>
 </table>
-<pre>curl -X POST $URL/api/slides/s-dlaczego/pick -H "Authorization: Bearer $TOKEN" \
-  -H "content-type: application/json" -d '{"brief": "Bank, regulowany przez KNF, zarząd boi się chmury"}'</pre>
+<pre>curl -X POST $URL/api/slides/s-why/pick -H "Authorization: Bearer $TOKEN" \
+  -H "content-type: application/json" -d '{"brief": "Bank regulated by the financial supervisor, the board is wary of the cloud"}'</pre>
 
-<h2>Eksport i import</h2>
+<h2>Export and import</h2>
 <table>
-<tr><td>GET /api/export</td><td>Cała baza (bloki, szablony z plikami w base64, oferty, slajdy) w jednym JSON</td></tr>
-<tr><td>POST /api/import?mode=merge</td><td>Scalenie: nadpisuje rekordy o tych samych id, resztę zostawia</td></tr>
-<tr><td>POST /api/import?mode=replace</td><td>Zastąpienie całej bazy zawartością pliku</td></tr>
+<tr><td>GET /api/export</td><td>The whole database (blocks, templates with files in base64, offers, slides) in one JSON</td></tr>
+<tr><td>POST /api/import?mode=merge</td><td>Merge: overwrites records with the same ids, leaves the rest untouched</td></tr>
+<tr><td>POST /api/import?mode=replace</td><td>Replace the whole database with the contents of the file</td></tr>
 </table>
 
-<h2>Opis maszynowy</h2>
-<p><code>GET /api/openapi.json</code> to opis API w formacie OpenAPI 3.1, budowany z tras serwera. Z niego korzysta węzeł n8n „Offer Studio”: nowe endpointy widzi bez przebudowy n8n.</p>
+<h2>Machine-readable spec</h2>
+<p><code>GET /api/openapi.json</code> describes the API in OpenAPI 3.1, built from the server's routes. The "Offer Studio" n8n node uses it, so it picks up new endpoints without rebuilding n8n.</p>
 
-<h2>Na żywo</h2>
-<p><code>GET /api/events</code> to strumień Server-Sent Events z informacją o każdej zmianie (<code>{table, id, offer_id}</code>).</p>
+<h2>Live updates</h2>
+<p><code>GET /api/events</code> is a Server-Sent Events stream announcing every change (<code>{table, id, offer_id}</code>).</p>
 </body>
 </html>

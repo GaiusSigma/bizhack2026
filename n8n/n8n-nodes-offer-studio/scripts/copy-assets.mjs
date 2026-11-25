@@ -1,4 +1,4 @@
-// Kopiuje ikony (svg) obok skompilowanych węzłów: n8n szuka ich względem pliku .node.js.
+// Copies the icons (svg) next to the compiled nodes: n8n resolves them relative to the .node.js file.
 import { cpSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 

@@ -13,6 +13,7 @@ import {
   includes,
   personas,
   roles,
+  segments,
   sources,
   stats,
   tabs,
@@ -28,7 +29,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
 <Layout
   title="Gaius-Lex · Your tailored offer in under three minutes"
-  description="Private AI for legal teams. Tell Gaius who you are and get the offer our sales team would write for you, matched to your role and concerns."
+  description="Private AI for law firms, in-house legal teams and public administration. Tell Gaius who you are and get the offer our sales team would write for you, matched to your role and concerns."
 >
   <header class="topbar">
     <div class="wrap topbar__inner">
@@ -51,12 +52,24 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     <section id="generator" class="section section--white">
       <div class="wrap hero">
         <div class="hero__copy">
-          <span class="eyebrow rise">Private AI for legal teams. Offers in minutes, not days.</span>
+          <span class="eyebrow rise">Private AI for law firms, in-house legal and public administration.</span>
           <h1 class="hero__title rise" style="animation-delay: .1s">Your tailored offer in under three minutes<span class="dot">.</span></h1>
           <p class="hero__lead rise" style="animation-delay: .2s">
             Tell Gaius who you are. It builds the offer our sales team would write for you, matched to your role and to
             the concerns your organisation has about AI.
           </p>
+
+          <div class="segments rise" style="animation-delay: .25s">
+            <span class="overline overline--muted">We write offers for</span>
+            <ul class="segments__list">
+              {segments.map((sg) => (
+                <li class:list={['segment', { 'segment--soon': sg.soon }]}>
+                  <Icon name={sg.icon} size={16} stroke={sg.soon ? 'currentColor' : '#9b5155'} />{sg.label}
+                  {sg.soon && <span class="soon">Coming soon</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
 
           <ol class="hero__steps">
             {heroSteps.map((h, i) => (
@@ -114,7 +127,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <label for="email" class="field__label">Work email</label>
                 <div class="field__control">
                   <Icon name="mail" size={18} />
-                  <input id="email" type="email" autocomplete="email" placeholder="anna.kovacs@yourcompany.hu" />
+                  <input id="email" type="email" autocomplete="email" placeholder="anna.nowak@yourfirm.pl" />
                 </div>
               </div>
               <div class="field rise" style="animation-delay: .1s">
@@ -150,13 +163,15 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
               <div class="role-grid">
                 {roles.map((r, i) => (
                   <button
-                    class="role-pick lift rise"
+                    class:list={['role-pick rise', { lift: !r.soon }]}
                     type="button"
                     data-role={r.id}
                     aria-pressed={i === 0 ? 'true' : 'false'}
+                    disabled={r.soon}
                     style={`animation-delay: ${delay(i, 0.06)}`}
                   >
-                    <Icon name={r.icon} stroke="#9b5155" />{r.label}
+                    <Icon name={r.icon} stroke={r.soon ? 'currentColor' : '#9b5155'} />{r.label}
+                    {r.soon && <span class="soon">Coming soon</span>}
                   </button>
                 ))}
               </div>
@@ -299,7 +314,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <div class="discord__body">
                   <span class="discord__meta"><b>Gaius Offers</b> <span class="discord__bot">BOT</span> <span class="discord__time">#sales · today 09:41</span></span>
                   <span class="discord__strong">New offer ready for <b data-flow-who>{startSource.who}</b></span>
-                  <span>Source: <span data-flow-source>{startSource.short}</span>. Opportunity moved to <b class="discord__hl">Oferta</b>. Offer PDF attached.</span>
+                  <span>Source: <span data-flow-source>{startSource.short}</span>. Opportunity moved to <b class="discord__hl">Offer</b>. Offer PDF attached.</span>
                   <span class="discord__link">Open in CRM<Icon name="arrow" size={14} /></span>
                 </div>
               </div>
@@ -307,7 +322,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <span class="crm__kicker"><Icon name="db" size={14} />CRM · OPPORTUNITY</span>
                 <span class="crm__who" data-flow-who>{startSource.who}</span>
                 <div class="crm__stages">
-                  <span>Nowe</span><span>Trial</span><span class="is-current pulse">Oferta</span><span>Sukces</span>
+                  <span>New</span><span>Trial</span><span class="is-current pulse">Offer</span><span>Won</span>
                 </div>
                 <span class="crm__next"><Icon name="calendar" size={16} stroke="#9b5155" />Offer attached · next activity: follow-up call in 2 days · owner [SALESPERSON]</span>
               </div>
@@ -365,14 +380,17 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     <section id="roles" class="section section--sand">
       <div class="wrap stack-48">
         <div class="section-head reveal">
-          <span class="overline">One deal, many signatures</span>
-          <h2 class="h2">Every person who signs off gets the document they need.</h2>
-          <p class="lead">IT does not need a sales offer. It needs a deployment brief. The generator knows the difference.</p>
+          <span class="overline">Two narratives today</span>
+          <h2 class="h2">Written for the person who brings Gaius in, or the board that signs.</h2>
+          <p class="lead">A champion needs something to show the team on Monday. A board needs one accountable partner and a plan. The other seats get their own documents soon.</p>
         </div>
         <div class="role-cards">
           {roles.map((r) => (
-            <div class="role-card reveal">
-              <span class="tile tile--soft tile--48"><Icon name={r.icon} size={24} /></span>
+            <div class:list={['role-card reveal', { 'role-card--soon': r.soon }]}>
+              <span class="role-card__top">
+                <span class="tile tile--soft tile--48"><Icon name={r.icon} size={24} /></span>
+                {r.soon && <span class="soon">Coming soon</span>}
+              </span>
               <h3 class="role-card__title">{r.label}</h3>
               <span class="role-card__label">Cares about</span>
               <span class="role-card__text">{r.cares}</span>
@@ -428,7 +446,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel as string) as T | null;
   const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => Array.from(root.querySelectorAll<T>(sel as string)) as T[];
 
-  /* ---------- Generator ofert ---------- */
+  /* ---------- Offer generator ---------- */
   const state = { mode: 'email', persona: personas[0].id, role: roles[0].id, rec: false };
   let genTimers: number[] = [];
 
@@ -491,7 +509,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       roleId = p.role;
       who = p.who;
     } else if (state.mode === 'voice') {
-      roleId = 'legal';
+      roleId = 'champion';
       who = 'In-house legal team · from your voice note';
     }
     const r = roles.find((x) => x.id === roleId) ?? roles[0];
