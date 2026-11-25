@@ -517,7 +517,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
   // Voice note: a real recording from the microphone (up to 30 s), sent to n8n as base64 audio,
   // plus a live transcript from the browser's speech recognition that the visitor can correct.
-  // Without a microphone (or permission) the sample transcript is sent instead.
+  // Without a microphone (or permission) the visitor can type the note; otherwise the sample is sent.
   const MAX_REC_S = 30;
   const voice = {
     audio: null as string | null,
@@ -526,9 +526,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     error: null as string | null,
     transcript: '',
     edited: false,
+    recognitionError: null as string | null,
   };
-  let recorder: MediaRecorder | null = null;
-  let recTimer = 0;
   // Resolves when the last recording is converted and ready to send.
   let voiceReady: Promise<void> = Promise.resolve();
   const recBtn = $<HTMLButtonElement>('[data-rec]');
@@ -565,7 +564,15 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       span.textContent = (finalText ? ' ' : '') + interim;
       tText.append(span);
     }
-    if (!finalText && !interim) tText.textContent = state.rec ? 'Listening…' : '';
+  };
+  const showFinalTranscript = () => {
+    tLabel.textContent = 'Transcript';
+    renderTranscript(voice.transcript);
+    if (!voice.transcript) {
+      tText.textContent = voice.recognitionError
+        ? 'Live transcript is not available in this browser. Tap the pencil to type your note.'
+        : 'We did not catch any words. Tap the pencil to type your note.';
+    }
   };
   const finishEditing = () => {
     if (tBox.dataset.state !== 'editing') return;
@@ -577,8 +584,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     tBox.dataset.state = 'ready';
     tBtn.setAttribute('aria-label', 'Edit the transcript');
     tBtn.title = 'Edit the transcript';
-    renderTranscript(voice.transcript);
-    if (!voice.transcript) tText.textContent = 'Empty. Tap the pencil to type your note.';
+    showFinalTranscript();
   };
   tBtn.addEventListener('click', () => {
     if (tBox.dataset.state === 'editing') return finishEditing();
@@ -595,95 +601,136 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) finishEditing();
   });
 
-  // ---- live speech recognition (Chrome, Edge, Safari). Other browsers: audio only, edit by hand.
+  // ---- live speech recognition (Chrome, Edge, Safari). Other browsers: audio only, type by hand.
   type Recognition = {
     lang: string; continuous: boolean; interimResults: boolean;
-    start(): void; stop(): void;
+    start(): void; stop(): void; abort(): void;
     onresult: ((e: any) => void) | null; onend: (() => void) | null; onerror: ((e: any) => void) | null;
   };
   const SpeechRec = ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) as (new () => Recognition) | undefined;
-  let recognition: Recognition | null = null;
-  let finalParts: string[] = [];
-  const startRecognition = () => {
-    if (!SpeechRec) return;
-    finalParts = [];
-    recognition = new SpeechRec();
-    recognition.lang = navigator.language || 'pl-PL';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.onresult = (e) => {
+
+  // One recording session at a time: the timer, recorder, stream and recognition live together.
+  type Session = {
+    id: number;
+    started: number;
+    timer: number;
+    stream: MediaStream;
+    recorder: MediaRecorder;
+    chunks: Blob[];
+    recognition: Recognition | null;
+    finals: string[];
+    interim: string;
+    stopping: boolean;
+    done: () => void;
+  };
+  let session: Session | null = null;
+  let starting = false;
+  let sessionSeq = 0;
+
+  const startRecognition = (s: Session) => {
+    if (!SpeechRec) {
+      voice.recognitionError = 'unsupported';
+      tText.textContent = 'Live transcript is not available in this browser. You can type your note after recording.';
+      return;
+    }
+    const r = new SpeechRec();
+    r.lang = navigator.language || 'pl-PL';
+    r.continuous = true;
+    r.interimResults = true;
+    r.onresult = (e) => {
+      if (session !== s) return;
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r.isFinal) finalParts.push(r[0].transcript.trim());
-        else interim += r[0].transcript;
+        const res = e.results[i];
+        if (res.isFinal) s.finals.push(res[0].transcript.trim());
+        else interim += res[0].transcript;
       }
-      voice.transcript = finalParts.join(' ');
-      renderTranscript(voice.transcript, interim.trim());
+      s.interim = interim.trim();
+      voice.transcript = s.finals.join(' ');
+      renderTranscript(voice.transcript, s.interim);
     };
-    // Chrome ends recognition after a pause; keep it running while we record.
-    recognition.onend = () => {
-      if (state.rec && recognition) {
-        try { recognition.start(); } catch { /* already running */ }
+    r.onerror = (e) => {
+      // 'no-speech' and 'aborted' are normal; anything else means no live transcript here.
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
+      voice.recognitionError = String(e.error || 'error');
+      if (session === s && !s.stopping) tText.textContent = 'Live transcript is not available here. You can type your note after recording.';
+      s.recognition = null;
+    };
+    // Chrome ends recognition after a pause: restart it while we are still recording.
+    r.onend = () => {
+      if (session === s && !s.stopping && s.recognition === r) {
+        try { r.start(); } catch { /* already running */ }
       }
     };
-    recognition.onerror = (e) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') recognition = null;
-    };
-    try { recognition.start(); } catch { recognition = null; }
+    s.recognition = r;
+    try { r.start(); } catch { s.recognition = null; }
   };
-  const stopRecognition = () => {
-    const r = recognition;
-    recognition = null;
-    try { r?.stop(); } catch { /* not running */ }
+
+  const finalize = async (s: Session) => {
+    if (session !== s) return;
+    session = null;
+    try { s.recognition?.abort(); } catch { /* not running */ }
+    s.stream.getTracks().forEach((t) => t.stop());
+    // Keep the words that were still being recognized when the visitor stopped.
+    const words = [...s.finals, s.interim].filter(Boolean).join(' ').trim();
+    voice.transcript = words;
+    const blob = new Blob(s.chunks, { type: s.recorder.mimeType || 'audio/webm' });
+    voice.mimeType = blob.type;
+    voice.audio = blob.size ? await blobToBase64(blob) : null;
+    setRecUi(false, `Recorded ${fmt(voice.seconds)} · tap to record again`);
+    tBox.dataset.state = 'ready';
+    tBtn.hidden = false;
+    showFinalTranscript();
+    s.done();
   };
 
   const stopRecording = () => {
-    if (recorder && recorder.state !== 'inactive') recorder.stop();
+    const s = session;
+    if (!s || s.stopping) return;
+    s.stopping = true;
+    // The timer stops right away, whatever the browser does next.
+    clearInterval(s.timer);
+    voice.seconds = Math.min(MAX_REC_S, (performance.now() - s.started) / 1000);
+    recTitle!.textContent = `Saving ${fmt(voice.seconds)}…`;
+    // Let recognition deliver its last results, then wrap up.
+    try { s.recognition?.stop(); } catch { /* not running */ }
+    s.recorder.onstop = () => setTimeout(() => finalize(s), 400);
+    try { s.recorder.state !== 'inactive' ? s.recorder.stop() : finalize(s); } catch { finalize(s); }
+    // Safety net: some browsers never fire onstop.
+    setTimeout(() => finalize(s), 2000);
   };
+
   recBtn?.addEventListener('click', async () => {
-    if (state.rec) return stopRecording();
+    if (session) return stopRecording();
+    if (starting) return; // the microphone prompt is still open
     finishEditing();
+    starting = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const chunks: Blob[] = [];
-      const started = performance.now();
       let done = () => {};
       voiceReady = new Promise((ok) => (done = ok));
-      Object.assign(voice, { transcript: '', edited: false, error: null });
-      recorder = new MediaRecorder(stream);
-      recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-      recorder.onstop = async () => {
-        clearInterval(recTimer);
-        stopRecognition();
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunks, { type: recorder?.mimeType || 'audio/webm' });
-        voice.seconds = Math.min(MAX_REC_S, (performance.now() - started) / 1000);
-        voice.mimeType = blob.type;
-        voice.audio = await blobToBase64(blob);
-        setRecUi(false, `Recorded ${fmt(voice.seconds)} · tap to record again`);
-        tLabel.textContent = SpeechRec ? 'Transcript' : 'Your note';
-        tBox.dataset.state = 'ready';
-        tBtn.hidden = false;
-        renderTranscript(voice.transcript);
-        if (!voice.transcript) {
-          tText.textContent = SpeechRec ? 'We did not catch any words. Tap the pencil to type your note.' : 'Live transcript is not available in this browser. Tap the pencil to type your note.';
-        }
-        done();
+      Object.assign(voice, { audio: null, mimeType: null, seconds: 0, transcript: '', edited: false, error: null, recognitionError: null });
+      const recorder = new MediaRecorder(stream);
+      const s: Session = {
+        id: ++sessionSeq, started: performance.now(), timer: 0, stream, recorder, chunks: [],
+        recognition: null, finals: [], interim: '', stopping: false, done,
       };
-      recorder.start();
+      session = s;
+      recorder.ondataavailable = (e) => { if (e.data.size) s.chunks.push(e.data); };
+      recorder.start(250);
       setRecUi(true, `Recording… ${fmt(0)} / ${fmt(MAX_REC_S)}`);
       tBox.hidden = false;
       tBox.dataset.state = 'recording';
       tBtn.hidden = true;
-      tLabel.textContent = SpeechRec ? 'Live transcript' : 'Recording';
-      renderTranscript('');
-      if (!SpeechRec) tText.textContent = 'Live transcript is not available in this browser. You can type your note after recording.';
-      startRecognition();
-      recTimer = window.setInterval(() => {
-        const s = (performance.now() - started) / 1000;
-        if (s >= MAX_REC_S) return stopRecording();
-        recTitle!.textContent = `Recording… ${fmt(s)} / ${fmt(MAX_REC_S)}`;
+      tEdit.hidden = true;
+      tText.hidden = false;
+      tLabel.textContent = 'Live transcript';
+      tText.textContent = 'Listening…';
+      startRecognition(s);
+      s.timer = window.setInterval(() => {
+        const sec = (performance.now() - s.started) / 1000;
+        if (sec >= MAX_REC_S) return stopRecording();
+        recTitle!.textContent = `Recording… ${fmt(sec)} / ${fmt(MAX_REC_S)}`;
       }, 200);
     } catch (e) {
       voice.error = (e as Error).name || 'microphone unavailable';
@@ -693,6 +740,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       tBtn.hidden = false;
       tLabel.textContent = 'Your note';
       tText.textContent = 'Tap the pencil to type your note.';
+    } finally {
+      starting = false;
     }
   });
 
@@ -731,6 +780,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
         // What was said: live transcript, corrected by the visitor if they used the pencil
         transcript: voice.transcript || null,
         transcriptEdited: voice.edited,
+        // Set when the browser could not transcribe (unsupported, network…): transcribe the audio in n8n
+        transcriptionError: voice.recognitionError,
         sampleTranscript: voice.audio || voice.transcript ? null : voiceSample,
         error: voice.error,
       },
@@ -824,7 +875,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     for (let n = 1; n < buildSteps.length; n++) genTimers.push(window.setTimeout(() => setBuildStep(n), n * 750));
     const minWait = new Promise((ok) => genTimers.push(window.setTimeout(ok, 3400)));
     // Still recording? Finish the note first so the audio goes with this click.
-    if (state.rec) stopRecording();
+    if (session) stopRecording();
     await voiceReady;
     finishEditing();
     const [live] = await Promise.all([requestOffer(), minWait]);
