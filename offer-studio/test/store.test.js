@@ -321,14 +321,14 @@ test('kafelki: złe id odrzucone (400)', () => {
 
 test('eksport v4 -> import replace odtwarza kafelki i scenariusze', () => {
   const a = fresh();
-  a.insert('scenarios', { id: 'rola:zarzad', name: 'Zarząd', steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
+  a.update('scenarios', 'rola:zarzad', { steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
   const dump = JSON.parse(JSON.stringify(a.exportAll()));
   assert.equal(dump.version, 4);
   assert.equal(dump.tiles.length, seed.tiles.length);
   const b = openDb(':memory:');
   const counts = b.importAll(dump, 'replace');
   assert.equal(counts.tiles, seed.tiles.length);
-  assert.equal(counts.scenarios, 1);
+  assert.equal(counts.scenarios, seed.scenarios.length);
   assert.deepEqual(b.list('tiles'), a.list('tiles'));
   assert.deepEqual(b.get('scenarios', 'rola:zarzad').steps[0].fill, { kind: 'none' });
 });

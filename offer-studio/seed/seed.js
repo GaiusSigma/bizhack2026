@@ -2,6 +2,7 @@
 // a szablon (seed/gaius-template.figcraft) to ten sam plik z polami {{…}} w nazwach warstw.
 // Format jak eksport z /api/export; plik szablonu dokłada serwer.
 import { solutionBlocks, tileTags, tiles } from './tiles.js';
+import { scenarios } from './scenarios.js';
 
 const ts = '2026-11-25T00:00:00.000Z';
 const tags = ['vault'];
@@ -213,6 +214,7 @@ export default {
   exported_at: ts,
   blocks: [...blocks.map(withTiles), ...solutionBlocks],
   tiles,
+  scenarios,
   tileTags,
   solutionBlocks,
   templates: [],
