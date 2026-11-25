@@ -640,6 +640,24 @@ export class Store {
     // The base deck replaces the per-role scenarios of earlier versions.
     for (const sc of seed.scenarios || []) if (!this.get('scenarios', sc.id)) { this.upsert('scenarios', sc); counts.scenarios++; }
     for (const id of seed.retiredScenarios || []) if (this.get('scenarios', id)) this.db.prepare('DELETE FROM scenarios WHERE id = ?').run(id);
+    // The base deck's writing hints and per-role copy follow the seed (they are not edited in the app); labels,
+    // order, fills and the default copy (data) edited in the Scenarios tab stay, and so do deleted steps.
+    const SEEDED = ['write', 'data_by_role', 'data_by_role_product'];
+    for (const sc of seed.scenarios || []) {
+      const cur = this.get('scenarios', sc.id);
+      if (!cur) continue;
+      const byKey = Object.fromEntries(sc.steps.map((st) => [st.key, st]));
+      let changed = false;
+      const steps = cur.steps.map((st) => {
+        const f = byKey[st.key];
+        if (!f) return st;
+        const next = { ...st };
+        for (const k of SEEDED) if (f[k] === undefined) delete next[k]; else next[k] = f[k];
+        if (JSON.stringify(next) !== JSON.stringify(st)) changed = true;
+        return next;
+      });
+      if (changed) { this.update('scenarios', sc.id, { steps }); counts.scenarios++; }
+    }
     for (const b of seed.solutionBlocks || []) {
       const cur = this.get('blocks', b.id);
       if (!cur) { this.upsert('blocks', b); counts.blocks++; continue; }

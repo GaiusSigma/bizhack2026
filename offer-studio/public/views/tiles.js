@@ -196,8 +196,10 @@ export function viewTiles(selectedId) {
         h('label', { class: 'f' }, 'Default price (goes into new offers with this product)'),
         h('input', { value: t.data?.price || '', placeholder: 'e.g. 12,000 PLN / month', oninput: (e) => save({ data: { price: e.target.value } }) }),
       ] : null,
-      t.category === 'role' ? [
-        h('label', { class: 'f' }, 'Writing brief (the AI model writes the slide copy from this reader’s perspective)'),
+      t.category === 'role' || t.category === 'product' ? [
+        h('label', { class: 'f' }, t.category === 'role'
+          ? 'Writing brief (the AI model writes the slide copy from this reader’s perspective)'
+          : 'Writing brief (what the AI model stresses about this product, and what it must not promise)'),
         autosize(h('textarea', { rows: 3, oninput: (e) => save({ data: { writing_brief: e.target.value } }) }, t.data?.writing_brief || '')),
       ] : null,
       t.category === 'role' ? roleScenario(t) : null,

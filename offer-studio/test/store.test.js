@@ -506,3 +506,29 @@ test('legacy migration: an English database is left alone', () => {
   assert.equal(s.migrateLegacyPolish(legacyPl, seed), null);
   assert.equal(s.getSetting('legacy_pl_backup'), null);
 });
+
+test('tile content update: the stored base deck gets the seed’s writing hints and per-role copy, hand edits stay', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  const fresh = seed.scenarios.find((x) => x.id === 'base');
+  // an older base deck: no per-role copy or hints, a label and copy edited by hand, one step deleted
+  const old = fresh.steps
+    .filter((st) => st.key !== 'add-on-services')
+    .map(({ data_by_role, data_by_role_product, write, ...st }) => ({ ...st, ...(write ? { write: { old: { hint: 'old', max: 10 } } } : {}) }));
+  old[0] = { ...old[0], label: 'Our title', data: { ...old[0].data, lead: 'Our lead' } };
+  s.update('scenarios', 'base', { steps: old });
+  s.setSetting('tile_content_rev', String(seed.tileUpgrade.rev - 1));
+
+  s.ensureTiles(seed);
+  const steps = s.get('scenarios', 'base').steps;
+  assert.equal(steps[0].label, 'Our title');
+  assert.equal(steps[0].data.lead, 'Our lead');
+  assert.ok(!steps.some((st) => st.key === 'add-on-services'), 'a deleted step stays deleted');
+  for (const st of steps) {
+    const f = fresh.steps.find((x) => x.key === st.key);
+    assert.deepEqual(st.write, f.write, `${st.key}: write`);
+    assert.deepEqual(st.data_by_role, f.data_by_role, `${st.key}: data_by_role`);
+    assert.deepEqual(st.data_by_role_product, f.data_by_role_product, `${st.key}: data_by_role_product`);
+  }
+});

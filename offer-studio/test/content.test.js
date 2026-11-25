@@ -195,3 +195,17 @@ test('evidence pack: at most 3 solutions and 3 proof items per pain', () => {
   assert.equal(ev.pains[0].proof.length, 3);
   assert.equal(ev.pains[0].label, 'pain:a');
 });
+
+test('product: the content context names the product with its brief and adds per-product guidance to hints', () => {
+  const tiles = {
+    'role:board': { id: 'role:board', label: 'Board', data: {} },
+    'product:saas': { id: 'product:saas', label: 'Gaius SaaS', description: 'Cloud.', data: { writing_brief: 'Quick start, trial.' } },
+  };
+  const ctx = contentContext(offerFor({ ...board, product: 'product:saas' }), base, { tiles });
+  assert.deepEqual(ctx.product, { id: 'product:saas', label: 'Gaius SaaS', description: 'Cloud.', brief: 'Quick start, trial.' });
+  const contact = ctx.slides.find((s) => s.step === 'contact-person').fields.lead.hint;
+  // role first, then product, each named
+  assert.ok(contact.indexOf('For the Board:') < contact.indexOf('For Gaius SaaS:'), contact);
+  const vault = contentContext(offerFor(board), base).slides.find((s) => s.step === 'contact-person').fields.lead.hint;
+  assert.doesNotMatch(vault, /For Gaius SaaS:/);
+});

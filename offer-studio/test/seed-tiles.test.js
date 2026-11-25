@@ -19,7 +19,7 @@ test('tiles: valid ids and categories, statuses as agreed', () => {
   assert.equal(new Set(tiles.map((t) => t.id)).size, tiles.length, 'powtórzone id');
   assert.deepEqual(ids('role', 'active'), ['role:board', 'role:champion']);
   assert.deepEqual(ids('role', 'soon'), ['role:budget', 'role:cto', 'role:dpo', 'role:gc']);
-  for (const t of tiles.filter((x) => x.category === 'role')) assert.ok(t.data.writing_brief?.length > 40, `${t.id}: writing brief`);
+  for (const t of tiles.filter((x) => x.category === 'role' || (x.category === 'product' && x.status === 'active'))) assert.ok(t.data.writing_brief?.length > 40, `${t.id}: writing brief`);
   assert.deepEqual(ids('segment', 'active'), ['segment:in-house', 'segment:law-firm', 'segment:public-sector']);
   assert.deepEqual(ids('product'), ['product:on-prem', 'product:saas', 'product:vault']);
   const pains = tiles.filter((t) => t.category === 'pain');
@@ -107,6 +107,7 @@ test('scenarios: valid fill and when', () => {
         if (st.data_by_role_product?.[r]) for (const t of Object.keys(st.data_by_role_product[r])) assert.ok(products.has(t), `${where}: ${r} ${t}`);
       }
       for (const [k, w] of Object.entries(st.write || {})) for (const r of Object.keys(w.hint_by_role || {})) assert.ok(roles.has(r), `${where}: ${k} hint ${r}`);
+      for (const [k, w] of Object.entries(st.write || {})) for (const t of Object.keys(w.hint_by_product || {})) assert.ok(products.has(t), `${where}: ${k} hint ${t}`);
     }
   }
   assert.deepEqual(seed.scenarios, scenarios);

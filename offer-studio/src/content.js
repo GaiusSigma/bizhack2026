@@ -21,13 +21,19 @@ const clean = (v) => String(v ?? '').replace(/\s*\|\s*/g, ' / ').replace(/\s*\n\
 export const toLines = (items, columns) => items.map((it) => Object.keys(columns).map((k) => clean(it[k])).join(' | ')).join('\n');
 
 // Everything a model needs to write an offer's copy: per slide (in offer order) the fields it may write.
-// `tiles` (id -> tile) names the reader: the role tile's label, description and writing brief.
+// `tiles` (id -> tile) names the reader (role tile) and the product: label, description and writing brief.
 export function contentContext(offer, scenario, { tiles = {} } = {}) {
-  const role = (offer.data?.tiles || []).find((t) => String(t).startsWith('role:')) || '';
-  const roleTile = tiles[role];
-  const roleLabel = roleTile?.label || role.slice(5).replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
-  // a field's hint for this reader: the general hint plus what changes for the role
-  const hintFor = (w) => [w.hint || '', w.hint_by_role?.[role] ? `For the ${roleLabel}: ${w.hint_by_role[role]}` : ''].filter(Boolean).join(' ');
+  const pick = (cat) => (offer.data?.tiles || []).find((t) => String(t).startsWith(`${cat}:`)) || '';
+  const nameOf = (id) => tiles[id]?.label || id.slice(id.indexOf(':') + 1).replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  const about = (id) => ({ label: nameOf(id), description: tiles[id]?.description || '', brief: tiles[id]?.data?.writing_brief || '' });
+  const role = pick('role');
+  const product = pick('product');
+  // a field's hint for this offer: the general hint, then what changes for the role (reader) and for the product
+  const hintFor = (w) => [
+    w.hint || '',
+    w.hint_by_role?.[role] ? `For the ${nameOf(role)}: ${w.hint_by_role[role]}` : '',
+    w.hint_by_product?.[product] ? `For ${nameOf(product)}: ${w.hint_by_product[product]}` : '',
+  ].filter(Boolean).join(' ');
   const steps = Object.fromEntries((scenario?.steps || []).map((s) => [s.key, s]));
   const slides = [];
   for (const slide of [...offer.slides].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))) {
@@ -44,8 +50,8 @@ export function contentContext(offer, scenario, { tiles = {} } = {}) {
       optional: !!step.optional, ...(slide.origin?.written_by ? { written_by: slide.origin.written_by } : {}), fields,
     });
   }
-  const reader = role ? { role, label: roleLabel, description: roleTile?.description || '', brief: roleTile?.data?.writing_brief || '' } : null;
-  return { offer_id: offer.id, client: offer.data?.client || '', tiles: offer.data?.tiles || [], reader, slides };
+  const reader = role ? { role, ...about(role) } : null;
+  return { offer_id: offer.id, client: offer.data?.client || '', tiles: offer.data?.tiles || [], reader, product: product ? { id: product, ...about(product) } : null, slides };
 }
 
 // A model's answer: { slides: { <step>: { <field>: text | [{title, value…}], hide?: true } } }.

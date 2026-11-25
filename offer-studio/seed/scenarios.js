@@ -10,7 +10,8 @@
 //     Same slides for every role: only the copy changes.
 //   write: the fields a model writes for the client, each with what to write (`hint`) and a length limit
 //     (`max` characters). A list field (a slide's repeated cards) has `min`/`max` items and `columns`.
-//     `hint_by_role` adds what changes in that field for a role (the model also gets the role's writing brief).
+//     `hint_by_role` / `hint_by_product` add what changes in that field for a role or a product (the model also
+//     gets the role's and the product's writing brief).
 //     Fields without `write` stay as in `data` (e.g. the security features, which come from product material).
 //   optional: the slide starts hidden and is shown only once a model writes it (e.g. the comparison, which
 //     only makes sense when the client mentioned another tool).
@@ -19,6 +20,7 @@
 
 const SAAS = 'product:saas';
 const ONPREM = 'product:on-prem';
+const VAULT = 'product:vault';
 const BOARD = 'role:board';
 const CHAMPION = 'role:champion';
 
@@ -54,6 +56,11 @@ const steps = [
         hint_by_role: {
           [BOARD]: 'what it changes for the organisation (time, risk, control of client data), not how it works.',
           [CHAMPION]: 'what it changes in the team’s daily work (research, drafting, review).',
+        },
+        hint_by_product: {
+          [SAAS]: 'a tool the team can start using right away.',
+          [VAULT]: 'a private environment under the organisation’s control.',
+          [ONPREM]: 'it runs on the organisation’s own infrastructure.',
         },
       },
     },
@@ -214,7 +221,14 @@ const steps = [
     },
     draft: [SAAS, ONPREM],
     write: {
-      lead: { hint: 'One sentence answering the security concern the client raised on the call or in the email. If they raised none, a general sentence about keeping documents private.', max: 160 },
+      lead: {
+        hint: 'One sentence answering the security concern the client raised on the call or in the email. If they raised none, a general sentence about keeping documents private.', max: 160,
+        hint_by_product: {
+          [SAAS]: 'hosted in the European Economic Area, documents never used to train models.',
+          [VAULT]: 'a private environment, documents never used to train models, access per team and matter.',
+          [ONPREM]: 'documents never leave the organisation; IT controls the environment.',
+        },
+      },
     },
     fill: { kind: 'none' },
   },
@@ -279,6 +293,10 @@ const steps = [
           [BOARD]: 'the board does not talk to itself: name a pilot owner and agree on success criteria instead of "Talk to the board".',
           [CHAMPION]: 'keep "Talk to the board": the champion needs the decision makers on board.',
         },
+        hint_by_product: {
+          [SAAS]: 'the IT step is about accounts and sign-in, no server work.',
+          [ONPREM]: 'the IT step is about the server and network access (one IP address).',
+        },
         columns: {
           title: { hint: 'The step, 2–5 words.', max: 35 },
           value: { hint: 'One sentence: why, starting with "To" or "So".', max: 120 },
@@ -330,6 +348,10 @@ const steps = [
         hint_by_role: {
           [BOARD]: 'a decision or a date, not a demo.',
           [CHAMPION]: 'what the champion does next with their team.',
+        },
+        hint_by_product: {
+          [SAAS]: 'the next step can be the 14-day trial.',
+          [ONPREM]: 'the next step usually involves IT (server and network).',
         },
       },
     },
