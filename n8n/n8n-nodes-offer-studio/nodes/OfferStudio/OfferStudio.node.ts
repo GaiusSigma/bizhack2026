@@ -33,14 +33,14 @@ const FIELD_TYPES: Record<Field['kind'], FieldType> = {
 
 const LOCATION_LABEL: Record<Field['location'], string> = {
 	path: '',
-	query: ' (filtr / parametr)',
+	query: ' (filter / parameter)',
 	body: '',
-	file: ' (pole binarne)',
+	file: ' (binary property)',
 	raw: '',
 };
 
 function toMapperField(f: Field): ResourceMapperField {
-	const hint = f.list ? ` – id z ${f.list}` : '';
+	const hint = f.list ? ` – id from ${f.list}` : '';
 	return {
 		id: f.id,
 		displayName: `${f.name}${LOCATION_LABEL[f.location]}${f.description ? `: ${f.description}` : ''}${hint}`,
@@ -49,7 +49,7 @@ function toMapperField(f: Field): ResourceMapperField {
 		canBeUsedToMatch: false,
 		display: true,
 		type: FIELD_TYPES[f.kind],
-		options: f.enum?.map((v) => ({ name: v === '' ? '(puste)' : v, value: v })),
+		options: f.enum?.map((v) => ({ name: v === '' ? '(empty)' : v, value: v })),
 		defaultValue: f.defaultValue ?? (f.location === 'file' ? 'data' : undefined),
 	};
 }
@@ -61,7 +61,7 @@ function parseJsonParam(ctx: IExecuteFunctions, value: unknown, label: string, i
 	try {
 		return JSON.parse(value);
 	} catch {
-		throw new NodeOperationError(ctx.getNode(), `${label}: niepoprawny JSON`, { itemIndex });
+		throw new NodeOperationError(ctx.getNode(), `${label}: invalid JSON`, { itemIndex });
 	}
 }
 
@@ -74,7 +74,7 @@ export class OfferStudio implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["resource"] === "__custom" ? $parameter["method"] + " " + $parameter["path"] : $parameter["operation"]}}',
 		description:
-			'Ofertownik: oferty, slajdy, bloki wiedzy, szablony, PDF. Operacje są czytane na żywo z API Offer Studio.',
+			'Offer Studio: offers, slides, knowledge blocks, templates, PDF. Operations are read live from the Offer Studio API.',
 		defaults: { name: 'Offer Studio' },
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -83,21 +83,21 @@ export class OfferStudio implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Lista operacji i pól pochodzi z /api/openapi.json Offer Studio, więc nowe funkcje ofertownika pojawiają się tu same po jego aktualizacji.',
+					"The operations and fields come from Offer Studio's /api/openapi.json, so new Offer Studio features appear here on their own once it is updated.",
 				name: 'notice',
 				type: 'notice',
 				default: '',
 			},
 			{
-				displayName: 'Zasób',
+				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
 				typeOptions: { loadOptionsMethod: 'getResources' },
-				default: 'Oferty',
+				default: 'Offers',
 			},
 			{
-				displayName: 'Operacja',
+				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
@@ -106,7 +106,7 @@ export class OfferStudio implements INodeType {
 				displayOptions: { hide: { resource: [CUSTOM_RESOURCE] } },
 			},
 			{
-				displayName: 'Pola',
+				displayName: 'Fields',
 				name: 'fields',
 				type: 'resourceMapper',
 				noDataExpression: true,
@@ -117,21 +117,21 @@ export class OfferStudio implements INodeType {
 					resourceMapper: {
 						resourceMapperMethod: 'getFields',
 						mode: 'add',
-						fieldWords: { singular: 'pole', plural: 'pola' },
+						fieldWords: { singular: 'field', plural: 'fields' },
 						addAllFields: true,
 						multiKeyMatch: false,
 						supportAutoMap: false,
 						hideNoDataError: true,
-						noFieldsError: 'Ta operacja nie ma parametrów.',
+						noFieldsError: 'This operation has no parameters.',
 						refreshStaleSchemaOnOpen: true,
 					},
 				},
 				displayOptions: { hide: { resource: [CUSTOM_RESOURCE] } },
 			},
 
-			// ------------------------------------------------ dowolne żądanie
+			// ------------------------------------------------ custom API call
 			{
-				displayName: 'Metoda',
+				displayName: 'Method',
 				name: 'method',
 				type: 'options',
 				options: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => ({ name: m, value: m })),
@@ -139,66 +139,66 @@ export class OfferStudio implements INodeType {
 				displayOptions: { show: { resource: [CUSTOM_RESOURCE] } },
 			},
 			{
-				displayName: 'Ścieżka',
+				displayName: 'Path',
 				name: 'path',
 				type: 'string',
 				default: '/api/offers',
-				placeholder: '/api/offers/gaius-vault-bazowa',
-				description: 'Ścieżka w Offer Studio, zaczyna się od /api/',
+				placeholder: '/api/offers/gaius-vault-base',
+				description: 'Path in Offer Studio, starting with /api/',
 				displayOptions: { show: { resource: [CUSTOM_RESOURCE] } },
 			},
 			{
-				displayName: 'Parametry Zapytania (JSON)',
+				displayName: 'Query Parameters (JSON)',
 				name: 'query',
 				type: 'json',
 				default: '{}',
 				displayOptions: { show: { resource: [CUSTOM_RESOURCE] } },
 			},
 			{
-				displayName: 'Treść (JSON)',
+				displayName: 'Body (JSON)',
 				name: 'body',
 				type: 'json',
 				default: '',
 				displayOptions: { show: { resource: [CUSTOM_RESOURCE], method: ['POST', 'PUT', 'PATCH', 'DELETE'] } },
 			},
 
-			// ------------------------------------------------ opcje
+			// ------------------------------------------------ options
 			{
-				displayName: 'Opcje',
+				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Dodaj opcję',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{
-						displayName: 'Treść JSON',
+						displayName: 'Body JSON',
 						name: 'bodyJson',
 						type: 'json',
 						default: '',
 						description:
-							'Scalana z polami powyżej; tablica (np. kilka bloków naraz) zastępuje całą treść żądania',
+							'Merged with the fields above; an array (e.g. several blocks at once) replaces the whole request body',
 					},
 					{
-						displayName: 'Rozbij Listę Na Elementy',
+						displayName: 'Split List Into Items',
 						name: 'splitArray',
 						type: 'boolean',
 						default: true,
 						description: 'Whether a list response becomes one n8n item per record',
 					},
 					{
-						displayName: 'Pole Binarne Wyniku',
+						displayName: 'Output Binary Property',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
-						description: 'Gdzie zapisać plik z odpowiedzi (PDF, .figcraft)',
+						description: 'Binary property to store the response file in (PDF, .figcraft)',
 					},
 					{
-						displayName: 'Limit Czasu (s)',
+						displayName: 'Timeout (s)',
 						name: 'timeout',
 						type: 'number',
 						typeOptions: { minValue: 1 },
 						default: 300,
-						description: 'Render PDF dużej oferty może chwilę potrwać',
+						description: 'Rendering the PDF of a large offer can take a while',
 					},
 				],
 			},
@@ -212,9 +212,9 @@ export class OfferStudio implements INodeType {
 				return [
 					...spec.tags.map((t) => ({ name: t.name, value: t.name, description: t.description })),
 					{
-						name: 'Dowolne Żądanie',
+						name: 'Custom API Call',
 						value: CUSTOM_RESOURCE,
-						description: 'Dowolna metoda i ścieżka API Offer Studio',
+						description: 'Any method and path of the Offer Studio API',
 					},
 				];
 			},
@@ -234,13 +234,13 @@ export class OfferStudio implements INodeType {
 		resourceMapping: {
 			async getFields(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 				const key = this.getCurrentNodeParameter('operation') as string;
-				if (!key) return { fields: [], emptyFieldsNotice: 'Wybierz operację.' };
+				if (!key) return { fields: [], emptyFieldsNotice: 'Select an operation.' };
 				const spec = await loadSpec(this);
 				const op = spec.operations.find((o) => o.key === key);
-				if (!op) return { fields: [], emptyFieldsNotice: `Offer Studio nie ma już operacji ${key}.` };
+				if (!op) return { fields: [], emptyFieldsNotice: `Offer Studio no longer has the operation ${key}.` };
 				return {
 					fields: op.fields.map(toMapperField),
-					emptyFieldsNotice: 'Ta operacja nie ma parametrów.',
+					emptyFieldsNotice: 'This operation has no parameters.',
 				};
 			},
 		},
@@ -263,8 +263,8 @@ export class OfferStudio implements INodeType {
 					const method = this.getNodeParameter('method', i) as string;
 					let path = String(this.getNodeParameter('path', i) || '').trim();
 					if (!path.startsWith('/')) path = `/${path}`;
-					const qs = parseJsonParam(this, this.getNodeParameter('query', i, '{}'), 'Parametry zapytania', i) as IDataObject;
-					const body = method === 'GET' ? undefined : parseJsonParam(this, this.getNodeParameter('body', i, ''), 'Treść', i);
+					const qs = parseJsonParam(this, this.getNodeParameter('query', i, '{}'), 'Query Parameters', i) as IDataObject;
+					const body = method === 'GET' ? undefined : parseJsonParam(this, this.getNodeParameter('body', i, ''), 'Body', i);
 					res = await studioRequest(this, { method, path, qs, body, timeout });
 				} else {
 					const key = this.getNodeParameter('operation', i) as string;
@@ -272,12 +272,12 @@ export class OfferStudio implements INodeType {
 					if (!op) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`Offer Studio (wersja ${spec!.version}) nie ma operacji "${key}". Otwórz węzeł i wybierz operację ponownie.`,
+							`Offer Studio (version ${spec!.version}) has no operation "${key}". Open the node and select the operation again.`,
 							{ itemIndex: i },
 						);
 					}
 					const values = (this.getNodeParameter('fields.value', i, {}) as IDataObject | null) ?? {};
-					const extraBody = parseJsonParam(this, options.bodyJson, 'Treść JSON', i);
+					const extraBody = parseJsonParam(this, options.bodyJson, 'Body JSON', i);
 					let built;
 					try {
 						built = buildRequest(op, values, extraBody);

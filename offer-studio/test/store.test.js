@@ -20,74 +20,76 @@ const fresh = () => {
   return s;
 };
 
-test('szablon: każdy slajd oferty bazowej istnieje w szablonie i ma swoje pola', () => {
+test('template: every base-offer slide exists in the template and has its fields', () => {
   const parsed = parseTemplate(TEMPLATE_FILE);
   const frames = Object.fromEntries(parsed.frames.map((f) => [f.name, f]));
   for (const s of seedSlides) {
     const f = frames[s.frame];
-    assert.ok(f, `brak slajdu ${s.frame}`);
-    for (const key of Object.keys(s.data)) assert.ok(f.fields.data.includes(key), `${s.frame}: szablon nie ma pola data.${key}`);
+    assert.ok(f, `missing slide ${s.frame}`);
+    for (const key of Object.keys(s.data)) assert.ok(f.fields.data.includes(key), `${s.frame}: template has no data.${key} field`);
   }
   assert.equal(frames['use-case'].slots.length, 6);
-  assert.deepEqual(frames.cennik.fields.sources.sort(), ['blocks', 'lines']);
+  assert.deepEqual(frames.pricing.fields.sources.sort(), ['blocks', 'lines']);
 });
 
-test('wyróżnienia: **x** i [[k:x]] dają zakresy stylów', () => {
-  assert.deepEqual(parseMarks('Gdzie **ucieka** czas'), { text: 'Gdzie ucieka czas', ranges: [{ start: 6, end: 12, run: 1 }] });
-  assert.deepEqual(parseMarks('[[1:12 000 zł]] [[2:/ mies]]'), {
-    text: '12 000 zł / mies',
-    ranges: [{ start: 0, end: 9, run: 1 }, { start: 10, end: 16, run: 2 }],
+test('highlights: **x** and [[k:x]] produce style ranges', () => {
+  assert.deepEqual(parseMarks('Where **time** goes'), { text: 'Where time goes', ranges: [{ start: 6, end: 10, run: 1 }] });
+  assert.deepEqual(parseMarks('[[1:12,000 PLN]] [[2:/ month]]'), {
+    text: '12,000 PLN / month',
+    ranges: [{ start: 0, end: 10, run: 1 }, { start: 11, end: 18, run: 2 }],
   });
 });
 
-test('PATCH scala data, a null usuwa klucz', () => {
+test('PATCH merges data, and null removes a key', () => {
   const s = fresh();
-  s.update('blocks', 'uc-pilne-pismo', { data: { extra: 'x' } });
-  assert.deepEqual(s.get('blocks', 'uc-pilne-pismo').data, { effect: 'szybsza reakcja i większa kontrola ryzyka.', extra: 'x' });
-  s.update('blocks', 'uc-pilne-pismo', { data: { extra: null } });
-  assert.deepEqual(Object.keys(s.get('blocks', 'uc-pilne-pismo').data), ['effect']);
-  s.update('blocks', 'uc-pilne-pismo', { data: { only: 1 } }, { replaceData: true });
-  assert.deepEqual(s.get('blocks', 'uc-pilne-pismo').data, { only: 1 });
+  const { effect } = seed.blocks.find((b) => b.id === 'uc-urgent-letter').data;
+  assert.ok(effect);
+  s.update('blocks', 'uc-urgent-letter', { data: { extra: 'x' } });
+  assert.deepEqual(s.get('blocks', 'uc-urgent-letter').data, { effect, extra: 'x' });
+  s.update('blocks', 'uc-urgent-letter', { data: { extra: null } });
+  assert.deepEqual(Object.keys(s.get('blocks', 'uc-urgent-letter').data), ['effect']);
+  s.update('blocks', 'uc-urgent-letter', { data: { only: 1 } }, { replaceData: true });
+  assert.deepEqual(s.get('blocks', 'uc-urgent-letter').data, { only: 1 });
 });
 
-test('eksport -> import replace odtwarza bazę 1:1 (z plikiem szablonu)', () => {
+test('export -> import replace restores the database 1:1 (with the template file)', () => {
   const a = fresh();
   const dump = JSON.parse(JSON.stringify(a.exportAll()));
   const b = openDb(':memory:');
-  b.insert('blocks', { id: 'do-skasowania', type: 'x', title: 'x' });
+  b.insert('blocks', { id: 'to-delete', type: 'x', title: 'x' });
   const counts = b.importAll(dump, 'replace');
   assert.equal(counts.blocks, seed.blocks.length);
   assert.equal(counts.templates, 1);
-  assert.equal(b.get('blocks', 'do-skasowania'), undefined);
+  assert.equal(b.get('blocks', 'to-delete'), undefined);
   assert.ok(b.templateFile('gaius').file.equals(TEMPLATE_FILE));
   const again = JSON.parse(JSON.stringify(b.exportAll()));
   for (const k of ['blocks', 'templates', 'offers', 'slides']) assert.deepEqual(again[k], dump[k], k);
 });
 
-test('import merge nie kasuje slajdów oferty (bez kaskady)', () => {
+test('import merge does not delete the offer\'s slides (no cascade)', () => {
   const s = fresh();
-  s.importAll({ format: 'offer-studio', version: 2, offers: [{ id: 'gaius-vault-bazowa', name: 'Nowa nazwa', template_id: 'gaius', data: {} }] }, 'merge');
-  const o = s.getOffer('gaius-vault-bazowa');
-  assert.equal(o.name, 'Nowa nazwa');
+  s.importAll({ format: 'offer-studio', version: 2, offers: [{ id: 'gaius-vault-base', name: 'New name', template_id: 'gaius', data: {} }] }, 'merge');
+  const o = s.getOffer('gaius-vault-base');
+  assert.equal(o.name, 'New name');
   assert.equal(o.slides.length, 11);
 });
 
-test('kolejność slajdów, wstawianie na pozycję i duplikat oferty', () => {
+test('slide order, insertion at a position and offer duplicate', () => {
   const s = fresh();
-  const ids = s.getOffer('gaius-vault-bazowa').slides.map((x) => x.id);
-  s.reorderSlides('gaius-vault-bazowa', [...ids].reverse());
-  assert.equal(s.getOffer('gaius-vault-bazowa').slides[0].id, ids.at(-1));
-  const added = s.addSlide('gaius-vault-bazowa', { frame: 'okladka', data: {}, position: 1 });
-  assert.equal(s.getOffer('gaius-vault-bazowa').slides[1].id, added.id);
-  assert.throws(() => s.reorderSlides('gaius-vault-bazowa', ids), /wszystkie slajdy/);
-  const copy = s.duplicateOffer('gaius-vault-bazowa');
+  const ids = s.getOffer('gaius-vault-base').slides.map((x) => x.id);
+  s.reorderSlides('gaius-vault-base', [...ids].reverse());
+  assert.equal(s.getOffer('gaius-vault-base').slides[0].id, ids.at(-1));
+  const added = s.addSlide('gaius-vault-base', { frame: 'cover', data: {}, position: 1 });
+  assert.equal(s.getOffer('gaius-vault-base').slides[1].id, added.id);
+  assert.throws(() => s.reorderSlides('gaius-vault-base', ids), /all slides/);
+  const copy = s.duplicateOffer('gaius-vault-base');
   assert.equal(copy.slides.length, 12);
   assert.equal(copy.template_id, 'gaius');
-  s.remove('offers', 'gaius-vault-bazowa');
-  assert.equal(s.list('slides', 'offer_id = :id', { id: 'gaius-vault-bazowa' }).length, 0);
+  s.remove('offers', 'gaius-vault-base');
+  assert.equal(s.list('slides', 'offer_id = :id', { id: 'gaius-vault-base' }).length, 0);
 });
 
-test('migracja z v1: layout_id -> frame, stare tabele znikają', () => {
+test('migration from v1: layout_id -> frame, old tables are dropped', () => {
   const dir = mkdtempSync(join(tmpdir(), 'os-mig-'));
   const path = join(dir, 'v1.db');
   const old = new DatabaseSync(path);
@@ -104,108 +106,111 @@ test('migracja z v1: layout_id -> frame, stare tabele znikają', () => {
   assert.equal(openDb(path).migratedFromV1, false);
 });
 
-test('komponenty: zestaw @dlaczego nie jest slajdem, slajd ma 6 slotów #pick, seed opisuje każdą kartę', () => {
+test('components: the @why set is not a slide, the slide has 6 #pick slots, the seed describes every card', () => {
   const parsed = parseTemplate(TEMPLATE_FILE);
   assert.ok(!parsed.frames.some((f) => f.name.startsWith('@')));
-  const dl = parsed.frames.find((f) => f.name === 'dlaczego');
-  assert.deepEqual(dl.fields.picks, { dlaczego: 6 });
-  assert.equal(dl.slots.length, 0);
-  assert.ok(!dl.texts.length || dl.texts.every((t) => t.name.startsWith('{{data.')), 'teksty z kart #pick nie są polami slajdu');
+  const why = parsed.frames.find((f) => f.name === 'why');
+  assert.deepEqual(why.fields.picks, { why: 6 });
+  assert.equal(why.slots.length, 0);
+  assert.ok(!why.texts.length || why.texts.every((t) => t.name.startsWith('{{data.')), 'texts from #pick cards are not slide fields');
   const ids = parsed.components.map((c) => c.id).sort();
   assert.deepEqual(ids, seedComponents.map((c) => c.id).sort());
-  const stat = parsed.components.find((c) => c.id === 'dlaczego/pilotaz-3-miesiace');
+  const stat = parsed.components.find((c) => c.id === 'why/pilot-3-months');
   assert.deepEqual(stat.fields.sort(), ['body', 'stat', 'title']);
-  assert.match(stat.text, /3 mies\./);
+  assert.match(stat.text, /3[\s-]*mo/i);
   for (const s of seedSlides) for (const [, picks] of Object.entries(s.picks || {})) for (const p of picks) assert.ok(ids.includes(p.component), p.component);
 });
 
-test('komponenty: synchronizacja zachowuje opisy, odświeża tekst i oznacza brakujące', () => {
+test('components: sync keeps descriptions, refreshes text and marks missing cards', () => {
   const s = fresh();
   const found = describeComponents(parseTemplate(TEMPLATE_FILE)).map((c) => ({ ...c, source: TEMPLATE.id }));
+  const useWhen = seedComponents.find((c) => c.id === 'why/on-premise').use_when;
+  assert.ok(useWhen);
   const first = s.syncComponents(found);
   assert.deepEqual(first.added, []);
-  const row = s.get('components', 'dlaczego/on-premise');
-  assert.match(row.use_when, /Bank/);
-  assert.match(row.figma_text, /On-premise albo model hybrydowy/);
+  const row = s.get('components', 'why/on-premise');
+  assert.equal(row.use_when, useWhen);
+  assert.equal(row.figma_text, found.find((c) => c.id === 'why/on-premise').text);
+  assert.ok(row.figma_text);
   assert.deepEqual(row.fields, ['title', 'body']);
-  const again = s.syncComponents([...found.filter((c) => c.id !== 'dlaczego/on-premise'), { ...found[0], id: 'dlaczego/nowa-karta', key: 'nowa-karta' }]);
-  assert.deepEqual(again, { added: ['dlaczego/nowa-karta'], missing: ['dlaczego/on-premise'] });
-  assert.equal(s.listComponents({ set: 'dlaczego' }).some((c) => c.id === 'dlaczego/on-premise'), false);
-  assert.match(s.get('components', 'dlaczego/on-premise').use_when, /Bank/);
+  const again = s.syncComponents([...found.filter((c) => c.id !== 'why/on-premise'), { ...found[0], id: 'why/new-card', key: 'new-card' }]);
+  assert.deepEqual(again, { added: ['why/new-card'], missing: ['why/on-premise'] });
+  assert.equal(s.listComponents({ set: 'why' }).some((c) => c.id === 'why/on-premise'), false);
+  assert.equal(s.get('components', 'why/on-premise').use_when, useWhen);
   s.syncComponents(found);
-  assert.equal(s.get('components', 'dlaczego/on-premise').missing, false);
-  assert.throws(() => s.insert('components', { id: 'Zle Id', set_name: 'x', key: 'x' }), /Niepoprawne id/);
+  assert.equal(s.get('components', 'why/on-premise').missing, false);
+  assert.throws(() => s.insert('components', { id: 'Bad Id', set_name: 'x', key: 'x' }), /Invalid id/);
 });
 
-test('migracja z v2: slajdy dostają picks, dochodzą tabele komponentów', () => {
+test('migration from v2: slides get picks, component tables are added', () => {
   const dir = mkdtempSync(join(tmpdir(), 'os-mig2-'));
   const path = join(dir, 'v2.db');
   const old = new DatabaseSync(path);
   old.exec(`CREATE TABLE offers (id TEXT PRIMARY KEY, name TEXT NOT NULL, template_id TEXT, data TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE slides (id TEXT PRIMARY KEY, offer_id TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0, frame TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{}', block_ids TEXT NOT NULL DEFAULT '[]', query TEXT, hidden INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
-    INSERT INTO offers VALUES ('o', 'O', 'gaius', '{}', 't', 't'); INSERT INTO slides (id, offer_id, frame, created_at, updated_at) VALUES ('s', 'o', 'dlaczego', 't', 't');
+    INSERT INTO offers VALUES ('o', 'O', 'gaius', '{}', 't', 't'); INSERT INTO slides (id, offer_id, frame, created_at, updated_at) VALUES ('s', 'o', 'why', 't', 't');
     PRAGMA user_version = 2;`);
   old.close();
   const s = openDb(path);
   assert.equal(s.migratedFrom, 2);
   assert.deepEqual(s.get('slides', 's').picks, {});
   assert.deepEqual(s.list('components'), []);
-  s.update('slides', 's', { picks: { dlaczego: [{ component: 'dlaczego/on-premise' }] } });
-  assert.equal(s.get('slides', 's').picks.dlaczego[0].component, 'dlaczego/on-premise');
+  s.update('slides', 's', { picks: { why: [{ component: 'why/on-premise' }] } });
+  assert.equal(s.get('slides', 's').picks.why[0].component, 'why/on-premise');
   assert.equal(openDb(path).migratedFrom, 0);
 });
 
-test('AI: schemat z id kart i polami, porządki w odpowiedzi (atrapa klienta)', async () => {
+test('AI: schema with card ids and fields, response clean-up (mock client)', async () => {
   const s = fresh();
   s.syncComponents(describeComponents(parseTemplate(TEMPLATE_FILE)).map((c) => ({ ...c, source: TEMPLATE.id })));
-  const components = s.listComponents({ set: 'dlaczego' });
+  const components = s.listComponents({ set: 'why' });
   let request;
   const api = { beta: { messages: { parse: async (params) => {
     request = params;
     return {
       stop_reason: 'end_turn', model: params.model, usage: {},
-      parsed_output: { note: 'bank', sets: [{ set: 'dlaczego', picks: [
-        { component: 'dlaczego/on-premise-wyroznienie', reason: 'regulowany', title: 'On-premise w banku', body: null, stat: null },
-        { component: 'dlaczego/on-premise-wyroznienie', reason: 'dubel', title: null, body: null, stat: null },
-        ...['prywatne-legal-ai', 'odpowiedzi-ze-zrodlami', 'wdrozenie-rutyna', 'bezpieczny-start', 'jedna-usluga', 'bez-blokady']
-          .map((k) => ({ component: `dlaczego/${k}`, reason: 'x', title: null, body: '', stat: null })),
+      parsed_output: { note: 'bank', sets: [{ set: 'why', picks: [
+        { component: 'why/on-premise-highlight', reason: 'regulated', title: 'On-premise at the bank', body: null, stat: null },
+        { component: 'why/on-premise-highlight', reason: 'duplicate', title: null, body: null, stat: null },
+        ...['private-legal-ai', 'sourced-answers', 'rollout-routine', 'safe-start', 'one-service', 'no-lock-in']
+          .map((k) => ({ component: `why/${k}`, reason: 'x', title: null, body: '', stat: null })),
       ] }] },
     };
   } } } };
   const { pickComponents } = await import('../src/ai.js');
-  const r = await pickComponents({ api, offer: { name: 'O', data: { client: 'Bank' } }, slide: { frame: 'dlaczego', data: {} }, brief: 'bank', sets: [{ set: 'dlaczego', slots: 6, rules: 'r', components }] });
+  const r = await pickComponents({ api, offer: { name: 'O', data: { client: 'Bank' } }, slide: { frame: 'why', data: {} }, brief: 'bank', sets: [{ set: 'why', slots: 6, rules: 'r', components }] });
   const schema = request.output_config.format.schema;
-  assert.ok(JSON.stringify(schema).includes('dlaczego/pilotaz-3-miesiace'), 'id kart w schemacie');
-  assert.ok(JSON.stringify(schema).includes('"stat"'), 'pola kart w schemacie');
+  assert.ok(JSON.stringify(schema).includes('why/pilot-3-months'), 'card ids in the schema');
+  assert.ok(JSON.stringify(schema).includes('"stat"'), 'card fields in the schema');
   assert.match(request.messages[0].content, /Bank/);
-  assert.equal(r.picks.dlaczego.length, 6);
-  assert.deepEqual(r.picks.dlaczego[0], { component: 'dlaczego/on-premise-wyroznienie', reason: 'regulowany', data: { title: 'On-premise w banku' } });
-  assert.equal(r.picks.dlaczego.filter((p) => p.component === 'dlaczego/on-premise-wyroznienie').length, 1);
-  assert.ok(r.warnings.some((w) => /nadmiar/.test(w)));
+  assert.equal(r.picks.why.length, 6);
+  assert.deepEqual(r.picks.why[0], { component: 'why/on-premise-highlight', reason: 'regulated', data: { title: 'On-premise at the bank' } });
+  assert.equal(r.picks.why.filter((p) => p.component === 'why/on-premise-highlight').length, 1);
+  assert.ok(r.warnings.some((w) => /extras dropped/.test(w)));
 });
 
-// Render przez prawdziwy figcraft-cli, jeśli jest dostępny (lokalnie z instalacji FigCraft, w Dockerze z obrazu).
+// Render with the real figcraft-cli if available (locally from the FigCraft install, in Docker from the image).
 const cli = process.env.FIGCRAFT_CLI || (process.platform === 'win32' ? 'C:\\Program Files\\ArtCraft\\FigCraft\\figcraft-cli.exe' : 'figcraft-cli');
 let hasCli = true;
 try { execFileSync(cli, ['--version'], { stdio: 'ignore' }); } catch { hasCli = false; }
 
-test('render PDF przez figcraft-cli: dodatkowe i ukryte karty', { skip: !hasCli && 'brak figcraft-cli' }, async () => {
+test('PDF render with figcraft-cli: extra and hidden cards', { skip: !hasCli && 'no figcraft-cli' }, async () => {
   const parsed = parseTemplate(TEMPLATE_FILE);
-  const card = (i) => ({ title: `Karta ${i}`, body: `Opis ${i}`, effect: `efekt ${i}` });
+  const card = (i) => ({ title: `Card ${i}`, body: `Description ${i}`, effect: `effect ${i}` });
   const pdf = await renderPdf({
     templateBuf: TEMPLATE_FILE,
     parsed,
     offer: { client: 'ACME', price: '1 000' },
     slides: [
-      { frame: 'use-case', data: { title: 'Osiem kart', lead: '' }, items: { blocks: Array.from({ length: 8 }, (_, i) => card(i + 1)) } },
-      { frame: 'czym-jest', data: { title: 'Dwie ', title_accent: 'karty' }, items: { blocks: [card(1), card(2)] } },
+      { frame: 'use-case', data: { title: 'Eight cards', lead: '' }, items: { blocks: Array.from({ length: 8 }, (_, i) => card(i + 1)) } },
+      { frame: 'what-is', data: { title: 'Two ', title_accent: 'cards' }, items: { blocks: [card(1), card(2)] } },
     ],
   });
   assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
   assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length, 2);
 });
 
-// Minimalny dokument FigCraft JSON z jedną stroną i jednym slajdem (tak wygląda „JSON per page”).
+// Minimal FigCraft JSON document with one page and one slide (this is what "JSON per page" looks like).
 const caseJson = {
   format: 'figcraft', version: 1, name: 'case', pages: [1], next_id: 5, current_page: 1, imageIndex: [],
   styles: [], variables: { collections: [], variables: [] }, document_colors: [], comments: [],
@@ -213,14 +218,14 @@ const caseJson = {
     1: { id: 1, name: 'Page 1', type: 'page', children: [2], width: 0, height: 0 },
     2: { id: 2, name: 'case-study', type: 'frame', parent: 1, children: [3], width: 1920, height: 1080,
       fills: [{ type: 'solid', color: { r: 0.11, g: 0.12, b: 0.13, a: 1 }, opacity: 1, visible: true, blend: 'normal' }] },
-    3: { id: 3, name: '{{data.title}}', type: 'text', parent: 2, characters: 'Tytuł', width: 1200, height: 100,
+    3: { id: 3, name: '{{data.title}}', type: 'text', parent: 2, characters: 'Title', width: 1200, height: 100,
       transform: [1, 0, 0, 1, 100, 100], auto_resize: 'height',
       style: { font_family: 'Inter', font_style: 'Regular', font_size: 64, line_height: { unit: 'auto' }, letter_spacing: { unit: 'percent', value: 0 }, decoration: 'none', case: 'original', fills: null, link: null },
       fills: [{ type: 'solid', color: { r: 1, g: 1, b: 1, a: 1 }, opacity: 1, visible: true, blend: 'normal' }] },
   },
 };
 
-test('biblioteka: JSON strony + szablon -> jeden PDF ze slajdami z obu plików', { skip: !hasCli && 'brak figcraft-cli' }, async () => {
+test('library: page JSON + template -> one PDF with slides from both files', { skip: !hasCli && 'no figcraft-cli' }, async () => {
   const caseFile = await normalizeUpload(Buffer.from(JSON.stringify(caseJson)), 'case.json');
   const caseParsed = parseTemplate(caseFile);
   assert.deepEqual(caseParsed.frames.map((f) => [f.name, f.fields.data]), [['case-study', ['title']]]);
@@ -237,38 +242,39 @@ test('biblioteka: JSON strony + szablon -> jeden PDF ze slajdami z obu plików',
     parsed: lib.parsed,
     offer: { client: 'ACME' },
     slides: [
-      { frame: 'okladka', data: { title: 'Gaius Vault' }, items: {} },
+      { frame: 'cover', data: { title: 'Gaius Vault' }, items: {} },
       { frame: 'case-study', data: { title: 'Case study: ACME' }, items: {} },
     ],
   });
   assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length, 2);
 });
 
-test('render: wybrane komponenty zastępują sloty #pick w kolejności, z nadpisanym tekstem', { skip: !hasCli && 'brak figcraft-cli' }, async () => {
+test('render: picked components replace #pick slots in order, with overridden text', { skip: !hasCli && 'no figcraft-cli' }, async () => {
   const parsed = parseTemplate(TEMPLATE_FILE);
-  const comp = (k) => parsed.components.find((c) => c.id === `dlaczego/${k}`);
-  const keys = ['on-premise', 'pilotaz-3-miesiace', 'jedna-usluga-wyroznienie'];
+  const comp = (k) => parsed.components.find((c) => c.id === `why/${k}`);
+  const keys = ['on-premise', 'pilot-3-months', 'one-service-highlight'];
   const file = await renderFigcraft({
     templateBuf: TEMPLATE_FILE,
     parsed,
     offer: {},
-    slides: [{ frame: 'dlaczego', data: { title: 'Dlaczego ', title_accent: 'Vault?' }, items: {},
-      picks: { dlaczego: keys.map((k) => ({ comp: comp(k), data: k === 'on-premise' ? { title: 'On-premise w ACME' } : {} })) } }],
+    slides: [{ frame: 'why', data: { title: 'Why ', title_accent: 'Vault?' }, items: {},
+      picks: { why: keys.map((k) => ({ comp: comp(k), data: k === 'on-premise' ? { title: 'On-premise at ACME' } : {} })) } }],
   });
   const doc = JSON.parse(Buffer.from(unzipSync(new Uint8Array(file))['document.json']).toString('utf8'));
   const nodes = Object.values(doc.nodes);
-  assert.equal(nodes.filter((n) => n.name === '#pick:dlaczego').length, 0, 'sloty znikają');
-  assert.ok(!nodes.some((n) => n.name?.startsWith('@')), 'zestaw komponentów nie trafia do oferty');
+  assert.equal(nodes.filter((n) => n.name === '#pick:why').length, 0, 'slots are removed');
+  assert.ok(!nodes.some((n) => n.name?.startsWith('@')), 'the component set does not end up in the offer');
   const grid = nodes.find((n) => n.name === 'Frame 62');
   assert.deepEqual(grid.children.map((id) => doc.nodes[String(id)].name), keys);
   const onPrem = doc.nodes[String(grid.children[0])];
   const texts = [];
   const walk = (id) => { const n = doc.nodes[String(id)]; if (n.type === 'text') texts.push(n.characters); (n.children || []).forEach(walk); };
   walk(onPrem.id);
-  assert.ok(texts.includes('On-premise w ACME'));
-  assert.ok(texts.some((t) => t.startsWith('Środowisko w infrastrukturze')), 'pole bez nadpisania zostaje z FigCraft');
+  assert.ok(texts.includes('On-premise at ACME'));
+  const drawn = comp('on-premise').text;
+  assert.ok(texts.some((t) => t && t !== 'On-premise at ACME' && t.length > 20 && drawn.includes(t.trim())), 'a field without an override keeps the FigCraft text');
 });
 
-test('nieobsługiwany format pliku jest odrzucany', async () => {
-  await assert.rejects(normalizeUpload(Buffer.from('x'), 'notatki.txt'), /Nieobsługiwany plik/);
+test('an unsupported file format is rejected', async () => {
+  await assert.rejects(normalizeUpload(Buffer.from('x'), 'notes.txt'), /Unsupported file/);
 });

@@ -1,17 +1,17 @@
-# n8n z wbudowanymi węzłami Offer Studio (n8n-nodes-offer-studio).
+# n8n with the built-in Offer Studio nodes (n8n-nodes-offer-studio).
 #
-# Węzły ładuje mechanizm N8N_CUSTOM_EXTENSIONS: paczka leży w /opt/n8n-custom/node_modules/,
-# poza wolumenem /home/node/.n8n, więc każdy rebuild obrazu daje aktualną wersję węzłów.
-# Typy węzłów w workflowach: CUSTOM.offerStudio i CUSTOM.offerStudioTrigger.
+# The nodes are loaded via N8N_CUSTOM_EXTENSIONS: the package lives in /opt/n8n-custom/node_modules/,
+# outside the /home/node/.n8n volume, so every image rebuild ships the current version of the nodes.
+# Node types in workflows: CUSTOM.offerStudio and CUSTOM.offerStudioTrigger.
 #
-# Przy podbiciu n8n zmień N8N_VERSION tutaj i tag n8nio/runners w docker-compose.yml.
+# When upgrading n8n, change N8N_VERSION here and the n8nio/runners tag in docker-compose.yml.
 ARG N8N_VERSION=2.50.0
 
 FROM node:22-alpine AS nodes
 WORKDIR /build
 COPY n8n-nodes-offer-studio/package.json n8n-nodes-offer-studio/package-lock.json ./
-# --ignore-scripts: n8n-workflow jest potrzebne tylko do kompilacji (typy); w runtime węzeł
-# bierze n8n-workflow z samego n8n, a natywne dodatki zależności (isolated-vm) są zbędne.
+# --ignore-scripts: n8n-workflow is only needed for compilation (types); at runtime the node
+# uses n8n's own n8n-workflow, and the dependencies' native add-ons (isolated-vm) are not needed.
 RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY n8n-nodes-offer-studio/ ./
 RUN npm run build \

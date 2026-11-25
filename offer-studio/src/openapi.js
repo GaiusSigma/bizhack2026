@@ -1,21 +1,21 @@
-// Opis API w formacie OpenAPI 3.1, budowany z tras zarejestrowanych w Hono.
+// API description in OpenAPI 3.1 format, built from the routes registered in Hono.
 //
-// Z tego opisu korzysta węzeł n8n „Offer Studio” (katalog n8n/): czyta /api/openapi.json na żywo
-// i sam buduje listę operacji oraz pól. Nowy endpoint pojawia się więc w n8n po redeployu
-// Offer Studio, bez przebudowy n8n.
+// The "Offer Studio" n8n node (n8n/ directory) uses it: it reads /api/openapi.json live
+// and builds its list of operations and fields from it. A new endpoint therefore shows up in n8n
+// after an Offer Studio redeploy, without rebuilding n8n.
 //
-// Dodajesz trasę w server.js -> dopisz jej opis w DOCS (klucz "METHOD /api/ścieżka").
-// Trasa bez opisu i tak trafia do specyfikacji (z ogólnym polem JSON), ale test
-// `openapi: każda trasa API ma opis` przypomni o uzupełnieniu.
+// Adding a route in server.js -> add its description to DOCS (key "METHOD /api/path").
+// A route without a description still goes into the spec (with a generic JSON field), but the test
+// `openapi: every API route is documented` will remind you to fill it in.
 //
-// Rozszerzenia czytane przez węzeł n8n:
-//   x-n8n-list: '/api/offers'  przy parametrze/polu: lista do wyboru (id + name/title)
-//   x-n8n-hidden: true         operacja nie jest pokazywana jako akcja (np. strumień SSE)
-//   x-raw-body: true           całe body to jeden JSON (np. import bazy)
+// Extensions read by the n8n node:
+//   x-n8n-list: '/api/offers'  on a parameter/field: a pick list (id + name/title)
+//   x-n8n-hidden: true         the operation is not shown as an action (e.g. the SSE stream)
+//   x-raw-body: true           the whole body is a single JSON (e.g. database import)
 
 const json = (schema, description = 'OK') => ({ description, content: { 'application/json': { schema } } });
 const binary = (type, description) => ({ description, content: { [type]: { schema: { type: 'string', format: 'binary' } } } });
-const noContent = { description: 'Usunięto' };
+const noContent = { description: 'Deleted' };
 
 const anyObject = { type: 'object', additionalProperties: true };
 const list = (ref) => ({ type: 'array', items: { $ref: `#/components/schemas/${ref}` } });
@@ -25,55 +25,55 @@ const idParam = (what, listPath) => ({
   name: 'id',
   in: 'path',
   required: true,
-  description: `Id: ${what}`,
+  description: `Id of the ${what}`,
   schema: { type: 'string' },
   ...(listPath ? { 'x-n8n-list': listPath } : {}),
 });
 const replaceParam = {
   name: 'replace',
   in: 'query',
-  description: '1 = zastąp całe pole data zamiast scalać',
+  description: '1 = replace the whole data field instead of merging',
   schema: { type: 'string', enum: ['', '1'] },
 };
 
 const TAGS = [
-  { name: 'Oferty', description: 'Oferty: zmienne, slajdy, PDF i plik .figcraft' },
-  { name: 'Slajdy', description: 'Slajdy oferty' },
-  { name: 'Bloki wiedzy', description: 'Use case\'y, problemy, argumenty i inne bloki' },
-  { name: 'Szablony', description: 'Biblioteka slajdów: pliki FigCraft, każda ramka najwyższego poziomu = slajd' },
-  { name: 'Komponenty', description: 'Wymienne karty z zestawów @… (sloty #pick:…), ich opisy dla AI i dobór kart przez Claude' },
-  { name: 'Baza', description: 'Eksport i import całej bazy' },
-  { name: 'System', description: 'Opis API, metadane, zdarzenia' },
+  { name: 'Offers', description: 'Offers: variables, slides, PDF and .figcraft file' },
+  { name: 'Slides', description: 'Offer slides' },
+  { name: 'Knowledge blocks', description: 'Use cases, problems, arguments and other blocks' },
+  { name: 'Templates', description: 'Slide library: FigCraft files, every top-level frame = a slide' },
+  { name: 'Components', description: 'Swappable cards from @… sets (#pick:… slots), their descriptions for the AI and card picking by Claude' },
+  { name: 'Database', description: 'Export and import of the whole database' },
+  { name: 'System', description: 'API description, metadata, events' },
 ];
 
 const blockFields = {
-  type: { type: 'string', description: 'Typ bloku, np. use_case, problem, argument' },
-  title: { type: 'string', description: 'Tytuł' },
-  body: { type: 'string', description: 'Treść' },
-  data: { type: 'object', description: 'Pola specyficzne dla typu, np. {"effect": "..."}' },
-  tags: { type: 'array', items: { type: 'string' }, description: 'Tagi, np. ["kancelaria"]' },
+  type: { type: 'string', description: 'Block type, e.g. use_case, problem, argument' },
+  title: { type: 'string', description: 'Title' },
+  body: { type: 'string', description: 'Body' },
+  data: { type: 'object', description: 'Type-specific fields, e.g. {"effect": "..."}' },
+  tags: { type: 'array', items: { type: 'string' }, description: 'Tags, e.g. ["law-firm"]' },
 };
 const slideFields = {
-  frame: { type: 'string', description: 'Nazwa slajdu w szablonie FigCraft' },
-  data: { type: 'object', description: 'Treść slajdu, np. {"title": "..."}' },
-  block_ids: { type: 'array', items: { type: 'string' }, description: 'Konkretne bloki, w tej kolejności' },
-  query: { type: 'object', description: 'Bloki z zapytania: {"type": "use_case", "tag": "kancelaria", "limit": 6}' },
-  picks: { type: 'object', description: 'Karty w slotach #pick: {"dlaczego": [{"component": "dlaczego/on-premise", "data": {"title": "..."}}]}' },
-  position: { type: 'number', description: 'Pozycja na liście slajdów (od 0)' },
-  hidden: { type: 'boolean', description: 'Ukryty slajd (pomijany w PDF)' },
+  frame: { type: 'string', description: 'Slide name in the FigCraft template' },
+  data: { type: 'object', description: 'Slide content, e.g. {"title": "..."}' },
+  block_ids: { type: 'array', items: { type: 'string' }, description: 'Specific blocks, in this order' },
+  query: { type: 'object', description: 'Blocks from a query: {"type": "use_case", "tag": "law-firm", "limit": 6}' },
+  picks: { type: 'object', description: 'Cards in #pick slots: {"why": [{"component": "why/on-premise", "data": {"title": "..."}}]}' },
+  position: { type: 'number', description: 'Position in the slide list (from 0)' },
+  hidden: { type: 'boolean', description: 'Hidden slide (skipped in the PDF)' },
 };
 const componentFields = {
-  title: { type: 'string', description: 'Krótka nazwa karty' },
-  description: { type: 'string', description: 'Co karta pokazuje (treść, wygląd)' },
-  use_when: { type: 'string', description: 'Kiedy AI ma ją wybrać' },
-  avoid_when: { type: 'string', description: 'Kiedy jej nie wybierać' },
-  topic: { type: 'string', description: 'Temat: warianty jednego argumentu mają ten sam' },
-  variant: { type: 'string', description: 'Wariant, np. zwykla, wyroznienie, liczba' },
-  tags: { type: 'array', items: { type: 'string' }, description: 'Tagi' },
-  data: { type: 'object', description: 'Stałe nadpisania pól {{…}} karty' },
+  title: { type: 'string', description: 'Short card name' },
+  description: { type: 'string', description: 'What the card shows (content, look)' },
+  use_when: { type: 'string', description: 'When the AI should pick it' },
+  avoid_when: { type: 'string', description: 'When not to pick it' },
+  topic: { type: 'string', description: 'Topic: variants of one argument share it' },
+  variant: { type: 'string', description: 'Variant, e.g. regular, highlight, stat' },
+  tags: { type: 'array', items: { type: 'string' }, description: 'Tags' },
+  data: { type: 'object', description: 'Fixed overrides of the card\'s {{…}} fields' },
 };
-const setParam = { name: 'set', in: 'path', required: true, description: 'Zestaw (nazwa ramki @… bez @)', schema: { type: 'string' } };
-const keyParam = { name: 'key', in: 'path', required: true, description: 'Klucz karty (druga część id, np. on-premise)', schema: { type: 'string' } };
+const setParam = { name: 'set', in: 'path', required: true, description: 'Set (name of the @… frame without the @)', schema: { type: 'string' } };
+const keyParam = { name: 'key', in: 'path', required: true, description: 'Card key (second part of the id, e.g. on-premise)', schema: { type: 'string' } };
 
 const SCHEMAS = {
   Block: {
@@ -103,23 +103,23 @@ const SCHEMAS = {
     type: 'object',
     properties: {
       frame: { type: 'string' }, source: { type: 'string' }, source_name: { type: 'string' }, width: { type: 'number' }, height: { type: 'number' },
-      fields: { type: 'object', description: '{data, item, sources, picks: {zestaw: liczba slotów}}' }, slots: { type: 'number' }, thumb: { type: 'string' },
+      fields: { type: 'object', description: '{data, item, sources, picks: {set: slot count}}' }, slots: { type: 'number' }, thumb: { type: 'string' },
     },
   },
   Component: {
     type: 'object',
     properties: {
-      id: { type: 'string', description: 'zestaw/klucz' }, set_name: { type: 'string' }, key: { type: 'string' }, source: { type: 'string' },
+      id: { type: 'string', description: 'set/key' }, set_name: { type: 'string' }, key: { type: 'string' }, source: { type: 'string' },
       ...componentFields,
-      figma_text: { type: 'string', description: 'Tekst narysowany w FigCraft' },
-      fields: { type: 'array', items: { type: 'string' }, description: 'Pola {{…}} karty' },
-      missing: { type: 'boolean', description: 'Karty nie ma już w bibliotece' },
+      figma_text: { type: 'string', description: 'Text drawn in FigCraft' },
+      fields: { type: 'array', items: { type: 'string' }, description: 'The card\'s {{…}} fields' },
+      missing: { type: 'boolean', description: 'The card is no longer in the library' },
       thumb: { type: 'string' }, created_at: { type: 'string' }, updated_at: { type: 'string' },
     },
   },
   ComponentSet: {
     type: 'object',
-    properties: { id: { type: 'string' }, title: { type: 'string' }, rules: { type: 'string', description: 'Zasady doboru dla AI' }, components: { type: 'number' } },
+    properties: { id: { type: 'string' }, title: { type: 'string' }, rules: { type: 'string', description: 'Picking rules for the AI' }, components: { type: 'number' } },
   },
 };
 
@@ -131,79 +131,79 @@ const body = (properties, required = []) => ({
 export const DOCS = {
   // ---------------------------------------------------------------- system
   'GET /api/openapi.json': {
-    tag: 'System', operationId: 'getOpenApi', summary: 'Opis API (OpenAPI)',
+    tag: 'System', operationId: 'getOpenApi', summary: 'API description (OpenAPI)',
     responses: { 200: json(anyObject) },
   },
   'GET /api/meta': {
-    tag: 'System', operationId: 'getMeta', summary: 'Typy i tagi w użyciu',
-    description: 'Typy bloków, tagi i adres FigCraft web',
+    tag: 'System', operationId: 'getMeta', summary: 'Types and tags in use',
+    description: 'Block types, tags and the FigCraft web URL',
     responses: { 200: json(anyObject) },
   },
   'GET /api/events': {
-    tag: 'System', operationId: 'streamEvents', summary: 'Strumień zmian (SSE)',
-    description: 'Server-Sent Events: {table, id, offer_id} po każdej zmianie. W n8n: węzeł Offer Studio Trigger.',
+    tag: 'System', operationId: 'streamEvents', summary: 'Change stream (SSE)',
+    description: 'Server-Sent Events: {table, id, offer_id} after every change. In n8n: the Offer Studio Trigger node.',
     'x-n8n-hidden': true,
     responses: { 200: { description: 'text/event-stream', content: { 'text/event-stream': { schema: { type: 'string' } } } } },
   },
 
-  // ---------------------------------------------------------------- bloki
+  // ---------------------------------------------------------------- knowledge blocks
   'GET /api/blocks': {
-    tag: 'Bloki wiedzy', operationId: 'listBlocks', summary: 'Lista bloków',
+    tag: 'Knowledge blocks', operationId: 'listBlocks', summary: 'List blocks',
     parameters: [
-      { name: 'type', in: 'query', description: 'Tylko bloki tego typu', schema: { type: 'string' } },
-      { name: 'tag', in: 'query', description: 'Tylko bloki z tym tagiem', schema: { type: 'string' } },
-      { name: 'q', in: 'query', description: 'Szukaj w tytule i treści', schema: { type: 'string' } },
+      { name: 'type', in: 'query', description: 'Only blocks of this type', schema: { type: 'string' } },
+      { name: 'tag', in: 'query', description: 'Only blocks with this tag', schema: { type: 'string' } },
+      { name: 'q', in: 'query', description: 'Search in title and body', schema: { type: 'string' } },
     ],
     responses: { 200: json(list('Block')) },
   },
   'GET /api/blocks/:id': {
-    tag: 'Bloki wiedzy', operationId: 'getBlock', summary: 'Pobierz blok',
-    parameters: [idParam('bloku', '/api/blocks')],
+    tag: 'Knowledge blocks', operationId: 'getBlock', summary: 'Get a block',
+    parameters: [idParam('block', '/api/blocks')],
     responses: { 200: json(one('Block')) },
   },
   'POST /api/blocks': {
-    tag: 'Bloki wiedzy', operationId: 'createBlock', summary: 'Dodaj blok',
-    description: 'Jeden blok albo tablica bloków (tablicę podaj w opcji „Treść JSON”)',
-    requestBody: body({ id: { type: 'string', description: 'Własne id (opcjonalnie)' }, ...blockFields }, ['type']),
+    tag: 'Knowledge blocks', operationId: 'createBlock', summary: 'Create a block',
+    description: 'One block or an array of blocks (pass the array in the "Body (JSON)" option)',
+    requestBody: body({ id: { type: 'string', description: 'Custom id (optional)' }, ...blockFields }, ['type']),
     responses: { 201: json(one('Block'), 'Utworzono') },
   },
   'PATCH /api/blocks/:id': {
-    tag: 'Bloki wiedzy', operationId: 'updateBlock', summary: 'Zmień blok',
-    description: 'Pole data jest scalane (klucz = null usuwa pole), chyba że replace=1',
-    parameters: [idParam('bloku', '/api/blocks'), replaceParam],
+    tag: 'Knowledge blocks', operationId: 'updateBlock', summary: 'Update a block',
+    description: 'The data field is merged (key = null removes the field), unless replace=1',
+    parameters: [idParam('block', '/api/blocks'), replaceParam],
     requestBody: body(blockFields),
     responses: { 200: json(one('Block')) },
   },
   'DELETE /api/blocks/:id': {
-    tag: 'Bloki wiedzy', operationId: 'deleteBlock', summary: 'Usuń blok',
-    parameters: [idParam('bloku', '/api/blocks')],
+    tag: 'Knowledge blocks', operationId: 'deleteBlock', summary: 'Delete a block',
+    parameters: [idParam('block', '/api/blocks')],
     responses: { 204: noContent },
   },
 
-  // ---------------------------------------------------------------- szablony
+  // ---------------------------------------------------------------- templates
   'GET /api/templates': {
-    tag: 'Szablony', operationId: 'listTemplates', summary: 'Lista szablonów',
-    description: 'Z opisem slajdów: pola data.*, karty #item i ich pola',
+    tag: 'Templates', operationId: 'listTemplates', summary: 'List templates',
+    description: 'With slide descriptions: data.* fields, #item cards and their fields',
     responses: { 200: json(list('Template')) },
   },
   'GET /api/templates/:id': {
-    tag: 'Szablony', operationId: 'getTemplate', summary: 'Pobierz szablon',
-    parameters: [idParam('szablonu', '/api/templates')],
+    tag: 'Templates', operationId: 'getTemplate', summary: 'Get a template',
+    parameters: [idParam('template', '/api/templates')],
     responses: { 200: json(one('Template')) },
   },
   'GET /api/templates/:id/file': {
-    tag: 'Szablony', operationId: 'downloadTemplate', summary: 'Pobierz plik .figcraft szablonu',
-    parameters: [idParam('szablonu', '/api/templates')],
-    responses: { 200: binary('application/octet-stream', 'Plik .figcraft') },
+    tag: 'Templates', operationId: 'downloadTemplate', summary: 'Download the template .figcraft file',
+    parameters: [idParam('template', '/api/templates')],
+    responses: { 200: binary('application/octet-stream', '.figcraft file') },
   },
   'GET /api/library': {
-    tag: 'Szablony', operationId: 'listLibrarySlides', summary: 'Wszystkie slajdy biblioteki',
-    description: 'Slajdy ze wszystkich plików: pola, karty #item, sloty #pick i miniatura',
+    tag: 'Templates', operationId: 'listLibrarySlides', summary: 'All library slides',
+    description: 'Slides from all files: fields, #item cards, #pick slots and thumbnail',
     responses: { 200: json(list('LibrarySlide')) },
   },
   'POST /api/templates': {
-    tag: 'Szablony', operationId: 'uploadTemplate', summary: 'Wgraj plik ze slajdami',
-    description: 'multipart: .figcraft, .json, .fig, .penpot, .sketch albo .svg (konwersja przez FigCraft). Z content-type application/json: sam JSON strony/dokumentu, id i name w query. Istniejące id = podmiana pliku. Nazwy slajdów i komponentów muszą być unikalne w bibliotece (409)',
+    tag: 'Templates', operationId: 'uploadTemplate', summary: 'Upload a slide file',
+    description: 'multipart: .figcraft, .json, .fig, .penpot, .sketch or .svg (converted by FigCraft). With content-type application/json: raw page/document JSON, id and name in the query. An existing id = file replacement. Slide and component names must be unique in the library (409)',
     requestBody: {
       required: true,
       content: {
@@ -212,9 +212,9 @@ export const DOCS = {
             type: 'object',
             required: ['file'],
             properties: {
-              file: { type: 'string', format: 'binary', description: 'Plik .figcraft, .json, .fig, .penpot, .sketch albo .svg' },
-              id: { type: 'string', description: 'Id szablonu (domyślnie z nazwy pliku)' },
-              name: { type: 'string', description: 'Nazwa szablonu' },
+              file: { type: 'string', format: 'binary', description: 'A .figcraft, .json, .fig, .penpot, .sketch or .svg file' },
+              id: { type: 'string', description: 'Template id (defaults to the file name)' },
+              name: { type: 'string', description: 'Template name' },
             },
           },
         },
@@ -223,183 +223,183 @@ export const DOCS = {
     responses: { 201: json(one('Template'), 'Utworzono') },
   },
   'PATCH /api/templates/:id': {
-    tag: 'Szablony', operationId: 'updateTemplate', summary: 'Zmień nazwę szablonu',
-    parameters: [idParam('szablonu', '/api/templates')],
-    requestBody: body({ name: { type: 'string', description: 'Nowa nazwa' } }, ['name']),
+    tag: 'Templates', operationId: 'updateTemplate', summary: 'Rename a template',
+    parameters: [idParam('template', '/api/templates')],
+    requestBody: body({ name: { type: 'string', description: 'New name' } }, ['name']),
     responses: { 200: json(one('Template')) },
   },
   'DELETE /api/templates/:id': {
-    tag: 'Szablony', operationId: 'deleteTemplate', summary: 'Usuń szablon',
-    parameters: [idParam('szablonu', '/api/templates')],
+    tag: 'Templates', operationId: 'deleteTemplate', summary: 'Delete a template',
+    parameters: [idParam('template', '/api/templates')],
     responses: { 204: noContent },
   },
 
-  // ---------------------------------------------------------------- oferty
+  // ---------------------------------------------------------------- offers
   'GET /api/offers': {
-    tag: 'Oferty', operationId: 'listOffers', summary: 'Lista ofert',
+    tag: 'Offers', operationId: 'listOffers', summary: 'List offers',
     responses: { 200: json(list('Offer')) },
   },
   'GET /api/offers/:id': {
-    tag: 'Oferty', operationId: 'getOffer', summary: 'Pobierz ofertę ze slajdami',
-    parameters: [idParam('oferty', '/api/offers')],
+    tag: 'Offers', operationId: 'getOffer', summary: 'Get an offer with its slides',
+    parameters: [idParam('offer', '/api/offers')],
     responses: { 200: json(one('Offer')) },
   },
   'POST /api/offers': {
-    tag: 'Oferty', operationId: 'createOffer', summary: 'Utwórz ofertę',
+    tag: 'Offers', operationId: 'createOffer', summary: 'Create an offer',
     requestBody: body({
-      id: { type: 'string', description: 'Własne id (opcjonalnie)' },
-      name: { type: 'string', description: 'Nazwa oferty' },
-      template_id: { type: 'string', description: 'Szablon (domyślnie pierwszy)', 'x-n8n-list': '/api/templates' },
-      data: { type: 'object', description: 'Zmienne oferty, np. {"client": "ACME S.A.", "price": "12 000"}' },
-      slides: { type: 'array', items: anyObject, description: 'Slajdy: [{frame, data, block_ids?, query?}]' },
+      id: { type: 'string', description: 'Custom id (optional)' },
+      name: { type: 'string', description: 'Offer name' },
+      template_id: { type: 'string', description: 'Template (defaults to the first one)', 'x-n8n-list': '/api/templates' },
+      data: { type: 'object', description: 'Offer variables, e.g. {"client": "ACME Inc.", "price": "12,000"}' },
+      slides: { type: 'array', items: anyObject, description: 'Slides: [{frame, data, block_ids?, query?}]' },
     }, ['name']),
     responses: { 201: json(one('Offer'), 'Utworzono') },
   },
   'PATCH /api/offers/:id': {
-    tag: 'Oferty', operationId: 'updateOffer', summary: 'Zmień ofertę',
-    description: 'Np. klient i cena: data = {"client": "ACME S.A.", "price": "12 000"}. Pole data jest scalane, chyba że replace=1',
-    parameters: [idParam('oferty', '/api/offers'), replaceParam],
+    tag: 'Offers', operationId: 'updateOffer', summary: 'Update an offer',
+    description: 'E.g. client and price: data = {"client": "ACME Inc.", "price": "12,000"}. The data field is merged, unless replace=1',
+    parameters: [idParam('offer', '/api/offers'), replaceParam],
     requestBody: body({
-      name: { type: 'string', description: 'Nazwa oferty' },
-      template_id: { type: 'string', description: 'Szablon', 'x-n8n-list': '/api/templates' },
-      data: { type: 'object', description: 'Zmienne oferty' },
+      name: { type: 'string', description: 'Offer name' },
+      template_id: { type: 'string', description: 'Template', 'x-n8n-list': '/api/templates' },
+      data: { type: 'object', description: 'Offer variables' },
     }),
     responses: { 200: json(one('Offer')) },
   },
   'DELETE /api/offers/:id': {
-    tag: 'Oferty', operationId: 'deleteOffer', summary: 'Usuń ofertę',
-    parameters: [idParam('oferty', '/api/offers')],
+    tag: 'Offers', operationId: 'deleteOffer', summary: 'Delete an offer',
+    parameters: [idParam('offer', '/api/offers')],
     responses: { 204: noContent },
   },
   'POST /api/offers/:id/duplicate': {
-    tag: 'Oferty', operationId: 'duplicateOffer', summary: 'Skopiuj ofertę',
-    parameters: [idParam('oferty do skopiowania', '/api/offers')],
-    requestBody: { required: false, content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string', description: 'Nazwa kopii' } } } } } },
+    tag: 'Offers', operationId: 'duplicateOffer', summary: 'Duplicate an offer',
+    parameters: [idParam('offer to duplicate', '/api/offers')],
+    requestBody: { required: false, content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string', description: 'Name of the copy' } } } } } },
     responses: { 201: json(one('Offer'), 'Utworzono') },
   },
   'PUT /api/offers/:id/order': {
-    tag: 'Slajdy', operationId: 'reorderSlides', summary: 'Ustaw kolejność slajdów',
-    parameters: [idParam('oferty', '/api/offers')],
-    requestBody: body({ ids: { type: 'array', items: { type: 'string' }, description: 'Id wszystkich slajdów w nowej kolejności' } }, ['ids']),
+    tag: 'Slides', operationId: 'reorderSlides', summary: 'Reorder slides',
+    parameters: [idParam('offer', '/api/offers')],
+    requestBody: body({ ids: { type: 'array', items: { type: 'string' }, description: 'Ids of all slides in the new order' } }, ['ids']),
     responses: { 200: json(one('Offer')) },
   },
   'GET /api/offers/:id/preview': {
-    tag: 'Oferty', operationId: 'previewOffer', summary: 'Podgląd oferty (PNG slajdów)',
-    description: 'Renderuje podgląd i zwraca {key, ms, slides: [{id, frame, hidden, url, error?}]}',
-    parameters: [idParam('oferty', '/api/offers')],
+    tag: 'Offers', operationId: 'previewOffer', summary: 'Offer preview (slide PNGs)',
+    description: 'Renders the preview and returns {key, ms, slides: [{id, frame, hidden, url, error?}]}',
+    parameters: [idParam('offer', '/api/offers')],
     responses: { 200: json(anyObject) },
   },
   'GET /api/offers/:id/pdf': {
-    tag: 'Oferty', operationId: 'downloadOfferPdf', summary: 'Pobierz PDF oferty',
-    description: 'PDF z FigCraft; ukryte slajdy są pomijane',
-    parameters: [idParam('oferty', '/api/offers')],
+    tag: 'Offers', operationId: 'downloadOfferPdf', summary: 'Download the offer PDF',
+    description: 'PDF from FigCraft; hidden slides are skipped',
+    parameters: [idParam('offer', '/api/offers')],
     responses: { 200: binary('application/pdf', 'PDF') },
   },
   'GET /api/offers/:id/figcraft': {
-    tag: 'Oferty', operationId: 'downloadOfferFigcraft', summary: 'Pobierz ofertę jako .figcraft',
-    description: 'Gotowa oferta do ręcznych poprawek w FigCraft',
-    parameters: [idParam('oferty', '/api/offers')],
-    responses: { 200: binary('application/octet-stream', 'Plik .figcraft') },
+    tag: 'Offers', operationId: 'downloadOfferFigcraft', summary: 'Download the offer as .figcraft',
+    description: 'The finished offer, for manual edits in FigCraft',
+    parameters: [idParam('offer', '/api/offers')],
+    responses: { 200: binary('application/octet-stream', '.figcraft file') },
   },
 
-  // ---------------------------------------------------------------- slajdy
+  // ---------------------------------------------------------------- slides
   'POST /api/offers/:id/slides': {
-    tag: 'Slajdy', operationId: 'addSlide', summary: 'Dodaj slajd do oferty',
-    parameters: [idParam('oferty', '/api/offers')],
+    tag: 'Slides', operationId: 'addSlide', summary: 'Add a slide to an offer',
+    parameters: [idParam('offer', '/api/offers')],
     requestBody: body(slideFields, ['frame']),
     responses: { 201: json(one('Slide'), 'Utworzono') },
   },
   'GET /api/slides/:id': {
-    tag: 'Slajdy', operationId: 'getSlide', summary: 'Pobierz slajd',
-    parameters: [idParam('slajdu')],
+    tag: 'Slides', operationId: 'getSlide', summary: 'Get a slide',
+    parameters: [idParam('slide')],
     responses: { 200: json(one('Slide')) },
   },
   'PATCH /api/slides/:id': {
-    tag: 'Slajdy', operationId: 'updateSlide', summary: 'Zmień slajd',
-    description: 'Pole data jest scalane, chyba że replace=1',
-    parameters: [idParam('slajdu'), replaceParam],
+    tag: 'Slides', operationId: 'updateSlide', summary: 'Update a slide',
+    description: 'The data field is merged, unless replace=1',
+    parameters: [idParam('slide'), replaceParam],
     requestBody: body(slideFields),
     responses: { 200: json(one('Slide')) },
   },
   'DELETE /api/slides/:id': {
-    tag: 'Slajdy', operationId: 'deleteSlide', summary: 'Usuń slajd',
-    parameters: [idParam('slajdu')],
+    tag: 'Slides', operationId: 'deleteSlide', summary: 'Delete a slide',
+    parameters: [idParam('slide')],
     responses: { 204: noContent },
   },
 
-  // ---------------------------------------------------------------- komponenty
+  // ---------------------------------------------------------------- components
   'GET /api/components': {
-    tag: 'Komponenty', operationId: 'listComponents', summary: 'Lista kart z opisami',
-    description: 'Karty z zestawów @… w bibliotece z opisami dla AI (SQLite) i miniaturą',
+    tag: 'Components', operationId: 'listComponents', summary: 'List cards with descriptions',
+    description: 'Cards from @… sets in the library, with descriptions for the AI (SQLite) and a thumbnail',
     parameters: [
-      { name: 'set', in: 'query', description: 'Tylko karty z tego zestawu', schema: { type: 'string' } },
-      { name: 'missing', in: 'query', description: '1 = także karty, których nie ma już w bibliotece', schema: { type: 'string', enum: ['', '1'] } },
+      { name: 'set', in: 'query', description: 'Only cards from this set', schema: { type: 'string' } },
+      { name: 'missing', in: 'query', description: '1 = also cards that are no longer in the library', schema: { type: 'string', enum: ['', '1'] } },
     ],
     responses: { 200: json(list('Component')) },
   },
   'GET /api/components/:set/:key': {
-    tag: 'Komponenty', operationId: 'getComponent', summary: 'Pobierz kartę',
+    tag: 'Components', operationId: 'getComponent', summary: 'Get a card',
     parameters: [setParam, keyParam],
     responses: { 200: json(one('Component')) },
   },
   'PATCH /api/components/:set/:key': {
-    tag: 'Komponenty', operationId: 'updateComponent', summary: 'Zmień opis karty',
-    description: 'Opis, kiedy wybrać / nie wybierać, temat, wariant, tagi, data. Pole data jest scalane, chyba że replace=1',
+    tag: 'Components', operationId: 'updateComponent', summary: 'Update a card description',
+    description: 'Description, when to pick / when to avoid, topic, variant, tags, data. The data field is merged, unless replace=1',
     parameters: [setParam, keyParam, replaceParam],
     requestBody: body(componentFields),
     responses: { 200: json(one('Component')) },
   },
   'GET /api/component-sets': {
-    tag: 'Komponenty', operationId: 'listComponentSets', summary: 'Zestawy kart z zasadami',
+    tag: 'Components', operationId: 'listComponentSets', summary: 'Card sets with rules',
     responses: { 200: json(list('ComponentSet')) },
   },
   'PATCH /api/component-sets/:id': {
-    tag: 'Komponenty', operationId: 'updateComponentSet', summary: 'Zmień zasady zestawu',
-    parameters: [idParam('zestawu', '/api/component-sets')],
-    requestBody: body({ title: { type: 'string', description: 'Nazwa' }, rules: { type: 'string', description: 'Zasady doboru dla AI, np. „6 kart, dokładnie jedna wyróżniona”' } }),
+    tag: 'Components', operationId: 'updateComponentSet', summary: 'Update set rules',
+    parameters: [idParam('set', '/api/component-sets')],
+    requestBody: body({ title: { type: 'string', description: 'Name' }, rules: { type: 'string', description: 'Picking rules for the AI, e.g. "6 cards, exactly one highlighted"' } }),
     responses: { 200: json(one('ComponentSet')) },
   },
   'GET /api/slides/:id/pick-context': {
-    tag: 'Komponenty', operationId: 'getPickContext', summary: 'Kontekst doboru kart',
-    description: 'Oferta, slajd, liczba slotów, zasady i opisy kart: wszystko, czego potrzebuje agent, żeby wybrać karty',
-    parameters: [idParam('slajdu')],
+    tag: 'Components', operationId: 'getPickContext', summary: 'Card-picking context',
+    description: 'Offer, slide, slot count, set rules and card descriptions: everything an agent needs to pick cards',
+    parameters: [idParam('slide')],
     responses: { 200: json(anyObject) },
   },
   'POST /api/slides/:id/pick': {
-    tag: 'Komponenty', operationId: 'pickComponents', summary: 'Dobierz karty przez AI',
-    description: 'Claude wybiera karty do slotów #pick z opisów w bazie, zasad zestawu, zmiennych oferty i briefu. Wymaga ANTHROPIC_API_KEY (inaczej 503)',
-    parameters: [idParam('slajdu')],
+    tag: 'Components', operationId: 'pickComponents', summary: 'Pick cards with AI',
+    description: 'Claude picks cards for the #pick slots from the card descriptions in the database, the set rules, the offer variables and the brief. Requires ANTHROPIC_API_KEY (otherwise 503)',
+    parameters: [idParam('slide')],
     requestBody: {
       required: false,
       content: { 'application/json': { schema: { type: 'object', properties: {
-        brief: { type: 'string', description: 'Kontekst od handlowca, np. „bank, boją się chmury”' },
-        apply: { type: 'boolean', description: 'false = tylko podpowiedź, bez zapisu w slajdzie', default: true },
+        brief: { type: 'string', description: 'Context from the salesperson, e.g. "bank, afraid of the cloud"' },
+        apply: { type: 'boolean', description: 'false = suggestion only, not saved to the slide', default: true },
       } } } },
     },
     responses: { 200: json(anyObject, '{applied, picks, note, warnings, slide}') },
   },
 
-  // ---------------------------------------------------------------- baza
+  // ---------------------------------------------------------------- database
   'GET /api/export': {
-    tag: 'Baza', operationId: 'exportAll', summary: 'Eksport całej bazy',
-    description: 'Bloki, szablony (pliki w base64), oferty i slajdy w jednym JSON',
+    tag: 'Database', operationId: 'exportAll', summary: 'Export the whole database',
+    description: 'Blocks, templates (files in base64), offers and slides in one JSON',
     responses: { 200: json(anyObject) },
   },
   'POST /api/import': {
-    tag: 'Baza', operationId: 'importAll', summary: 'Import bazy',
-    description: 'merge nadpisuje rekordy o tych samych id; replace zastępuje całą bazę',
-    parameters: [{ name: 'mode', in: 'query', description: 'merge albo replace', schema: { type: 'string', enum: ['merge', 'replace'], default: 'merge' } }],
+    tag: 'Database', operationId: 'importAll', summary: 'Import the database',
+    description: 'merge overwrites records with the same ids; replace replaces the whole database',
+    parameters: [{ name: 'mode', in: 'query', description: 'merge or replace', schema: { type: 'string', enum: ['merge', 'replace'], default: 'merge' } }],
     requestBody: { required: true, 'x-raw-body': true, content: { 'application/json': { schema: anyObject } } },
     responses: { 200: json(anyObject) },
   },
 };
 
-// Tabele, o których mówi strumień zdarzeń /api/events (pole `table`; '*' = import całej bazy).
+// Tables reported by the /api/events stream (the `table` field; '*' = whole-database import).
 export const EVENT_TABLES = ['offers', 'slides', 'blocks', 'templates', 'components', 'component_sets', '*'];
 
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 
-/** Trasy API z aplikacji Hono: [{method, path}] bez middleware i bez duplikatów. */
+/** API routes of the Hono app: [{method, path}] without middleware or duplicates. */
 export function apiRoutes(app) {
   const seen = new Set();
   const out = [];
@@ -416,7 +416,7 @@ export function apiRoutes(app) {
 const toOpenApiPath = (p) => p.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
 const camel = (s) => s.replace(/[^A-Za-z0-9]+(.)/g, (_, c) => c.toUpperCase());
 
-/** Specyfikacja OpenAPI 3.1 dla tras z `routes` (zob. apiRoutes). */
+/** OpenAPI 3.1 spec for the given `routes` (see apiRoutes). */
 export function buildSpec(routes, { version = '0.0.0', docs = DOCS } = {}) {
   const paths = {};
   for (const { method, path, key } of routes) {
@@ -428,7 +428,7 @@ export function buildSpec(routes, { version = '0.0.0', docs = DOCS } = {}) {
       const { tag, ...rest } = doc;
       op = { tags: [tag], ...rest };
     } else {
-      // Trasa bez opisu: i tak trafia do n8n, z ogólnym polem JSON.
+      // Undocumented route: still reaches n8n, with a generic JSON field.
       op = {
         tags: [path.split('/')[2] || 'api'],
         operationId: camel(`${method.toLowerCase()} ${path.replace(/^\/api\//, '').replace(/:/g, 'by ')}`),
@@ -448,7 +448,7 @@ export function buildSpec(routes, { version = '0.0.0', docs = DOCS } = {}) {
     info: {
       title: 'Offer Studio API',
       version,
-      description: 'Baza wiedzy i składanie ofert. Slajdy, podgląd i PDF renderuje FigCraft.',
+      description: 'Knowledge base and offer builder. Slides, previews and PDFs are rendered by FigCraft.',
     },
     servers: [{ url: '/' }],
     security: [{ bearer: [] }, { basic: [] }],
@@ -458,7 +458,7 @@ export function buildSpec(routes, { version = '0.0.0', docs = DOCS } = {}) {
       schemas: SCHEMAS,
       securitySchemes: {
         bearer: { type: 'http', scheme: 'bearer', description: 'STUDIO_API_TOKEN' },
-        basic: { type: 'http', scheme: 'basic', description: 'Dowolny login + STUDIO_PASSWORD' },
+        basic: { type: 'http', scheme: 'basic', description: 'Any username + STUDIO_PASSWORD' },
       },
     },
     'x-offer-studio': { events: { path: '/api/events', tables: EVENT_TABLES } },

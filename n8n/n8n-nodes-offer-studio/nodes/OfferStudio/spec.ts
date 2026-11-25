@@ -1,11 +1,11 @@
-// Czytanie opisu API Offer Studio (OpenAPI 3.1 z /api/openapi.json) do postaci,
-// z której węzeł n8n buduje listę zasobów, operacji i pól. Bez zależności od n8n,
-// żeby dało się to testować samym `node --test`.
+// Parses Offer Studio's API description (OpenAPI 3.1 from /api/openapi.json) into the shape
+// the n8n node builds its resources, operations and fields from. No dependency on n8n,
+// so it can be tested with plain `node --test`.
 
 export type FieldKind = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'options';
 
 export interface Field {
-	/** Klucz w resource mapperze: "path:id", "query:type", "body:title", "file:file", "raw:body" */
+	/** Key in the resource mapper: "path:id", "query:type", "body:title", "file:file", "raw:body" */
 	id: string;
 	name: string;
 	location: 'path' | 'query' | 'body' | 'file' | 'raw';
@@ -14,12 +14,12 @@ export interface Field {
 	description?: string;
 	enum?: string[];
 	defaultValue?: string | number | boolean;
-	/** Ścieżka listy, z której można wybrać id (rozszerzenie x-n8n-list) */
+	/** Path of the list to pick the id from (x-n8n-list extension) */
 	list?: string;
 }
 
 export interface Operation {
-	/** Wartość zapisywana w węźle: "GET /api/offers/{id}/pdf" */
+	/** Value saved in the node: "GET /api/offers/{id}/pdf" */
 	key: string;
 	method: string;
 	path: string;
@@ -29,9 +29,9 @@ export interface Operation {
 	tag: string;
 	fields: Field[];
 	bodyType: 'none' | 'json' | 'multipart';
-	/** Body jest tablicą albo dowolnym JSON-em podanym w całości (x-raw-body) */
+	/** Body is an array or arbitrary JSON given as a whole (x-raw-body) */
 	rawBody: boolean;
-	/** Typ odpowiedzi z opisu (binarna: PDF, .figcraft) */
+	/** Response type from the description (binary: PDF, .figcraft) */
 	response: 'json' | 'binary' | 'none' | 'stream';
 	hidden: boolean;
 	undocumented: boolean;
@@ -89,7 +89,7 @@ function responseKind(op: Json): Operation['response'] {
 
 export function parseSpec(spec: Json): ParsedSpec {
 	if (!spec || typeof spec !== 'object' || !spec.paths) {
-		throw new Error('Odpowiedź nie wygląda na opis OpenAPI (brak "paths")');
+		throw new Error('The response does not look like an OpenAPI description (no "paths")');
 	}
 	const operations: Operation[] = [];
 	for (const [path, item] of Object.entries<Json>(spec.paths)) {
@@ -114,7 +114,7 @@ export function parseSpec(spec: Json): ParsedSpec {
 					list: p['x-n8n-list'] ?? schema['x-n8n-list'],
 				});
 			}
-			// parametry ścieżki, których opis nie wymienia
+			// path parameters the description does not list
 			for (const m of path.matchAll(/\{([^}]+)\}/g)) {
 				if (!fields.some((f) => f.location === 'path' && f.name === m[1])) {
 					fields.push({ id: `path:${m[1]}`, name: m[1], location: 'path', kind: 'string', required: true });
@@ -139,7 +139,7 @@ export function parseSpec(spec: Json): ParsedSpec {
 						location: isFile ? 'file' : 'body',
 						kind: isFile ? 'string' : kindOf(s),
 						required: required.includes(name),
-						description: isFile ? `Nazwa pola binarnego z pliku (${s.description || name})` : s.description,
+						description: isFile ? `Name of the binary property holding the file (${s.description || name})` : s.description,
 						defaultValue: isFile ? 'data' : s.default,
 					});
 				}
@@ -155,7 +155,7 @@ export function parseSpec(spec: Json): ParsedSpec {
 						location: 'raw',
 						kind: schema.type === 'array' ? 'array' : 'object',
 						required: Boolean(rb.required),
-						description: 'Treść żądania (JSON)',
+						description: 'Request body (JSON)',
 					});
 				} else {
 					const required: string[] = schema.required || [];
@@ -185,7 +185,7 @@ export function parseSpec(spec: Json): ParsedSpec {
 				operationId: op.operationId || `${method}${path}`,
 				summary: op.summary || `${method.toUpperCase()} ${path}`,
 				description: op.description,
-				tag: op.tags?.[0] || 'Inne',
+				tag: op.tags?.[0] || 'Other',
 				fields,
 				bodyType,
 				rawBody,
@@ -211,12 +211,12 @@ export function parseSpec(spec: Json): ParsedSpec {
 	};
 }
 
-/** Podstawia parametry ścieżki: "/api/offers/{id}/pdf" + {id: "x y"} -> "/api/offers/x%20y/pdf" */
+/** Fills in path parameters: "/api/offers/{id}/pdf" + {id: "x y"} -> "/api/offers/x%20y/pdf" */
 export function fillPath(path: string, values: Record<string, unknown>): string {
 	return path.replace(/\{([^}]+)\}/g, (_, name: string) => {
 		const v = values[name];
 		if (v === undefined || v === null || v === '') {
-			throw new Error(`Brak wartości parametru ścieżki "${name}"`);
+			throw new Error(`Missing value for path parameter "${name}"`);
 		}
 		return encodeURIComponent(String(v));
 	});
@@ -231,7 +231,7 @@ function parseJsonValue(field: Field, value: unknown): unknown {
 	try {
 		return JSON.parse(text);
 	} catch {
-		throw new Error(`Pole "${field.name}" musi być poprawnym JSON-em (${field.kind})`);
+		throw new Error(`Field "${field.name}" must be valid JSON (${field.kind})`);
 	}
 }
 
@@ -251,17 +251,17 @@ export interface BuiltRequest {
 	method: string;
 	path: string;
 	qs: Record<string, unknown>;
-	/** JSON (obiekt albo tablica) albo undefined */
+	/** JSON (object or array) or undefined */
 	body?: unknown;
-	/** multipart: zwykłe pola tekstowe */
+	/** multipart: plain text fields */
 	formFields: Record<string, string>;
-	/** multipart: pole formularza -> nazwa pola binarnego elementu n8n */
+	/** multipart: form field -> name of the n8n item's binary property */
 	files: Record<string, string>;
 }
 
 /**
- * Składa żądanie z wartości resource mappera. Puste pola są pomijane (PATCH ich nie zeruje);
- * `extraBody` (opcja „Treść JSON”) jest scalane z polami albo, gdy to tablica, zastępuje body.
+ * Builds the request from the resource mapper values. Empty fields are skipped (so PATCH does not clear them);
+ * `extraBody` (the "Body JSON" option) is merged with the fields or, if it is an array, replaces the body.
  */
 export function buildRequest(op: Operation, values: Record<string, unknown>, extraBody?: unknown): BuiltRequest {
 	const pathValues: Record<string, unknown> = {};
@@ -275,7 +275,7 @@ export function buildRequest(op: Operation, values: Record<string, unknown>, ext
 		let value = values[field.id];
 		if (isEmpty(value)) {
 			if (field.required && field.location !== 'raw' && field.location !== 'body') {
-				throw new Error(`Uzupełnij wymagane pole "${field.name}"`);
+				throw new Error(`Fill in the required field "${field.name}"`);
 			}
 			continue;
 		}
@@ -313,23 +313,23 @@ export function buildRequest(op: Operation, values: Record<string, unknown>, ext
 		}
 		for (const f of op.fields) {
 			if (f.location === 'body' && f.required && (finalBody === undefined || (!Array.isArray(finalBody) && isEmpty((finalBody as Record<string, unknown>)[f.name])))) {
-				throw new Error(`Uzupełnij wymagane pole "${f.name}"`);
+				throw new Error(`Fill in the required field "${f.name}"`);
 			}
 		}
 		if (finalBody === undefined && op.fields.some((f) => f.location === 'raw' && f.required)) {
-			throw new Error('Ta operacja wymaga treści żądania (JSON)');
+			throw new Error('This operation requires a request body (JSON)');
 		}
 	}
 	if (op.bodyType === 'multipart') {
 		for (const f of op.fields) {
-			if (f.required && f.location === 'file' && !files[f.name]) throw new Error(`Wskaż pole binarne dla "${f.name}"`);
+			if (f.required && f.location === 'file' && !files[f.name]) throw new Error(`Specify the binary property for "${f.name}"`);
 		}
 	}
 
 	return { method: op.method, path: fillPath(op.path, pathValues), qs, body: finalBody, formFields, files };
 }
 
-/** multipart/form-data bez zależności: pola tekstowe + pliki. */
+/** Dependency-free multipart/form-data: text fields + files. */
 export function buildMultipart(
 	fields: Record<string, string>,
 	files: Array<{ field: string; fileName: string; mimeType: string; data: Buffer }>,
@@ -354,7 +354,7 @@ export function buildMultipart(
 	return { body: Buffer.concat(chunks), contentType: `multipart/form-data; boundary=${boundary}` };
 }
 
-/** Nazwa pliku z nagłówka Content-Disposition. */
+/** File name from the Content-Disposition header. */
 export function fileNameFromDisposition(header: unknown): string | undefined {
 	if (typeof header !== 'string') return undefined;
 	const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(header);
@@ -362,14 +362,14 @@ export function fileNameFromDisposition(header: unknown): string | undefined {
 		try {
 			return decodeURIComponent(star[1].trim().replace(/^"|"$/g, ''));
 		} catch {
-			/* zwykła nazwa niżej */
+			/* fall back to the plain name below */
 		}
 	}
 	const plain = /filename="?([^";]+)"?/i.exec(header);
 	return plain?.[1];
 }
 
-/** Ścieżka pojedynczego rekordu dla zdarzenia SSE {table, id}. */
+/** Path of a single record for an SSE event {table, id}. */
 export function recordPath(table: string, id: string): string | undefined {
 	const paths: Record<string, string> = {
 		offers: '/api/offers/',

@@ -1,6 +1,6 @@
-# figcraft-server: serwer współpracy FigCraft (WebSocket, port 47900).
-# Pobiera oficjalną binarkę z releasu github.com/storytold/figcraft i sprawdza SHA-256
-# (z SHA256SUMS.txt danego releasu). Przy podbiciu wersji zmień wszystkie trzy argumenty.
+# figcraft-server: the FigCraft collaboration server (WebSocket, port 47900).
+# Downloads the official binary from the github.com/storytold/figcraft release and checks its SHA-256
+# (from that release's SHA256SUMS.txt). When bumping the version, change all three arguments.
 FROM debian:trixie-slim AS fetch
 ARG FIGCRAFT_VERSION=0.18.1
 ARG FIGCRAFT_SERVER_SHA256_AMD64=215b61e5b1dd5b4b4d193509b7be54010e3b929dd19b9a3a85fb1357539cdcd8
@@ -12,7 +12,7 @@ RUN set -eux; \
     case "${TARGETARCH:-amd64}" in \
       amd64) arch=x86_64;  sha="${FIGCRAFT_SERVER_SHA256_AMD64}" ;; \
       arm64) arch=aarch64; sha="${FIGCRAFT_SERVER_SHA256_ARM64}" ;; \
-      *) echo "nieobsługiwana architektura: ${TARGETARCH}" >&2; exit 1 ;; \
+      *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     name="figcraft-server-${FIGCRAFT_VERSION}-linux-${arch}"; \
     curl -fsSL "https://github.com/storytold/figcraft/releases/download/v${FIGCRAFT_VERSION}/${name}.tar.gz" -o /tmp/server.tar.gz; \

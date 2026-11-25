@@ -24,7 +24,7 @@ const FIGCRAFT_WEB_URL = env.FIGCRAFT_WEB_URL || '';
 mkdirSync(dirname(DB_PATH), { recursive: true });
 const store = openDb(DB_PATH);
 
-// ------------------------------------------------------------------ dane startowe i migracja z v1
+// ------------------------------------------------------------------ seed data and v1 migration
 const seedModule = await import('../seed/seed.js');
 const seedTemplate = () => {
   const t = seedModule.TEMPLATE;
@@ -33,22 +33,22 @@ const seedTemplate = () => {
 if (store.isEmpty() && env.STUDIO_SEED !== 'false') {
   const counts = store.importAll(seedModule.default, 'merge');
   seedTemplate();
-  console.log('offer-studio: pusta baza, wczytano dane startowe', counts);
+  console.log('offer-studio: empty database, loaded seed data', counts);
 } else if (store.migratedFromV1) {
-  // v1 miało layouty HTML: dokładamy szablon FigCraft, a ofercie bazowej dajemy slajdy pod nowy szablon.
+  // v1 had HTML layouts: add the FigCraft template and give the base offer slides for the new template.
   if (!store.get('templates', seedModule.TEMPLATE.id)) seedTemplate();
   store.tx(() => {
     store.db.prepare('UPDATE offers SET template_id = ? WHERE template_id IS NULL').run(seedModule.TEMPLATE.id);
-    if (store.get('offers', 'gaius-vault-bazowa')) {
-      store.db.prepare('DELETE FROM slides WHERE offer_id = ?').run('gaius-vault-bazowa');
+    if (store.get('offers', 'gaius-vault-base')) {
+      store.db.prepare('DELETE FROM slides WHERE offer_id = ?').run('gaius-vault-base');
       for (const s of seedModule.slides) store.upsert('slides', s);
     }
   });
-  console.log('offer-studio: zmigrowano bazę z layoutów HTML na szablony FigCraft');
+  console.log('offer-studio: migrated the database from HTML layouts to FigCraft templates');
 }
-// Komponenty (v3): baza z plikiem Gaius sprzed komponentów (bez ramek @…) i bez opisów kart dostaje
-// nowy plik Gaius (zestaw @dlaczego, sloty #pick), opisy kart i wybór kart na slajdzie „dlaczego”
-// (jeśli nikt go jeszcze nie ustawił). Sprawdzane przy każdym starcie, działa raz.
+// Components (v3): a database with a pre-components Gaius file (no @… frames) and no card descriptions gets
+// the new Gaius file (set @why, #pick slots), card descriptions and the card picks on the "why" slide
+// (unless someone has already set them). Checked on every start, runs once.
 const gaiusRow = store.get('templates', seedModule.TEMPLATE.id);
 if (gaiusRow && env.STUDIO_SEED !== 'false' && !store.list('components').length
   && !parseTemplate(store.templateFile(gaiusRow.id).file).components.length) {
@@ -56,20 +56,20 @@ if (gaiusRow && env.STUDIO_SEED !== 'false' && !store.list('components').length
     seedTemplate();
     for (const c of seedModule.components) if (!store.get('components', c.id)) store.upsert('components', c);
     for (const cs of seedModule.componentSets) if (!store.get('component_sets', cs.id)) store.upsert('component_sets', cs);
-    const seedSlide = seedModule.slides.find((x) => x.id === 's-dlaczego');
-    const cur = store.get('slides', 's-dlaczego');
+    const seedSlide = seedModule.slides.find((x) => x.id === 's-why');
+    const cur = store.get('slides', 's-why');
     if (cur && !Object.keys(cur.picks || {}).length) store.update('slides', cur.id, { picks: seedSlide.picks, block_ids: [] });
   });
-  console.log('offer-studio: dodano komponenty (zestaw @dlaczego) i ich opisy');
+  console.log('offer-studio: added components (set @why) and their descriptions');
 }
 
 // ------------------------------------------------------------------ live: Server-Sent Events
 const listeners = new Set();
 const emit = (ev) => { for (const fn of listeners) fn(ev); };
 
-// ------------------------------------------------------------------ biblioteka slajdów (FigCraft)
-// Pliki ze slajdami (tabela templates) -> każdy rozbierany osobno (lista slajdów, pola),
-// a do renderu sklejane w jeden dokument biblioteki (cache do następnej zmiany plików).
+// ------------------------------------------------------------------ slide library (FigCraft)
+// Slide files (templates table) -> each parsed separately (slide list, fields),
+// and merged into one library document for rendering (cached until the files change).
 const parsedCache = new Map();
 function template(id) {
   const { file, updated_at } = store.templateFile(id);
@@ -94,7 +94,7 @@ async function library() {
   return promise;
 }
 
-// Lista slajdów biblioteki: [{frame, source, source_name, width, height, fields, slots, thumb}]
+// Library slide list: [{frame, source, source_name, width, height, fields, slots, thumb}]
 function librarySlides() {
   return store.list('templates').flatMap((t) => {
     const { parsed, updated_at } = template(t.id);
@@ -106,7 +106,7 @@ function librarySlides() {
   });
 }
 
-// Komponenty ze wszystkich plików biblioteki -> tabela components (opisy zostają, tekst i pola się odświeżają).
+// Components from all library files -> components table (descriptions stay, text and fields are refreshed).
 function libraryComponents() {
   return store.list('templates').flatMap((t) => {
     const { parsed, updated_at } = template(t.id);
@@ -120,10 +120,10 @@ function libraryComponents() {
 function syncComponents() {
   const found = libraryComponents();
   const stats = store.syncComponents(found);
-  if (stats.added.length || stats.missing.length) console.log('offer-studio: komponenty', stats);
+  if (stats.added.length || stats.missing.length) console.log('offer-studio: components', stats);
   return stats;
 }
-// Komponenty z bazy + miniatura i dane z biblioteki.
+// Components from the database + thumbnail and data from the library.
 function componentsView({ set, includeMissing } = {}) {
   const lib = Object.fromEntries(libraryComponents().map((c) => [c.id, c]));
   return store.listComponents({ set, includeMissing }).map((c) => ({ ...c, thumb: lib[c.id]?.thumb || null, source_name: lib[c.id]?.source_name || null }));
@@ -142,46 +142,46 @@ function thumbs(id) {
   return thumbCache.get(key);
 }
 
-// Wgranie pliku ze slajdami: konwersja do .figcraft, walidacja nazw slajdów (unikalne w całej bibliotece).
+// Slide file upload: convert to .figcraft, validate slide names (unique across the whole library).
 async function uploadSource({ buf, filename, id, name }) {
   const file = await normalizeUpload(buf, filename);
   const parsed = parseTemplate(file);
-  if (!parsed.frames.length) throw new HttpError(400, 'W pliku nie ma żadnej ramki (slajdu) najwyższego poziomu');
+  if (!parsed.frames.length) throw new HttpError(400, 'The file has no top-level frame (slide)');
   const names = parsed.frames.map((f) => f.name);
   const dupes = [...new Set(names.filter((n, i) => names.indexOf(n) !== i))];
-  if (dupes.length) throw new HttpError(400, `Ramki w pliku muszą mieć różne nazwy. Powtarzają się: ${dupes.join(', ')}`);
-  const sourceId = id || slugify(String(filename || parsed.name || 'slajdy').replace(/\.[a-z]+$/i, ''));
+  if (dupes.length) throw new HttpError(400, `Frames in the file must have unique names. Duplicated: ${dupes.join(', ')}`);
+  const sourceId = id || slugify(String(filename || parsed.name || 'slides').replace(/\.[a-z]+$/i, ''));
   const taken = librarySlides().filter((s) => s.source !== sourceId && names.includes(s.frame));
   if (taken.length) {
-    throw new HttpError(409, `Slajdy o tych nazwach są już w innym pliku: ${taken.map((s) => `„${s.frame}” (${s.source_name})`).join(', ')}. Zmień nazwę ramki w FigCraft albo podmień tamten plik.`);
+    throw new HttpError(409, `Slides with these names already exist in another file: ${taken.map((s) => `"${s.frame}" (${s.source_name})`).join(', ')}. Rename the frame in FigCraft or replace that file.`);
   }
   const compIds = parsed.components.map((c) => c.id);
   const compDupes = [...new Set(compIds.filter((n, i) => compIds.indexOf(n) !== i))];
-  if (compDupes.length) throw new HttpError(400, `Karty w zestawie muszą mieć różne nazwy. Powtarzają się: ${compDupes.join(', ')}`);
+  if (compDupes.length) throw new HttpError(400, `Cards in a set must have unique names. Duplicated: ${compDupes.join(', ')}`);
   const compTaken = libraryComponents().filter((c) => c.source !== sourceId && compIds.includes(c.id));
   if (compTaken.length) {
-    throw new HttpError(409, `Komponenty o tych nazwach są już w innym pliku: ${compTaken.map((c) => `„${c.id}” (${c.source_name})`).join(', ')}. Zmień nazwę zestawu (@…) albo karty.`);
+    throw new HttpError(409, `Components with these names already exist in another file: ${compTaken.map((c) => `"${c.id}" (${c.source_name})`).join(', ')}. Rename the set (@…) or the card.`);
   }
   const t = store.putTemplate({ id: sourceId, name: name || store.get('templates', sourceId)?.name || String(filename || parsed.name).replace(/\.[a-z]+$/i, ''), file });
   const sync = syncComponents();
   return { ...t, frames: describeTemplate(parsed), components: describeComponents(parsed), new_components: sync.added };
 }
 
-// Bloki slajdu: jawna lista `block_ids` (w tej kolejności) albo zapytanie `query` {type, tag, limit}.
+// Slide blocks: an explicit `block_ids` list (in that order) or a `query` {type, tag, limit}.
 function resolveBlocks(slide) {
   let blocks = [];
   if (slide.block_ids?.length) {
     blocks = slide.block_ids.map((id) => store.get('blocks', id)).filter(Boolean);
   } else if (slide.query && (slide.query.type || slide.query.tag)) {
     blocks = store.listBlocks({ type: slide.query.type, tag: slide.query.tag });
-    blocks.sort((a, b) => (a.data?.order ?? 1e9) - (b.data?.order ?? 1e9) || a.title.localeCompare(b.title, 'pl'));
+    blocks.sort((a, b) => (a.data?.order ?? 1e9) - (b.data?.order ?? 1e9) || a.title.localeCompare(b.title, 'en'));
     if (slide.query.limit) blocks = blocks.slice(0, Number(slide.query.limit));
   }
-  // pola z `data` są dostępne wprost: {{effect}} zamiast {{data.effect}}
+  // fields from `data` are available directly: {{effect}} instead of {{data.effect}}
   return blocks.map((b) => ({ ...b.data, id: b.id, type: b.type, title: b.title, body: b.body }));
 }
 
-// "etykieta | wartość" w każdej linii -> [{title, value, value2…}]
+// "label | value" on each line -> [{title, value, value2…}]
 const lines = (text) =>
   String(text || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
     const [title, value = '', ...rest] = l.split('|').map((x) => x.trim());
@@ -200,7 +200,7 @@ async function renderInput(offerId, { includeHidden }) {
     const f = frames[s.frame];
     const entry = { id: s.id, frame: s.frame, hidden: s.hidden };
     report.push(entry);
-    if (!f) { entry.error = `W bibliotece nie ma slajdu "${s.frame}"`; continue; }
+    if (!f) { entry.error = `No slide "${s.frame}" in the library`; continue; }
     if (s.hidden && !includeHidden) { entry.skipped = true; continue; }
     const items = {};
     for (const source of f.fields.sources) items[source] = source === 'blocks' ? resolveBlocks(s) : lines(s.data?.[source]);
@@ -210,7 +210,7 @@ async function renderInput(offerId, { includeHidden }) {
       picks[set] = [];
       for (const p of chosen) {
         const comp = comps[p.component];
-        if (!comp) { (entry.warnings ||= []).push(`brak komponentu ${p.component} w bibliotece`); continue; }
+        if (!comp) { (entry.warnings ||= []).push(`component ${p.component} not found in the library`); continue; }
         picks[set].push({ comp, data: { ...(store.get('components', p.component)?.data || {}), ...(p.data || {}) } });
       }
     }
@@ -225,7 +225,7 @@ async function renderInput(offerId, { includeHidden }) {
   };
 }
 
-// Podgląd PNG: cache per oferta, jeden render naraz na ofertę.
+// PNG preview: cached per offer, one render at a time per offer.
 const previews = new Map(); // offerId -> {key, pngs, report, ms, error}
 const inflight = new Map();
 async function preview(offerId) {
@@ -262,15 +262,15 @@ async function preview(offerId) {
   return promise;
 }
 
-// Kontekst doboru kart dla slajdu: zestawy ze slotami #pick, zasady i opisy kart z bazy.
-// Ten sam JSON dostaje Claude (POST /slides/:id/pick) i każdy zewnętrzny agent (GET …/pick-context).
+// Card-picking context for a slide: sets with #pick slots, set rules and card descriptions from the database.
+// Claude (POST /slides/:id/pick) and any external agent (GET …/pick-context) get the same JSON.
 function pickContext(slideId) {
   const slide = store.mustGet('slides', slideId);
   const offer = store.mustGet('offers', slide.offer_id);
   const frame = librarySlides().find((f) => f.frame === slide.frame);
-  if (!frame) throw new HttpError(400, `W bibliotece nie ma slajdu "${slide.frame}"`);
+  if (!frame) throw new HttpError(400, `No slide "${slide.frame}" in the library`);
   const pickSets = Object.entries(frame.fields.picks || {});
-  if (!pickSets.length) throw new HttpError(400, `Slajd "${slide.frame}" nie ma slotów #pick:… na komponenty`);
+  if (!pickSets.length) throw new HttpError(400, `Slide "${slide.frame}" has no #pick:… slots for components`);
   return {
     offer: { id: offer.id, name: offer.name, data: offer.data },
     slide: { id: slide.id, frame: slide.frame, data: slide.data, picks: slide.picks },
@@ -287,7 +287,7 @@ function pickContext(slideId) {
 try {
   syncComponents();
 } catch (e) {
-  console.error('offer-studio: synchronizacja komponentów nie powiodła się:', e.message);
+  console.error('offer-studio: component sync failed:', e.message);
 }
 
 const safeEq = (a, b) => {
@@ -296,7 +296,7 @@ const safeEq = (a, b) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 
-// ------------------------------------------------------------------ aplikacja
+// ------------------------------------------------------------------ app
 const app = new Hono();
 
 app.onError((err, c) => {
@@ -307,8 +307,8 @@ app.onError((err, c) => {
 
 app.get('/healthz', (c) => c.text('ok'));
 
-// Logowanie: Basic (hasło STUDIO_PASSWORD, dowolny login) albo Bearer STUDIO_API_TOKEN.
-// Bez obu zmiennych aplikacja jest otwarta (tylko do pracy lokalnej).
+// Auth: Basic (password STUDIO_PASSWORD, any username) or Bearer STUDIO_API_TOKEN.
+// Without either variable the app is open (local use only).
 app.use('*', async (c, next) => {
   if (!PASSWORD && !API_TOKEN) return next();
   const h = c.req.header('authorization') || '';
@@ -318,7 +318,7 @@ app.use('*', async (c, next) => {
     const pw = decoded.slice(decoded.indexOf(':') + 1);
     if (safeEq(pw, PASSWORD)) return next();
   }
-  return c.text('Wymagane logowanie', 401, { 'WWW-Authenticate': 'Basic realm="Offer Studio", charset="UTF-8"' });
+  return c.text('Authentication required', 401, { 'WWW-Authenticate': 'Basic realm="Offer Studio", charset="UTF-8"' });
 });
 
 app.use('/static/*', serveStatic({
@@ -349,7 +349,7 @@ const body = async (c) => {
   try {
     return await c.req.json();
   } catch {
-    throw new HttpError(400, 'Oczekiwano JSON w treści żądania');
+    throw new HttpError(400, 'Expected JSON in the request body');
   }
 };
 const changed = (table, id, extra = {}) => emit({ table, id, ...extra });
@@ -368,20 +368,20 @@ api.get('/events', (c) =>
   }),
 );
 
-// Opis API dla n8n i innych klientów: budowany z zarejestrowanych tras (zob. src/openapi.js).
+// API description for n8n and other clients: built from the registered routes (see src/openapi.js).
 const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
 let spec;
 api.get('/openapi.json', (c) => c.json((spec ??= buildSpec(apiRoutes(app), { version: VERSION }))));
 
 api.get('/meta', (c) => c.json({ ...store.meta(), figcraftWebUrl: FIGCRAFT_WEB_URL }));
 
-// bloki
+// knowledge blocks
 api.get('/blocks', (c) => c.json(store.listBlocks({ type: c.req.query('type'), tag: c.req.query('tag'), q: c.req.query('q') })));
 api.get('/blocks/:id', (c) => c.json(store.mustGet('blocks', c.req.param('id'))));
 api.post('/blocks', async (c) => {
   const b = await body(c);
   const items = Array.isArray(b) ? b : [b];
-  for (const it of items) if (!it.type || typeof it.type !== 'string') throw new HttpError(400, 'Blok musi mieć "type"');
+  for (const it of items) if (!it.type || typeof it.type !== 'string') throw new HttpError(400, 'A block must have a "type"');
   const created = store.tx(() => items.map((it) => store.insert('blocks', it, it.title ? `${it.type}-${it.title}`.slice(0, 40) : it.type)));
   changed('blocks', created.map((x) => x.id));
   return c.json(Array.isArray(b) ? created : created[0], 201);
@@ -397,7 +397,7 @@ api.delete('/blocks/:id', (c) => {
   return c.body(null, 204);
 });
 
-// biblioteka slajdów: pliki ze slajdami (tabela templates) i lista wszystkich slajdów
+// slide library: slide files (templates table) and the list of all slides
 const withFrames = (t) => ({ ...t, frames: describeTemplate(template(t.id).parsed) });
 api.get('/library', (c) => c.json(librarySlides()));
 api.get('/templates', (c) => c.json(store.list('templates').map(withFrames)));
@@ -409,20 +409,20 @@ api.get('/templates/:id/file', (c) => {
     'content-disposition': `attachment; filename="${slugify(t.name)}.figcraft"`,
   });
 });
-// Nowy plik ze slajdami albo podmiana istniejącego (to samo id). Każda ramka najwyższego poziomu = slajd.
-//  - multipart: `file` (.figcraft, .json, .fig, .penpot, .sketch, .svg), opcjonalnie `id` i `name`
-//  - application/json: sam JSON strony/dokumentu FigCraft (albo Figma REST API); id i name w query
+// New slide file or replacement of an existing one (same id). Every top-level frame = a slide.
+//  - multipart: `file` (.figcraft, .json, .fig, .penpot, .sketch, .svg), optional `id` and `name`
+//  - application/json: raw JSON of a FigCraft page/document (or Figma REST API); id and name in the query
 api.post('/templates', async (c) => {
   let upload;
   if ((c.req.header('content-type') || '').includes('application/json')) {
     const raw = Buffer.from(await c.req.arrayBuffer());
-    try { JSON.parse(raw.toString('utf8')); } catch { throw new HttpError(400, 'To nie jest poprawny JSON'); }
+    try { JSON.parse(raw.toString('utf8')); } catch { throw new HttpError(400, 'This is not valid JSON'); }
     const id = c.req.query('id') || undefined;
-    upload = { buf: raw, filename: `${id || 'slajdy'}.json`, id, name: c.req.query('name') };
+    upload = { buf: raw, filename: `${id || 'slides'}.json`, id, name: c.req.query('name') };
   } else {
     const form = await c.req.parseBody();
     const file = form.file;
-    if (!(file instanceof File)) throw new HttpError(400, `Wyślij plik w polu "file" (${UPLOAD_EXT.join(', ')})`);
+    if (!(file instanceof File)) throw new HttpError(400, `Send the file in the "file" field (${UPLOAD_EXT.join(', ')})`);
     upload = {
       buf: Buffer.from(await file.arrayBuffer()),
       filename: file.name,
@@ -430,7 +430,7 @@ api.post('/templates', async (c) => {
       name: typeof form.name === 'string' && form.name ? form.name : undefined,
     };
   }
-  if (upload.buf.length > 100 * 1024 * 1024) throw new HttpError(413, 'Plik większy niż 100 MB');
+  if (upload.buf.length > 100 * 1024 * 1024) throw new HttpError(413, 'File larger than 100 MB');
   const t = await uploadSource(upload);
   changed('templates', t.id);
   return c.json(t, 201);
@@ -448,12 +448,12 @@ api.delete('/templates/:id', (c) => {
   return c.body(null, 204);
 });
 
-// oferty
+// offers
 api.get('/offers', (c) => c.json(store.list('offers')));
 api.get('/offers/:id', (c) => c.json(store.getOffer(c.req.param('id'))));
 api.post('/offers', async (c) => {
   const b = await body(c);
-  if (!b.name) throw new HttpError(400, 'Oferta musi mieć "name"');
+  if (!b.name) throw new HttpError(400, 'An offer must have a "name"');
   const { slides = [], ...offer } = b;
   const created = store.tx(() => {
     const o = store.insert('offers', offer, offer.name);
@@ -482,7 +482,7 @@ api.post('/offers/:id/duplicate', async (c) => {
 });
 api.put('/offers/:id/order', async (c) => {
   const { ids } = await body(c);
-  if (!Array.isArray(ids)) throw new HttpError(400, 'Oczekiwano {"ids": [...]}');
+  if (!Array.isArray(ids)) throw new HttpError(400, 'Expected {"ids": [...]}');
   const o = store.reorderSlides(c.req.param('id'), ids);
   changed('slides', null, { offer_id: o.id });
   return c.json(o);
@@ -501,14 +501,14 @@ api.get('/offers/:id/preview', async (c) => {
 });
 api.get('/offers/:id/pdf', async (c) => {
   const { offer, input } = await renderInput(c.req.param('id'), { includeHidden: false });
-  if (!input.slides.length) throw new HttpError(400, 'Oferta nie ma widocznych slajdów');
+  if (!input.slides.length) throw new HttpError(400, 'The offer has no visible slides');
   const pdf = await renderPdf(input);
   return c.body(pdf, 200, {
     'content-type': 'application/pdf',
     'content-disposition': `${c.req.query('download') === '0' ? 'inline' : 'attachment'}; filename="${slugify(offer.name)}.pdf"`,
   });
 });
-// Gotowy dokument oferty jako .figcraft: do ręcznych poprawek w FigCraft.
+// The finished offer document as .figcraft: for manual edits in FigCraft.
 api.get('/offers/:id/figcraft', async (c) => {
   const { offer, input } = await renderInput(c.req.param('id'), { includeHidden: false });
   const file = await renderFigcraft(input);
@@ -518,10 +518,10 @@ api.get('/offers/:id/figcraft', async (c) => {
   });
 });
 
-// slajdy
+// slides
 api.post('/offers/:id/slides', async (c) => {
   const b = await body(c);
-  if (!b.frame) throw new HttpError(400, 'Slajd musi mieć "frame" (nazwę slajdu w szablonie)');
+  if (!b.frame) throw new HttpError(400, 'A slide must have a "frame" (the slide name in the template)');
   const s = store.addSlide(c.req.param('id'), b);
   changed('slides', s.id, { offer_id: s.offer_id });
   return c.json(s, 201);
@@ -541,12 +541,12 @@ api.delete('/slides/:id', (c) => {
   return c.body(null, 204);
 });
 
-// komponenty: karty z zestawów @… w bibliotece + opisy dla AI (SQLite)
+// components: cards from @… sets in the library + descriptions for the AI (SQLite)
 api.get('/components', (c) => c.json(componentsView({ set: c.req.query('set'), includeMissing: c.req.query('missing') === '1' })));
 api.get('/components/:set/:key', (c) => {
   const id = `${c.req.param('set')}/${c.req.param('key')}`;
   const row = componentsView({ includeMissing: true }).find((x) => x.id === id);
-  if (!row) throw new HttpError(404, `components/${id}: nie ma takiego komponentu`);
+  if (!row) throw new HttpError(404, `components/${id}: no such component`);
   return c.json(row);
 });
 api.patch('/components/:set/:key', async (c) => {
@@ -554,7 +554,7 @@ api.patch('/components/:set/:key', async (c) => {
   const b = await body(c);
   const patch = Object.fromEntries(Object.entries(b).filter(([k]) => COMPONENT_EDITABLE.includes(k)));
   const ignored = Object.keys(b).filter((k) => !COMPONENT_EDITABLE.includes(k));
-  if (ignored.length && !Object.keys(patch).length) throw new HttpError(400, `Można zmieniać tylko: ${COMPONENT_EDITABLE.join(', ')}`);
+  if (ignored.length && !Object.keys(patch).length) throw new HttpError(400, `Only these fields can be changed: ${COMPONENT_EDITABLE.join(', ')}`);
   const row = store.update('components', id, patch, { replaceData: c.req.query('replace') === '1' });
   changed('components', id);
   return c.json(row);
@@ -567,7 +567,7 @@ api.patch('/component-sets/:id', async (c) => {
   return c.json(row);
 });
 
-// dobór kart na slajd: kontekst dla dowolnego agenta albo od razu Claude
+// card picking for a slide: context for any agent, or Claude directly
 api.get('/slides/:id/pick-context', (c) => c.json(pickContext(c.req.param('id'))));
 api.post('/slides/:id/pick', async (c) => {
   const b = c.req.header('content-type')?.includes('json') ? await body(c) : {};
@@ -582,7 +582,7 @@ api.post('/slides/:id/pick', async (c) => {
   return c.json({ applied: b.apply !== false, ...result, slide });
 });
 
-// eksport / import całej bazy
+// export / import of the whole database
 api.get('/export', (c) => {
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
   return c.body(JSON.stringify(store.exportAll(), null, 2), 200, {
@@ -604,6 +604,6 @@ api.post('/import', async (c) => {
 app.route('/api', api);
 
 serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (info) => {
-  console.log(`offer-studio: http://localhost:${info.port} (baza: ${DB_PATH})`);
-  if (!PASSWORD && !API_TOKEN) console.warn('offer-studio: UWAGA, brak STUDIO_PASSWORD i STUDIO_API_TOKEN: aplikacja jest otwarta');
+  console.log(`offer-studio: http://localhost:${info.port} (database: ${DB_PATH})`);
+  if (!PASSWORD && !API_TOKEN) console.warn('offer-studio: WARNING, no STUDIO_PASSWORD or STUDIO_API_TOKEN: the app is open');
 });

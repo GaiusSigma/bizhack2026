@@ -1,5 +1,5 @@
-# --- figcraft-cli: oficjalny release FigCraft, suma SHA-256 z SHA256SUMS.txt releasu ---
-# Przy podbiciu wersji zmień wszystkie trzy argumenty.
+# --- figcraft-cli: official FigCraft release, SHA-256 checksum from the release's SHA256SUMS.txt ---
+# When bumping the version, change all three arguments.
 FROM debian:bookworm-slim AS figcraft
 ARG FIGCRAFT_VERSION=0.18.1
 ARG FIGCRAFT_SHA256_AMD64=8276d2ac55c6f77f7af3a411a9b00415d3feb0b59607a54523311340e653fc19
@@ -11,7 +11,7 @@ RUN set -eux; \
     case "${TARGETARCH:-amd64}" in \
       amd64) arch=x86_64;  sha="${FIGCRAFT_SHA256_AMD64}" ;; \
       arm64) arch=aarch64; sha="${FIGCRAFT_SHA256_ARM64}" ;; \
-      *) echo "nieobsługiwana architektura: ${TARGETARCH}" >&2; exit 1 ;; \
+      *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     name="figcraft-${FIGCRAFT_VERSION}-linux-${arch}"; \
     curl -fsSL "https://github.com/storytold/figcraft/releases/download/v${FIGCRAFT_VERSION}/${name}.tar.gz" -o /tmp/figcraft.tar.gz; \
@@ -19,7 +19,7 @@ RUN set -eux; \
     tar xzf /tmp/figcraft.tar.gz -C /tmp "${name}/bin/figcraft-cli"; \
     install -m 0755 "/tmp/${name}/bin/figcraft-cli" /figcraft-cli
 
-# --- zależności Node ---
+# --- Node dependencies ---
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -27,7 +27,7 @@ RUN npm ci --omit=dev --no-audit --no-fund
 
 # --- runtime ---
 FROM node:24-bookworm-slim
-# figcraft-cli potrzebuje fontconfig; Figtree (font szablonu Gaius, OFL) leży w repo.
+# figcraft-cli needs fontconfig; Figtree (the Gaius template font, OFL) is in the repo.
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends libfontconfig1 fontconfig; \
