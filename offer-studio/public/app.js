@@ -138,18 +138,92 @@ async function download(path, fallbackName) {
 }
 
 // ------------------------------------------------------------------ stan i routing
-const state = { blocks: [], offers: [], templates: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
+const state = { blocks: [], offers: [], templates: [], library: [], components: [], componentSets: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
 
 async function loadAll() {
-  [state.blocks, state.offers, state.templates, state.meta] = await Promise.all([
-    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/meta'),
+  [state.blocks, state.offers, state.templates, state.library, state.components, state.componentSets, state.meta] = await Promise.all([
+    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/library'),
+    api('GET', '/components?missing=1'), api('GET', '/component-sets'), api('GET', '/meta'),
   ]);
+}
+
+const slugify = (s) => String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
+const UPLOAD_ACCEPT = '.figcraft,.json,.fig,.penpot,.sketch,.svg';
+
+// Wgranie plików ze slajdami (każda ramka najwyższego poziomu = slajd w bibliotece).
+async function uploadSlideFiles(files, { replaceId } = {}) {
+  let last = null;
+  for (const file of files) {
+    const id = replaceId || slugify(file.name.replace(/\.[a-z]+$/i, ''));
+    const existing = state.templates.find((t) => t.id === id);
+    if (existing && !replaceId && !confirm(`Plik „${existing.name}” już jest w bibliotece. Podmienić go na ${file.name}?`)) continue;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('id', id);
+    toast(`Wgrywam ${file.name}…`);
+    const res = await fetch('/api/templates', { method: 'POST', body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { toast(`${file.name}: ${data.error || res.statusText}`, true); continue; }
+    toast(`${file.name}: ${data.frames.length} slajd(ów) w bibliotece`);
+    last = data;
+  }
+  await loadAll();
+  return last;
+}
+
+function pasteJsonDialog() {
+  const name = h('input', { placeholder: 'np. Case study ACME' });
+  const text = h('textarea', { class: 'code', placeholder: '{"format": "figcraft", "nodes": {…}, "pages": […]}', style: 'min-height: 260px' });
+  const close = modal(h('div', {},
+    h('h3', {}, 'Wklej JSON slajdów'),
+    h('p', { class: 'hint' }, 'JSON strony albo całego pliku z FigCraft (Zapisz jako… .json). Każda ramka najwyższego poziomu stanie się slajdem. Obrazki z JSON-a nie przechodzą: slajdy z obrazkami wgrywaj jako .figcraft.'),
+    h('label', { class: 'f' }, 'Nazwa w bibliotece'), name,
+    h('label', { class: 'f' }, 'JSON'), text,
+    h('div', { class: 'bar', style: 'margin-top:14px' }, h('span', { class: 'spacer' }),
+      h('button', { class: 'btn', onclick: () => close() }, 'Anuluj'),
+      h('button', { class: 'btn primary', onclick: async () => {
+        if (!name.value.trim()) return toast('Podaj nazwę', true);
+        const id = slugify(name.value);
+        if (state.templates.some((t) => t.id === id) && !confirm(`„${name.value}” już jest w bibliotece. Podmienić?`)) return;
+        const res = await fetch(`/api/templates?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name.value.trim())}`, {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: text.value,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return toast(data.error || res.statusText, true);
+        close();
+        toast(`${data.frames.length} slajd(ów) w bibliotece`);
+        await loadAll();
+        go('templates', data.id);
+      } }, 'Dodaj'))));
+}
+
+// Okienko wyboru slajdu z biblioteki (miniatury). Zwraca nazwę slajdu albo null.
+function pickSlide(title = 'Wybierz slajd z biblioteki') {
+  return new Promise((resolve) => {
+    let picked = null;
+    const groups = {};
+    for (const s of state.library) (groups[s.source_name] ||= []).push(s);
+    const close = modal(h('div', {},
+      h('div', { class: 'bar' }, h('h3', { style: 'flex:1' }, title),
+        h('label', { class: 'btn sm' }, '+ Wgraj nowy', h('input', { type: 'file', accept: UPLOAD_ACCEPT, multiple: true, hidden: true, onchange: async (e) => {
+          const t = await uploadSlideFiles([...e.target.files]);
+          if (t?.frames?.length === 1) { picked = t.frames[0].name; close(); }
+          else { close(); resolve(await pickSlide(title)); }
+        } }))),
+      Object.entries(groups).map(([src, slides]) => [
+        h('div', { class: 'lib-group' }, src),
+        h('div', { class: 'lib-grid' }, slides.map((s) => h('button', { class: 'lib-card', onclick: () => { picked = s.frame; close(); } },
+          h('img', { src: s.thumb, alt: s.frame, loading: 'lazy' }), h('span', {}, s.frame)))),
+      ])));
+    onModalClose = () => resolve(picked);
+  });
 }
 
 function route() {
   const [view = 'offers', id = '', sub = ''] = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
-  ({ blocks: viewBlocks, offers: viewOffers, templates: viewTemplates }[view] || viewOffers)(id, sub);
+  ({ blocks: viewBlocks, offers: viewOffers, templates: viewTemplates, components: viewComponents }[view] || viewOffers)(id, sub);
 }
 const go = (...parts) => { location.hash = `#/${parts.filter((p) => p != null && p !== '').map(encodeURIComponent).join('/')}`; };
 document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => go(b.dataset.view)));
@@ -169,7 +243,6 @@ es.onmessage = debounce(async (e) => {
   else refreshLists?.();
 }, 300);
 
-const framesOf = (templateId) => state.templates.find((t) => t.id === templateId)?.frames || [];
 
 // ------------------------------------------------------------------ edytor bloku (Wiedza i okienko z oferty)
 function blockEditor(block, { onDeleted, inModal = false } = {}) {
@@ -288,7 +361,7 @@ async function viewOffers(offerId, slideId) {
   const newOffer = async () => {
     const name = prompt('Nazwa nowej oferty:');
     if (!name) return;
-    const o = await api('POST', '/offers', { name, template_id: state.templates[0]?.id, data: { client: '', price: '' } });
+    const o = await api('POST', '/offers', { name, data: { client: '', price: '' } });
     await loadAll();
     go('offers', o.id);
   };
@@ -309,8 +382,7 @@ async function viewOffers(offerId, slideId) {
     toast(e.message, true);
     return go('offers');
   }
-  const frames = framesOf(offer.template_id);
-  const framesByName = Object.fromEntries(frames.map((f) => [f.name, f]));
+  const framesByName = Object.fromEntries(state.library.map((s) => [s.frame, s]));
   const blocksById = Object.fromEntries(state.blocks.map((b) => [b.id, b]));
 
   // --- podgląd z FigCraft (PNG)
@@ -386,25 +458,15 @@ async function viewOffers(offerId, slideId) {
     renderSlides();
   };
 
-  const addSlide = () => {
-    if (!frames.length) return toast('Najpierw wybierz szablon oferty', true);
-    const frameSel = h('select', {}, frames.map((f) => h('option', { value: f.name }, f.name)));
-    const close = modal(h('div', {},
-      h('h3', {}, 'Nowy slajd'),
-      h('label', { class: 'f' }, 'Slajd z szablonu'), frameSel,
-      h('div', { class: 'hint' }, 'Slajd trafi za aktualnie wybranym (albo na koniec).'),
-      h('div', { class: 'bar', style: 'margin-top:16px' }, h('span', { class: 'spacer' }),
-        h('button', { class: 'btn primary', onclick: async () => {
-          const idx = offer.slides.findIndex((s) => s.id === slideId);
-          const s = await api('POST', `/offers/${encodeURIComponent(offer.id)}/slides`, { frame: frameSel.value, data: {}, ...(idx >= 0 ? { position: offer.slides[idx].position + 1 } : {}) });
-          close();
-          go('offers', offer.id, s.id);
-        } }, 'Dodaj'))));
+  // Nowy slajd: wybór z miniatur biblioteki; trafia za aktualnie wybranym (albo na koniec).
+  const addSlide = async () => {
+    const frame = await pickSlide('Dodaj slajd do oferty');
+    if (!frame) return;
+    const idx = offer.slides.findIndex((s) => s.id === slideId);
+    const s = await api('POST', `/offers/${encodeURIComponent(offer.id)}/slides`, { frame, data: {}, ...(idx >= 0 ? { position: offer.slides[idx].position + 1 } : {}) });
+    await loadAll();
+    go('offers', offer.id, s.id);
   };
-
-  const templateSel = h('select', { onchange: (e) => saveOffer({ template_id: e.target.value }) },
-    h('option', { value: '' }, '(brak)'), state.templates.map((t) => h('option', { value: t.id }, t.name)));
-  templateSel.value = offer.template_id || '';
 
   const offerPanel = h('div', {},
     h('div', { class: 'bar' },
@@ -421,8 +483,6 @@ async function viewOffers(offerId, slideId) {
     h('div', { class: 'id' }, `id: ${offer.id}`),
     h('label', { class: 'f' }, 'Nazwa oferty'),
     h('input', { value: offer.name, oninput: (e) => saveOffer({ name: e.target.value }) }),
-    h('label', { class: 'f' }, 'Szablon FigCraft'),
-    templateSel,
     h('label', { class: 'f' }, 'Zmienne oferty (w szablonie: {{offer.client}}, {{offer.price}}…)'),
     kvEditor(offer.data || {}, ['client', 'price'], (data) => saveOffer({ data })),
     h('div', { class: 'bar', style: 'margin-top:18px' }, h('h2', { style: 'font-size:14px' }, `Slajdy (${offer.slides.length})`), h('button', { class: 'btn sm', onclick: addSlide }, '+ slajd')),
@@ -472,12 +532,17 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
     renderSlides();
   }, 350);
   const frame = framesByName[slide.frame];
-  const frames = Object.keys(framesByName);
-
-  const frameSel = h('select', { onchange: async (e) => { await api('PATCH', `/slides/${encodeURIComponent(slide.id)}`, { frame: e.target.value }); route(); } },
-    frames.includes(slide.frame) ? null : h('option', { value: slide.frame }, `${slide.frame} (brak w szablonie)`),
-    frames.map((f) => h('option', { value: f }, f)));
-  frameSel.value = slide.frame;
+  const frameBox = h('div', { class: 'frame-pick' },
+    frame ? h('img', { src: frame.thumb, alt: slide.frame }) : h('div', { class: 'shot-error' }, 'brak w bibliotece'),
+    h('div', {},
+      h('div', {}, h('code', {}, slide.frame)),
+      frame ? h('div', { class: 'hint' }, `z pliku „${frame.source_name}”`) : null,
+      h('button', { class: 'btn sm', style: 'margin-top:6px', onclick: async () => {
+        const f = await pickSlide('Zmień wygląd slajdu');
+        if (!f || f === slide.frame) return;
+        await api('PATCH', `/slides/${encodeURIComponent(slide.id)}`, { frame: f });
+        route();
+      } }, 'Zmień slajd…')));
 
   // --- bloki: lista wybranych albo zapytanie
   const useQuery = !!(slide.query && (slide.query.type || slide.query.tag)) && !slide.block_ids?.length;
@@ -518,7 +583,8 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
   };
   renderBlocks();
 
-  const fields = frame?.fields || { data: [], item: [], sources: [] };
+  const fields = frame?.fields || { data: [], item: [], sources: [], picks: {} };
+  const pickBoxes = Object.entries(fields.picks || {}).map(([set, slots]) => picksBox(slide, set, slots, save));
   return h('div', { class: 'box', style: 'border-color: var(--accent)' },
     h('div', { class: 'bar' },
       h('h2', { style: 'font-size:14px' }, `Slajd ${offer.slides.indexOf(slide) + 1}`), status,
@@ -528,80 +594,264 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
         await api('DELETE', `/slides/${encodeURIComponent(slide.id)}`);
         onDeleted();
       } }, 'Usuń')),
-    h('label', { class: 'f' }, 'Slajd z szablonu'), frameSel,
+    h('label', { class: 'f' }, 'Wygląd (slajd z biblioteki)'), frameBox,
     fields.item.length ? h('div', { class: 'hint' }, `Pola kart: ${fields.item.map((k) => `{{${k}}}`).join(', ')}`) : null,
     h('label', { class: 'f' }, 'Treść slajdu (**słowo** = wyróżnienie z szablonu; puste pole ukrywa warstwę)'),
     kvEditor(slide.data || {}, fields.data, (data) => save({ data })),
     fields.sources.includes('blocks') ? blocksBox : null,
+    pickBoxes,
   );
 }
 
-// ------------------------------------------------------------------ widok: Szablony
-function viewTemplates(templateId) {
+// ------------------------------------------------------------------ komponenty na slajdzie (#pick:zestaw)
+const compChips = (c) => [
+  c.variant ? h('span', { class: `chip ${c.variant === 'wyroznienie' ? 'green' : ''}` }, c.variant) : null,
+  c.topic ? h('span', { class: 'chip' }, c.topic) : null,
+];
+
+function picksBox(slide, set, slots, save) {
+  const box = h('div', { class: 'box' });
+  const meta = state.componentSets.find((x) => x.id === set);
+  const render = (aiResult) => {
+    const byId = Object.fromEntries(state.components.map((c) => [c.id, c]));
+    const picks = slide.picks?.[set] || [];
+    const setPicks = (next) => {
+      slide.picks = { ...(slide.picks || {}), [set]: next };
+      save({ picks: slide.picks });
+      render();
+    };
+    const swap = (i, j) => { const n = [...picks]; [n[i], n[j]] = [n[j], n[i]]; setPicks(n); };
+    const brief = autosize(h('textarea', { rows: 2, placeholder: 'Brief dla AI, np. „bank, boją się chmury, decyduje zarząd”. Zmienne oferty (klient itp.) AI widzi samo.' }, box.dataset.brief || ''));
+    brief.oninput = () => (box.dataset.brief = brief.value);
+    const aiBtn = h('button', { class: 'btn primary sm', onclick: async () => {
+      aiBtn.disabled = true;
+      aiBtn.textContent = 'AI dobiera karty…';
+      try {
+        const r = await api('POST', `/slides/${encodeURIComponent(slide.id)}/pick`, { brief: brief.value });
+        slide.picks = r.slide.picks;
+        toast(`AI wybrało ${r.picks[set]?.length ?? 0} kart`);
+        render(r);
+      } catch (e) {
+        toast(e.message, true);
+        aiBtn.disabled = false;
+        aiBtn.textContent = 'Dobierz karty (AI)';
+      }
+    } }, 'Dobierz karty (AI)');
+    box.replaceChildren(...[
+      h('h3', {}, `Karty z zestawu @${set}: ${picks.length} / ${slots} `,
+        h('button', { class: 'btn sm', onclick: async () => {
+          const id = await pickComponent(set, picks.map((p) => p.component));
+          if (id) setPicks([...picks, { component: id }]);
+        } }, '+ karta'), ' ',
+        h('a', { class: 'btn sm ghost', href: `#/components/${encodeURIComponent(set)}` }, 'opisy kart')),
+      meta?.rules ? h('div', { class: 'hint' }, `Zasady: ${meta.rules}`) : null,
+      picks.length ? null : h('div', { class: 'hint' }, 'Brak wyboru: slajd pokazuje karty tak, jak je narysowano w FigCraft.'),
+      h('div', { class: 'pick-list' }, picks.map((p, i) => {
+        const c = byId[p.component];
+        return h('div', { class: 'pick-row' },
+          h('span', { class: 'n' }, i + 1),
+          c?.thumb ? h('img', { src: c.thumb, alt: c.title }) : h('div', { class: 'shot-error' }, 'brak'),
+          h('div', {},
+            h('div', {}, h('b', {}, c ? c.title : h('s', {}, p.component)), ' ', c ? compChips(c) : null),
+            p.reason ? h('div', { class: 'why' }, p.reason) : null,
+            p.data && Object.keys(p.data).length ? h('div', { class: 'why' }, `tekst zmieniony: ${Object.keys(p.data).join(', ')}`) : null),
+          h('span', { class: 'acts' },
+            c?.fields?.length ? h('button', { class: 'icon', title: 'Zmień teksty tej karty na tym slajdzie', onclick: () => editPickText(p, c, (data) => {
+              const n = [...picks];
+              n[i] = { ...p, data };
+              if (!Object.keys(data).length) delete n[i].data;
+              setPicks(n);
+            }) }, '✎') : null,
+            h('button', { class: 'icon', title: 'Zamień na inną kartę', onclick: async () => {
+              const id = await pickComponent(set, picks.map((x) => x.component).filter((x) => x !== p.component));
+              if (!id) return;
+              const n = [...picks];
+              n[i] = { component: id };
+              setPicks(n);
+            } }, '⇄'),
+            h('button', { class: 'icon', onclick: () => i > 0 && swap(i - 1, i) }, '↑'),
+            h('button', { class: 'icon', onclick: () => i < picks.length - 1 && swap(i, i + 1) }, '↓'),
+            h('button', { class: 'icon', title: 'Zdejmij ze slajdu', onclick: () => setPicks(picks.filter((_, j) => j !== i)) }, '×')));
+      })),
+      h('div', { class: 'ai-box' },
+        brief,
+        h('div', { class: 'bar' }, aiBtn,
+          h('span', { class: 'hint' }, 'AI czyta opisy kart z bazy (zakładka Komponenty), zasady zestawu i zmienne oferty.')),
+        aiResult ? h('div', { class: 'ai-note' },
+          aiResult.note, aiResult.warnings?.length ? h('div', { class: 'hint' }, `Uwagi: ${aiResult.warnings.join('; ')}`) : null) : null),
+    ].filter(Boolean));
+  };
+  render();
+  return box;
+}
+
+// Okienko wyboru karty z zestawu (miniatury + kiedy jej użyć). Zwraca id albo null.
+function pickComponent(set, taken = []) {
+  return new Promise((resolve) => {
+    let picked = null;
+    const comps = state.components.filter((c) => c.set_name === set && !c.missing);
+    const close = modal(h('div', {},
+      h('div', { class: 'bar' }, h('h3', { style: 'flex:1' }, `Wybierz kartę z zestawu @${set}`)),
+      h('div', { class: 'comp-grid' }, comps.map((c) => h('button', { class: 'comp-card', disabled: taken.includes(c.id), onclick: () => { picked = c.id; close(); } },
+        c.thumb ? h('img', { src: c.thumb, alt: c.title, loading: 'lazy' }) : null,
+        h('div', { class: 'body' },
+          h('b', {}, c.title), h('div', {}, compChips(c)),
+          c.use_when ? h('div', {}, h('span', { class: 'muted' }, 'Kiedy: '), c.use_when) : h('div', { class: 'muted' }, 'bez opisu: uzupełnij w zakładce Komponenty')))))));
+    onModalClose = () => resolve(picked);
+  });
+}
+
+function editPickText(pick, comp, onSave) {
+  const inputs = {};
+  const close = modal(h('div', {},
+    h('h3', {}, `Teksty karty „${comp.title}” na tym slajdzie`),
+    h('p', { class: 'hint' }, 'Puste pole = tekst z FigCraft. **słowo** = wyróżnienie.'),
+    comp.fields.map((f) => [
+      h('label', { class: 'f' }, `{{${f}}}`),
+      (inputs[f] = autosize(h('textarea', { rows: 2, placeholder: '(jak w FigCraft)' }, pick.data?.[f] ?? ''))),
+    ]),
+    h('div', { class: 'bar', style: 'margin-top:14px' }, h('span', { class: 'spacer' }),
+      h('button', { class: 'btn', onclick: () => close() }, 'Anuluj'),
+      h('button', { class: 'btn primary', onclick: () => {
+        const data = {};
+        for (const [f, el] of Object.entries(inputs)) if (el.value.trim()) data[f] = el.value;
+        close();
+        onSave(data);
+      } }, 'Zapisz'))));
+}
+
+// ------------------------------------------------------------------ widok: Komponenty (opisy kart dla AI)
+function viewComponents(focusSet) {
   refreshLists = null;
-  const upload = (id) => h('input', { type: 'file', accept: '.figcraft', hidden: true, onchange: async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    if (id) fd.append('id', id);
-    toast('Wgrywam szablon…');
-    const res = await fetch('/api/templates', { method: 'POST', body: fd });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return toast(data.error || res.statusText, true);
-    toast(id ? 'Szablon podmieniony' : 'Szablon dodany');
-    await loadAll();
-    go('templates', data.id);
+  const sets = [...new Set([...state.componentSets.map((x) => x.id), ...state.components.map((c) => c.set_name)])];
+  const view = h('div', { class: 'editor library' },
+    h('div', { class: 'bar' }, h('h2', {}, `Komponenty (${state.components.filter((c) => !c.missing).length})`)),
+    h('details', { class: 'help', open: !state.components.length },
+      h('summary', {}, 'Jak to działa?'),
+      h('ol', {},
+        h('li', {}, 'W FigCraft (albo Figmie) narysuj ramkę najwyższego poziomu o nazwie ', h('code', {}, '@nazwa-zestawu'), ', np. ', h('code', {}, '@dlaczego'), '. Każda ramka w środku to jedna gotowa karta: własna ikona, kolor, układ. Nazwa karty = jej klucz.'),
+        h('li', {}, 'Na slajdzie miejsca na karty nazwij ', h('code', {}, '#pick:nazwa-zestawu'), ' (np. 6 slotów w siatce). Bez wyboru slajd pokazuje to, co narysowano.'),
+        h('li', {}, 'Teksty w kartach, które wolno zmieniać, nazwij ', h('code', {}, '{{title}}'), ', ', h('code', {}, '{{body}}'), '… Bez wartości zostaje tekst z rysunku.'),
+        h('li', {}, 'Wgraj plik w zakładce Slajdy. Karty pojawią się tutaj: opisz, kiedy której użyć. Te opisy (SQLite) czyta AI przy „Dobierz karty”.'))),
+  );
+  for (const set of sets) {
+    const meta = state.componentSets.find((x) => x.id === set) || { id: set, title: set, rules: '' };
+    const comps = state.components.filter((c) => c.set_name === set);
+    const sstatus = h('span', { class: 'status' });
+    const saveSet = saver(sstatus, (patch) => api('PATCH', `/component-sets/${encodeURIComponent(set)}`, patch));
+    const usedBy = state.library.filter((f) => f.fields.picks?.[set]).map((f) => `${f.frame} (${f.fields.picks[set]})`).join(', ');
+    const section = h('section', { class: `lib-file ${set === focusSet ? 'focus' : ''}`, id: `set-${set}` },
+      h('div', { class: 'bar' },
+        h('code', {}, `@${set}`),
+        h('input', { class: 'lib-name', value: meta.title, oninput: (e) => saveSet({ title: e.target.value }) }), sstatus,
+        h('span', { class: 'hint' }, `${comps.filter((c) => !c.missing).length} kart · sloty: ${usedBy || 'żaden slajd'}`)),
+      h('label', { class: 'f' }, 'Zasady zestawu dla AI (ile kart, ile wyróżnionych, czego nie łączyć)'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => saveSet({ rules: e.target.value }) }, meta.rules)));
+    for (const c of comps) section.append(componentEditor(c));
+    view.append(section);
+  }
+  if (!sets.length) view.append(h('div', { class: 'empty' }, 'Brak komponentów. Wgraj plik z ramką @zestaw w zakładce Slajdy.'));
+  $('#view').replaceChildren(view);
+  if (focusSet) $(`#set-${CSS.escape(focusSet)}`)?.scrollIntoView({ block: 'start' });
+}
+
+function componentEditor(c) {
+  const status = h('span', { class: 'status' });
+  const [set, key] = c.id.split('/');
+  const save = saver(status, async (patch) => Object.assign(c, await api('PATCH', `/components/${encodeURIComponent(set)}/${encodeURIComponent(key)}`, patch)));
+  const field = (label, k, ph) => [h('label', { class: 'f' }, label), autosize(h('textarea', { rows: 2, placeholder: ph, oninput: (e) => save({ [k]: e.target.value }) }, c[k] || ''))];
+  return h('div', { class: `comp-edit ${c.missing ? 'missing' : ''}` },
+    h('div', {},
+      c.thumb ? h('img', { src: c.thumb, alt: c.title, loading: 'lazy' }) : h('div', { class: 'shot-error' }, 'brak w bibliotece'),
+      h('div', { class: 'id' }, c.id, c.missing ? ' · nie ma już w bibliotece' : ''),
+      h('div', { class: 'hint' }, c.fields.length ? `pola: ${c.fields.map((f) => `{{${f}}}`).join(', ')}` : 'karta stała (bez pól)')),
+    h('div', {},
+      h('div', { class: 'bar' }, h('input', { value: c.title, style: 'flex:1;font-weight:600', oninput: (e) => save({ title: e.target.value }) }), status),
+      h('div', { class: 'two' },
+        h('div', {}, h('label', { class: 'f' }, 'Temat (warianty jednego argumentu mają ten sam)'), h('input', { value: c.topic, oninput: (e) => save({ topic: e.target.value.trim() }) })),
+        h('div', {}, h('label', { class: 'f' }, 'Wariant (np. zwykla, wyroznienie, liczba)'), h('input', { value: c.variant, oninput: (e) => save({ variant: e.target.value.trim() }) }))),
+      field('Co pokazuje', 'description', 'treść i wygląd karty'),
+      field('Kiedy wybrać', 'use_when', 'jaki klient, branża, obawa, etap rozmowy'),
+      field('Kiedy nie wybierać', 'avoid_when', 'np. gdy na slajdzie jest już karta X'),
+      h('label', { class: 'f' }, 'Tagi (po przecinku)'),
+      h('input', { value: (c.tags || []).join(', '), oninput: (e) => save({ tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) }) })));
+}
+
+// ------------------------------------------------------------------ widok: Biblioteka slajdów
+// Sprzedawca projektuje slajd w FigCraft (ramka 1920×1080), zapisuje plik albo JSON strony i wrzuca go tutaj.
+function viewTemplates(focusId) {
+  refreshLists = null;
+  const fileInput = (replaceId) => h('input', { type: 'file', accept: UPLOAD_ACCEPT, multiple: !replaceId, hidden: true, onchange: async (e) => {
+    const t = await uploadSlideFiles([...e.target.files], { replaceId });
+    e.target.value = '';
+    go('templates', t?.id || replaceId || '');
+    route();
   } });
 
-  const listEl = h('div', { class: 'items' },
-    state.templates.map((t) => h('div', { class: `item ${t.id === templateId ? 'active' : ''}`, onclick: () => go('templates', t.id) },
-      h('div', {}, t.name), h('div', { class: 'sub' }, `${t.id} · ${t.frames.length} slajdów`))));
-  const editor = h('div', { class: 'editor' });
-  $('#view').replaceChildren(
-    h('div', { class: 'col list', style: 'width: 260px' },
-      h('div', { class: 'tools' }, h('label', { class: 'btn primary' }, '+ Wgraj .figcraft', upload(null))), listEl),
-    editor);
+  const help = h('details', { class: 'help', open: state.templates.length < 2 },
+    h('summary', {}, 'Jak dodać nowy slajd?'),
+    h('ol', {},
+      h('li', {}, 'W FigCraft narysuj ramkę 1920×1080 i nazwij ją, np. ', h('code', {}, 'case-study'), '. Nazwa ramki to nazwa slajdu w bibliotece.'),
+      h('li', {}, 'Teksty, które mają się zmieniać, nazwij polami: ', h('code', {}, '{{data.title}}'), ', ', h('code', {}, '{{offer.client}}'), '. Reszta zostaje taka, jak ją narysujesz.'),
+      h('li', {}, 'Karty na bloki z bazy wiedzy nazwij ', h('code', {}, '#item'), ', a teksty w nich ', h('code', {}, '{{title}}'), ', ', h('code', {}, '{{body}}'), ', ', h('code', {}, '{{effect}}'), '…'),
+      h('li', {}, 'Wymienne karty (różne ikony, kolory, układy) narysuj w ramce ', h('code', {}, '@zestaw'), ', a na slajdzie daj sloty ', h('code', {}, '#pick:zestaw'), '. Opisy kart dla AI: zakładka Komponenty.'),
+      h('li', {}, 'Zapisz plik .figcraft (albo stronę jako .json) i przeciągnij go tutaj. Działa też .fig, .penpot, .sketch i .svg.')),
+    h('table', {},
+      h('tr', {}, h('td', {}, h('code', {}, 'Efekt: {{effect}}')), h('td', {}, 'tekst stały + pole; pusty wynik ukrywa warstwę')),
+      h('tr', {}, h('td', {}, h('code', {}, '{{offer.client|upper}}')), h('td', {}, 'zmienna oferty wielkimi literami')),
+      h('tr', {}, h('td', {}, h('code', {}, '#item:lines')), h('td', {}, 'wiersz z pola data.lines („etykieta | wartość”): {{title}}, {{value}}')),
+      h('tr', {}, h('td', {}, h('code', {}, '**tekst**')), h('td', {}, 'w treści: styl 1. wyróżnienia z oryginalnego tekstu (np. czerwony akcent)')),
+      h('tr', {}, h('td', {}, h('code', {}, '[[2:tekst]]')), h('td', {}, 'w nazwie warstwy: styl 2. wyróżnienia'))));
 
-  const t = state.templates.find((x) => x.id === templateId);
-  if (!t) {
-    editor.replaceChildren(h('div', { class: 'help' },
-      h('h2', {}, 'Szablony FigCraft'),
-      h('p', {}, 'Wygląd oferty projektujesz w FigCraft. Każda ramka najwyższego poziomu w pliku to slajd szablonu, a jej nazwa to jego identyfikator. Pola z bazy wiążesz nazwami warstw:'),
-      h('table', {},
-        h('tr', {}, h('td', {}, h('code', {}, '{{data.title}}')), h('td', {}, 'treść slajdu z edytora oferty')),
-        h('tr', {}, h('td', {}, h('code', {}, '{{offer.client|upper}}')), h('td', {}, 'zmienna oferty, opcjonalnie wielkimi literami')),
-        h('tr', {}, h('td', {}, h('code', {}, 'Efekt: {{effect}}')), h('td', {}, 'tekst stały + pole; pusty wynik ukrywa warstwę')),
-        h('tr', {}, h('td', {}, h('code', {}, '#item')), h('td', {}, 'karta na blok; w środku {{title}}, {{body}}, {{n}} i pola bloku. Nadmiarowe karty znikają, brakujące są dokładane')),
-        h('tr', {}, h('td', {}, h('code', {}, '#item:lines')), h('td', {}, 'wiersz z pola data.lines („etykieta | wartość”): {{title}}, {{value}}')),
-        h('tr', {}, h('td', {}, h('code', {}, '[[2:tekst]]')), h('td', {}, 'w nazwie warstwy: styl 2. wyróżnienia z oryginalnego tekstu')),
-        h('tr', {}, h('td', {}, h('code', {}, '**tekst**')), h('td', {}, 'w treści: styl 1. wyróżnienia (np. czerwony akcent)'))),
-      h('p', {}, 'Żeby zmienić wygląd: pobierz szablon, popraw go w FigCraft (desktop albo web), wgraj z powrotem przyciskiem „Podmień plik”. Oferty od razu użyją nowej wersji.')));
-    return;
+  const drop = h('div', { class: 'dropzone' },
+    h('b', {}, 'Przeciągnij tu pliki ze slajdami'), h('span', {}, ' albo '),
+    h('label', { class: 'btn primary' }, 'Wybierz pliki', fileInput(null)), ' ',
+    h('button', { class: 'btn', onclick: pasteJsonDialog }, 'Wklej JSON'));
+  const view = h('div', { class: 'editor library' }, h('div', { class: 'bar' }, h('h2', {}, `Biblioteka slajdów (${state.library.length})`)), drop, help);
+
+  for (const t of state.templates) {
+    const slides = state.library.filter((s) => s.source === t.id);
+    const status = h('span', { class: 'status' });
+    const save = saver(status, (patch) => api('PATCH', `/templates/${encodeURIComponent(t.id)}`, patch));
+    view.append(h('section', { class: `lib-file ${t.id === focusId ? 'focus' : ''}`, id: `lib-${t.id}` },
+      h('div', { class: 'bar' },
+        h('input', { class: 'lib-name', value: t.name, oninput: (e) => save({ name: e.target.value }) }), status,
+        h('span', { class: 'hint' }, `${slides.length} slajd(ów) · ${state.components.filter((c) => c.source === t.id && !c.missing).length} komponentów · ${t.size > 1048576 ? `${(t.size / 1048576).toFixed(1)} MB` : `${Math.ceil(t.size / 1024)} KB`} · ${new Date(t.updated_at).toLocaleString('pl-PL')}`),
+        h('span', { class: 'spacer' }),
+        h('a', { class: 'btn sm', href: `/api/templates/${encodeURIComponent(t.id)}/file` }, 'Pobierz .figcraft'),
+        h('label', { class: 'btn sm', title: 'Wgraj poprawioną wersję tego pliku' }, 'Podmień', fileInput(t.id)),
+        state.meta.figcraftWebUrl ? h('a', { class: 'btn sm', href: state.meta.figcraftWebUrl, target: '_blank' }, 'FigCraft') : null,
+        h('button', { class: 'btn sm danger', onclick: async () => {
+          const used = state.offers.length ? ' Oferty, które używają tych slajdów, pokażą błąd.' : '';
+          if (!confirm(`Usunąć „${t.name}” (${slides.length} slajdów) z biblioteki?${used}`)) return;
+          await api('DELETE', `/templates/${encodeURIComponent(t.id)}`);
+          await loadAll(); route();
+        } }, 'Usuń')),
+      h('div', { class: 'lib-grid' }, slides.map((s) => h('figure', { class: 'lib-card' },
+        h('img', { src: s.thumb, alt: s.frame, loading: 'lazy' }),
+        h('figcaption', {},
+          h('code', {}, s.frame),
+          h('div', { class: 'hint' }, [
+            s.fields.data.length ? `pola: ${s.fields.data.join(', ')}` : 'slajd stały',
+            s.slots ? `karty #item: ${s.slots} (${s.fields.item.join(', ')})` : null,
+            ...Object.entries(s.fields.picks || {}).map(([set, n]) => `sloty #pick:${set}: ${n}`),
+          ].filter(Boolean).join(' · '))))))));
   }
+  $('#view').replaceChildren(view);
+  if (focusId) $(`#lib-${CSS.escape(focusId)}`)?.scrollIntoView({ block: 'start' });
 
-  const status = h('span', { class: 'status' });
-  const save = saver(status, (patch) => api('PATCH', `/templates/${encodeURIComponent(t.id)}`, patch));
-  editor.replaceChildren(
-    h('div', { class: 'bar' }, h('h2', {}, t.name), status,
-      h('a', { class: 'btn', href: `/api/templates/${encodeURIComponent(t.id)}/file` }, 'Pobierz .figcraft'),
-      h('label', { class: 'btn' }, 'Podmień plik', upload(t.id)),
-      state.meta.figcraftWebUrl ? h('a', { class: 'btn', href: state.meta.figcraftWebUrl, target: '_blank' }, 'Otwórz FigCraft') : null,
-      h('button', { class: 'btn danger', onclick: async () => {
-        if (!confirm(`Usunąć szablon „${t.name}”? Oferty, które go używają, przestaną się renderować.`)) return;
-        await api('DELETE', `/templates/${encodeURIComponent(t.id)}`);
-        await loadAll(); go('templates');
-      } }, 'Usuń')),
-    h('div', { class: 'id' }, `id: ${t.id} · ${(t.size / 1024 / 1024).toFixed(1)} MB · zmieniony ${new Date(t.updated_at).toLocaleString('pl-PL')}`),
-    h('label', { class: 'f' }, 'Nazwa'), h('input', { value: t.name, oninput: (e) => save({ name: e.target.value }) }),
-    h('label', { class: 'f' }, `Slajdy w szablonie (${t.frames.length})`),
-    h('table', { class: 'frames' },
-      h('tr', {}, h('th', {}, 'slajd'), h('th', {}, 'pola slajdu {{data.*}}'), h('th', {}, 'karty #item'), h('th', {}, 'pola kart')),
-      t.frames.map((f) => h('tr', {},
-        h('td', {}, h('code', {}, f.name)),
-        h('td', {}, f.fields.data.join(', ') || '–'),
-        h('td', {}, f.slots ? `${f.slots} (${f.fields.sources.join(', ')})` : '–'),
-        h('td', {}, f.fields.item.join(', ') || '–')))));
+  // przeciąganie plików na stronę
+  view.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  view.addEventListener('dragleave', (e) => { if (e.target === view) drop.classList.remove('over'); });
+  view.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    const files = [...e.dataTransfer.files];
+    if (!files.length) return;
+    const t = await uploadSlideFiles(files);
+    go('templates', t?.id || '');
+    route();
+  });
 }
 
 // ------------------------------------------------------------------ import
