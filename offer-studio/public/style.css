@@ -124,3 +124,29 @@ button.lib-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(-
 #modal .dlg:has(.lib-grid) { width: min(1100px, calc(100vw - 32px)); }
 .frame-pick { display: grid; grid-template-columns: 180px 1fr; gap: 12px; align-items: start; }
 .frame-pick img, .frame-pick .shot-error { width: 180px; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 6px; }
+
+/* komponenty: karty z zestawów @… (opisy dla AI) i wybór kart na slajd */
+.comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.comp-card { margin: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; text-align: left; font: inherit; padding: 0; }
+button.comp-card { cursor: pointer; }
+button.comp-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+button.comp-card:disabled { opacity: .45; cursor: default; box-shadow: none; border-color: var(--line); }
+.comp-card img { display: block; width: 100%; aspect-ratio: 554 / 198; object-fit: contain; background: #f3f3f3; border-bottom: 1px solid var(--line); }
+.comp-card .body { padding: 8px 10px; font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+.comp-card .body b { font-size: 13px; }
+.comp-card .muted { color: var(--muted); }
+.comp-card.missing { opacity: .6; border-style: dashed; }
+.comp-edit { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
+.comp-edit img { width: 300px; border: 1px solid var(--line); border-radius: 6px; background: #f3f3f3; }
+.comp-edit .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.chip { display: inline-block; padding: 0 6px; border-radius: 9px; background: #eee; font-size: 11px; color: var(--muted); margin-right: 4px; }
+.chip.green { background: #e3f4e1; color: #2f7a27; }
+.pick-list { display: flex; flex-direction: column; gap: 6px; }
+.pick-row { display: grid; grid-template-columns: 18px 110px 1fr; gap: 4px 8px; align-items: start; padding: 6px; background: #f7f7f7; border-radius: 6px; font-size: 12px; }
+.pick-row img { width: 110px; border-radius: 4px; background: #fff; display: block; }
+.pick-row .acts { grid-column: 2 / -1; display: flex; gap: 2px; justify-content: flex-end; }
+.pick-row .n { color: var(--muted); text-align: right; }
+.pick-row .why { color: var(--muted); font-size: 12px; }
+.ai-box { margin-top: 10px; padding: 10px; border: 1px dashed var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+.ai-note { font-size: 12px; background: #f4f8f3; border-radius: 6px; padding: 6px 8px; }
+#modal .dlg:has(.comp-grid) { width: min(1150px, calc(100vw - 32px)); }

@@ -76,6 +76,22 @@ curl -o oferta.pdf $URL/api/offers/gaius-vault-bazowa/pdf -H "Authorization: Bea
 
 curl -X POST "$URL/api/templates?id=case-study&amp;name=Case%20study" -H "Authorization: Bearer $TOKEN"   -H "content-type: application/json" --data-binary @case-study.json</pre>
 
+<h2>Komponenty (wymienne karty) i dobór przez AI</h2>
+<p>Ramka najwyższego poziomu nazwana <code>@zestaw</code> (np. <code>@dlaczego</code>) nie jest slajdem, tylko zestawem kart: każda ramka w środku to gotowa karta (własna ikona, kolor, układ), nazwa = klucz. Id karty: <code>zestaw/klucz</code> (po slugify). Na slajdzie miejsca na karty nazywa się <code>#pick:zestaw</code>. Wybrane karty wchodzą w miejsce slotów w kolejności wyboru; bez wyboru slajd pokazuje to, co narysowano. Teksty kart nazwane <code>{{title}}</code>, <code>{{body}}</code>… można nadpisać; bez wartości zostaje tekst z rysunku.</p>
+<p>Opisy kart siedzą w SQLite (tabela <code>components</code>): co karta pokazuje, kiedy ją wybrać, kiedy nie, temat (warianty jednego argumentu), wariant, tagi. Wiersze zakłada synchronizacja z biblioteką przy wgraniu pliku; opisy zostają przy podmianie pliku. Zasady zestawu: tabela <code>component_sets</code>.</p>
+<table>
+<tr><td>GET /api/components?set=&amp;missing=1</td><td>Karty z opisami i miniaturą (<code>missing=1</code>: także te, których już nie ma w bibliotece)</td></tr>
+<tr><td>GET /api/components/:zestaw/:klucz</td><td>Jedna karta</td></tr>
+<tr><td>PATCH /api/components/:zestaw/:klucz</td><td>Opis: <code>title, description, use_when, avoid_when, topic, variant, tags, data</code> (<code>data</code> = stałe nadpisania pól karty)</td></tr>
+<tr><td>GET /api/component-sets</td><td>Zestawy z zasadami</td></tr>
+<tr><td>PATCH /api/component-sets/:id</td><td><code>{"title": "...", "rules": "Dokładnie 6 kart, jedna wyróżniona…"}</code></td></tr>
+<tr><td>PATCH /api/slides/:id</td><td>Ręczny wybór: <code>{"picks": {"dlaczego": [{"component": "dlaczego/on-premise", "data": {"title": "…"}}, …]}}</code></td></tr>
+<tr><td>GET /api/slides/:id/pick-context</td><td>Wszystko, czego potrzebuje agent do wyboru: oferta, slajd, liczba slotów, zasady i opisy kart (np. dla n8n z własnym modelem)</td></tr>
+<tr><td>POST /api/slides/:id/pick</td><td>Dobór przez Claude: <code>{"brief": "bank, boją się chmury", "apply": true}</code> → <code>{picks, note, warnings, slide}</code>. <code>apply: false</code> tylko podpowiada. Wymaga <code>ANTHROPIC_API_KEY</code></td></tr>
+</table>
+<pre>curl -X POST $URL/api/slides/s-dlaczego/pick -H "Authorization: Bearer $TOKEN" \
+  -H "content-type: application/json" -d '{"brief": "Bank, regulowany przez KNF, zarząd boi się chmury"}'</pre>
+
 <h2>Eksport i import</h2>
 <table>
 <tr><td>GET /api/export</td><td>Cała baza (bloki, szablony z plikami w base64, oferty, slajdy) w jednym JSON</td></tr>

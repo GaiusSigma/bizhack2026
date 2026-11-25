@@ -72,8 +72,8 @@ const blocks = [
 // ------------------------------------------------------------------ oferta bazowa
 // `frame` to nazwa slajdu (ramki) w szablonie, `data` wypełnia pola {{data.*}}.
 const OFFER = 'gaius-vault-bazowa';
-const slide = (id, position, frame, data, block_ids = []) => ({
-  id, offer_id: OFFER, position, frame, data, block_ids, query: null, hidden: false, created_at: ts, updated_at: ts,
+const slide = (id, position, frame, data, block_ids = [], picks = {}) => ({
+  id, offer_id: OFFER, position, frame, data, block_ids, query: null, picks, hidden: false, created_at: ts, updated_at: ts,
 });
 const ids = (type) => blocks.filter((b) => b.type === type).map((b) => b.id);
 
@@ -97,7 +97,10 @@ export const slides = [
     title: 'Dlaczego ',
     title_accent: 'Vault?',
     lead: 'Gaius Vault łączy technologię, źródła, dokumenty, wdrożenie i adopcję w jednym modelu.',
-  }, ids('differentiator')),
+  }, [], {
+    dlaczego: ['prywatne-legal-ai', 'jedno-srodowisko', 'wdrozenie-rutyna-wyroznienie', 'bez-blokady', 'jedna-usluga', 'bezpieczny-start']
+      .map((k) => ({ component: `dlaczego/${k}` })),
+  }),
   slide('s-sygnaly', 4, 'sygnaly', {
     title: 'Sygnał, że dział prawny jest',
     title_2: 'gotowy na',
@@ -134,14 +137,79 @@ export const slides = [
   }, ['person-janusz']),
 ];
 
+// ------------------------------------------------------------------ komponenty (karty z zestawu @dlaczego)
+// Karty rysuje się w FigCraft (seed/build-components.mjs zrobił je z kart slajdu „dlaczego”).
+// Tu jest to, czego nie widać na rysunku: kiedy AI ma którą kartę wybrać.
+// Warianty: zwykla (beżowa) i wyroznienie (zielona, jedna na slajd), liczba (duża liczba zamiast ikony).
+const comp = (key, topic, variant, title, description, use_when, avoid_when = '', tags = []) => ({
+  id: `dlaczego/${key}`, set_name: 'dlaczego', key, source: 'gaius', title, description, use_when, avoid_when, topic, variant,
+  tags, data: {}, figma_text: '', fields: [], missing: false, created_at: ts, updated_at: ts,
+});
+const TOPICS = [
+  ['prywatne-legal-ai', 'Prywatne Legal AI na realnych dokumentach',
+    'Bezpieczeństwo i kontrola: Vault działa lokalnie, pod kontrolą IT i compliance. Ikona: baza danych z kłódką.',
+    'Klient pracuje na poufnych dokumentach (tajemnica adwokacka, dane osobowe, M&A), ma wymagający dział IT/bezpieczeństwa albo boi się publicznych chatbotów.',
+    'Klient ma już jasno ustalone wdrożenie on-premise: wtedy lepsza jest karta on-premise.', ['bezpieczenstwo', 'compliance']],
+  ['jedno-srodowisko', 'Prawo, orzecznictwo i dokumenty w jednym środowisku',
+    'Źródła prawne i dokumenty organizacji w jednym miejscu, AI pracuje na kontekście spraw. Ikona: folder z lupą.',
+    'Klient dziś skacze między LEX/Legalis, DMS-em i ChatGPT; dużo researchu i pracy na własnych dokumentach.',
+    '', ['research']],
+  ['wdrozenie-rutyna', 'Wdrożenie, które kończy się rutyną pracy',
+    'Adopcja: warsztaty i Legal Engineering zamieniają procesy w workflowy i checklisty. Ikona: warstwy.',
+    'Klient miał już nieudane wdrożenie narzędzia AI, zespół jest sceptyczny albo zarząd pyta o realne wykorzystanie.',
+    '', ['adopcja', 'wdrozenie']],
+  ['bez-blokady', 'Skalowanie bez blokady licencyjnej',
+    'Brak opłat za użytkownika i przestrzeń roboczą. Ikona: osoba z plusem.',
+    'Duży zespół (kilkadziesiąt+ prawników), plan rozszerzenia na kolejne działy, porównanie z narzędziami licencjonowanymi per seat.',
+    'Mała kancelaria (kilka osób): argument licencyjny jest słaby.', ['cena', 'skalowanie']],
+  ['jedna-usluga', 'Jedna usługa',
+    'Jedna licencja obejmuje technologię, źródła, warsztaty, Legal Engineering i rozwój standardu. Ikona: schowek z ptaszkiem.',
+    'Klient nie chce składać rozwiązania z wielu dostawców, ma ograniczony zespół IT albo zakupy wolą jedną umowę.',
+    '', ['zakupy', 'prostota']],
+  ['bezpieczny-start', 'Bezpieczny model startu',
+    'Stały koszt miesięczny, gwarancja ceny i opcjonalny 3-miesięczny POC z możliwością rezygnacji. Ikona: kalkulator.',
+    'Klient waha się, ma ograniczony budżet albo decyzję podejmuje zarząd/finanse.',
+    'Na slajdzie jest już karta „Pilotaż bez ryzyka” (ten sam argument).', ['cena', 'ryzyko']],
+  ['odpowiedzi-ze-zrodlami', 'Odpowiedzi, które da się sprawdzić',
+    'Weryfikowalność: każda odpowiedź prowadzi do przepisu, orzeczenia, cytatu albo dokumentu. Ikona: folder z lupą.',
+    'Kancelaria procesowa, sporo pism do sądu, klient boi się halucynacji AI albo pyta o odpowiedzialność za błędy.',
+    '', ['jakosc', 'kancelaria']],
+  ['know-how-organizacji', 'Know-how pracuje przy każdej sprawie',
+    'Wykorzystanie wcześniejszych opinii, pism i wzorów. Ikona: warstwy.',
+    'Duża kancelaria albo dział prawny z latami archiwum; problem „wynajdujemy koło na nowo”, rotacja prawników.',
+    'Młoda organizacja bez archiwum dokumentów.', ['wiedza', 'kancelaria', 'dzial-prawny']],
+  ['on-premise', 'On-premise albo model hybrydowy',
+    'Środowisko w infrastrukturze klienta, bez publicznej chmury. Ikona: baza danych z kłódką.',
+    'Bank, ubezpieczyciel, sektor publiczny, energetyka, klient regulowany (KNF, KSC/NIS2) albo z zakazem chmury.',
+    'Klient nie ma własnej infrastruktury i woli usługę zarządzaną.', ['bezpieczenstwo', 'regulowany']],
+];
+export const components = [
+  ...TOPICS.map(([key, title, desc, use, avoid, tags]) => comp(key, key, 'zwykla', title, desc, use, avoid, tags)),
+  ...TOPICS.map(([key, title, desc, use, avoid, tags]) => comp(`${key}-wyroznienie`, key, 'wyroznienie', `${title} (wyróżnienie)`,
+    `Zielona, wyróżniona wersja karty. ${desc}`,
+    `Najważniejszy argument dla tego klienta. ${use}`, avoid, tags)),
+  comp('pilotaz-3-miesiace', 'bezpieczny-start', 'liczba', 'Pilotaż bez ryzyka (3 mies.)',
+    'Karta z dużą liczbą „3 mies.” zamiast ikony: pilotaż na realnych sprawach z możliwością rezygnacji.',
+    'Klient chce najpierw sprawdzić narzędzie, rozmowa jest na etapie pilotażu, decyzja wymaga dowodu efektów.',
+    'Na slajdzie jest już karta „Bezpieczny model startu” (ten sam temat).', ['ryzyko', 'poc']),
+];
+export const componentSets = [{
+  id: 'dlaczego',
+  title: 'Dlaczego Vault? (6 kart)',
+  rules: 'Dokładnie 6 kart. Dokładnie jedna karta w wariancie „wyroznienie” (zielona): najważniejszy argument dla klienta. Najwyżej jedna karta z danego tematu. Karta „liczba” najwyżej jedna. Pierwszy wiersz (karty 1–3) to argumenty najmocniejsze dla klienta.',
+  created_at: ts, updated_at: ts,
+}];
+
 export const TEMPLATE = { id: 'gaius', name: 'Gaius Vault', file: 'gaius-template.figcraft' };
 
 export default {
   format: 'offer-studio',
-  version: 2,
+  version: 3,
   exported_at: ts,
   blocks,
   templates: [],
   offers: [{ id: OFFER, name: 'Gaius Vault – oferta bazowa', template_id: TEMPLATE.id, data: { client: '', price: '------' }, created_at: ts, updated_at: ts }],
   slides,
+  components,
+  component_sets: componentSets,
 };

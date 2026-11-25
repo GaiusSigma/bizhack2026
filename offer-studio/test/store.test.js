@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { openDb } from '../src/db.js';
-import { buildLibrary, normalizeUpload, parseMarks, parseTemplate, renderPdf, renderThumbnails } from '../src/figcraft.js';
-import seed, { TEMPLATE, slides as seedSlides } from '../seed/seed.js';
+import { unzipSync } from 'fflate';
+import { buildLibrary, describeComponents, normalizeUpload, parseMarks, parseTemplate, renderFigcraft, renderPdf, renderThumbnails } from '../src/figcraft.js';
+import seed, { TEMPLATE, components as seedComponents, slides as seedSlides } from '../seed/seed.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -103,6 +104,86 @@ test('migracja z v1: layout_id -> frame, stare tabele znikają', () => {
   assert.equal(openDb(path).migratedFromV1, false);
 });
 
+test('komponenty: zestaw @dlaczego nie jest slajdem, slajd ma 6 slotów #pick, seed opisuje każdą kartę', () => {
+  const parsed = parseTemplate(TEMPLATE_FILE);
+  assert.ok(!parsed.frames.some((f) => f.name.startsWith('@')));
+  const dl = parsed.frames.find((f) => f.name === 'dlaczego');
+  assert.deepEqual(dl.fields.picks, { dlaczego: 6 });
+  assert.equal(dl.slots.length, 0);
+  assert.ok(!dl.texts.length || dl.texts.every((t) => t.name.startsWith('{{data.')), 'teksty z kart #pick nie są polami slajdu');
+  const ids = parsed.components.map((c) => c.id).sort();
+  assert.deepEqual(ids, seedComponents.map((c) => c.id).sort());
+  const stat = parsed.components.find((c) => c.id === 'dlaczego/pilotaz-3-miesiace');
+  assert.deepEqual(stat.fields.sort(), ['body', 'stat', 'title']);
+  assert.match(stat.text, /3 mies\./);
+  for (const s of seedSlides) for (const [, picks] of Object.entries(s.picks || {})) for (const p of picks) assert.ok(ids.includes(p.component), p.component);
+});
+
+test('komponenty: synchronizacja zachowuje opisy, odświeża tekst i oznacza brakujące', () => {
+  const s = fresh();
+  const found = describeComponents(parseTemplate(TEMPLATE_FILE)).map((c) => ({ ...c, source: TEMPLATE.id }));
+  const first = s.syncComponents(found);
+  assert.deepEqual(first.added, []);
+  const row = s.get('components', 'dlaczego/on-premise');
+  assert.match(row.use_when, /Bank/);
+  assert.match(row.figma_text, /On-premise albo model hybrydowy/);
+  assert.deepEqual(row.fields, ['title', 'body']);
+  const again = s.syncComponents([...found.filter((c) => c.id !== 'dlaczego/on-premise'), { ...found[0], id: 'dlaczego/nowa-karta', key: 'nowa-karta' }]);
+  assert.deepEqual(again, { added: ['dlaczego/nowa-karta'], missing: ['dlaczego/on-premise'] });
+  assert.equal(s.listComponents({ set: 'dlaczego' }).some((c) => c.id === 'dlaczego/on-premise'), false);
+  assert.match(s.get('components', 'dlaczego/on-premise').use_when, /Bank/);
+  s.syncComponents(found);
+  assert.equal(s.get('components', 'dlaczego/on-premise').missing, false);
+  assert.throws(() => s.insert('components', { id: 'Zle Id', set_name: 'x', key: 'x' }), /Niepoprawne id/);
+});
+
+test('migracja z v2: slajdy dostają picks, dochodzą tabele komponentów', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'os-mig2-'));
+  const path = join(dir, 'v2.db');
+  const old = new DatabaseSync(path);
+  old.exec(`CREATE TABLE offers (id TEXT PRIMARY KEY, name TEXT NOT NULL, template_id TEXT, data TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE slides (id TEXT PRIMARY KEY, offer_id TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0, frame TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{}', block_ids TEXT NOT NULL DEFAULT '[]', query TEXT, hidden INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    INSERT INTO offers VALUES ('o', 'O', 'gaius', '{}', 't', 't'); INSERT INTO slides (id, offer_id, frame, created_at, updated_at) VALUES ('s', 'o', 'dlaczego', 't', 't');
+    PRAGMA user_version = 2;`);
+  old.close();
+  const s = openDb(path);
+  assert.equal(s.migratedFrom, 2);
+  assert.deepEqual(s.get('slides', 's').picks, {});
+  assert.deepEqual(s.list('components'), []);
+  s.update('slides', 's', { picks: { dlaczego: [{ component: 'dlaczego/on-premise' }] } });
+  assert.equal(s.get('slides', 's').picks.dlaczego[0].component, 'dlaczego/on-premise');
+  assert.equal(openDb(path).migratedFrom, 0);
+});
+
+test('AI: schemat z id kart i polami, porządki w odpowiedzi (atrapa klienta)', async () => {
+  const s = fresh();
+  s.syncComponents(describeComponents(parseTemplate(TEMPLATE_FILE)).map((c) => ({ ...c, source: TEMPLATE.id })));
+  const components = s.listComponents({ set: 'dlaczego' });
+  let request;
+  const api = { beta: { messages: { parse: async (params) => {
+    request = params;
+    return {
+      stop_reason: 'end_turn', model: params.model, usage: {},
+      parsed_output: { note: 'bank', sets: [{ set: 'dlaczego', picks: [
+        { component: 'dlaczego/on-premise-wyroznienie', reason: 'regulowany', title: 'On-premise w banku', body: null, stat: null },
+        { component: 'dlaczego/on-premise-wyroznienie', reason: 'dubel', title: null, body: null, stat: null },
+        ...['prywatne-legal-ai', 'odpowiedzi-ze-zrodlami', 'wdrozenie-rutyna', 'bezpieczny-start', 'jedna-usluga', 'bez-blokady']
+          .map((k) => ({ component: `dlaczego/${k}`, reason: 'x', title: null, body: '', stat: null })),
+      ] }] },
+    };
+  } } } };
+  const { pickComponents } = await import('../src/ai.js');
+  const r = await pickComponents({ api, offer: { name: 'O', data: { client: 'Bank' } }, slide: { frame: 'dlaczego', data: {} }, brief: 'bank', sets: [{ set: 'dlaczego', slots: 6, rules: 'r', components }] });
+  const schema = request.output_config.format.schema;
+  assert.ok(JSON.stringify(schema).includes('dlaczego/pilotaz-3-miesiace'), 'id kart w schemacie');
+  assert.ok(JSON.stringify(schema).includes('"stat"'), 'pola kart w schemacie');
+  assert.match(request.messages[0].content, /Bank/);
+  assert.equal(r.picks.dlaczego.length, 6);
+  assert.deepEqual(r.picks.dlaczego[0], { component: 'dlaczego/on-premise-wyroznienie', reason: 'regulowany', data: { title: 'On-premise w banku' } });
+  assert.equal(r.picks.dlaczego.filter((p) => p.component === 'dlaczego/on-premise-wyroznienie').length, 1);
+  assert.ok(r.warnings.some((w) => /nadmiar/.test(w)));
+});
+
 // Render przez prawdziwy figcraft-cli, jeśli jest dostępny (lokalnie z instalacji FigCraft, w Dockerze z obrazu).
 const cli = process.env.FIGCRAFT_CLI || (process.platform === 'win32' ? 'C:\\Program Files\\ArtCraft\\FigCraft\\figcraft-cli.exe' : 'figcraft-cli');
 let hasCli = true;
@@ -148,7 +229,8 @@ test('biblioteka: JSON strony + szablon -> jeden PDF ze slajdami z obu plików',
   assert.equal(thumbs['case-study'].subarray(1, 4).toString(), 'PNG');
 
   const lib = await buildLibrary([{ file: TEMPLATE_FILE }, { file: caseFile }]);
-  assert.equal(lib.parsed.pages.length, 2);
+  assert.equal(lib.parsed.pages.length, parseTemplate(TEMPLATE_FILE).pages.length + 1);
+  assert.equal(lib.parsed.components.length, parseTemplate(TEMPLATE_FILE).components.length);
   assert.ok(lib.parsed.frames.some((f) => f.name === 'case-study'));
   const pdf = await renderPdf({
     templateBuf: lib.buf,
@@ -160,6 +242,31 @@ test('biblioteka: JSON strony + szablon -> jeden PDF ze slajdami z obu plików',
     ],
   });
   assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length, 2);
+});
+
+test('render: wybrane komponenty zastępują sloty #pick w kolejności, z nadpisanym tekstem', { skip: !hasCli && 'brak figcraft-cli' }, async () => {
+  const parsed = parseTemplate(TEMPLATE_FILE);
+  const comp = (k) => parsed.components.find((c) => c.id === `dlaczego/${k}`);
+  const keys = ['on-premise', 'pilotaz-3-miesiace', 'jedna-usluga-wyroznienie'];
+  const file = await renderFigcraft({
+    templateBuf: TEMPLATE_FILE,
+    parsed,
+    offer: {},
+    slides: [{ frame: 'dlaczego', data: { title: 'Dlaczego ', title_accent: 'Vault?' }, items: {},
+      picks: { dlaczego: keys.map((k) => ({ comp: comp(k), data: k === 'on-premise' ? { title: 'On-premise w ACME' } : {} })) } }],
+  });
+  const doc = JSON.parse(Buffer.from(unzipSync(new Uint8Array(file))['document.json']).toString('utf8'));
+  const nodes = Object.values(doc.nodes);
+  assert.equal(nodes.filter((n) => n.name === '#pick:dlaczego').length, 0, 'sloty znikają');
+  assert.ok(!nodes.some((n) => n.name?.startsWith('@')), 'zestaw komponentów nie trafia do oferty');
+  const grid = nodes.find((n) => n.name === 'Frame 62');
+  assert.deepEqual(grid.children.map((id) => doc.nodes[String(id)].name), keys);
+  const onPrem = doc.nodes[String(grid.children[0])];
+  const texts = [];
+  const walk = (id) => { const n = doc.nodes[String(id)]; if (n.type === 'text') texts.push(n.characters); (n.children || []).forEach(walk); };
+  walk(onPrem.id);
+  assert.ok(texts.includes('On-premise w ACME'));
+  assert.ok(texts.some((t) => t.startsWith('Środowisko w infrastrukturze')), 'pole bez nadpisania zostaje z FigCraft');
 });
 
 test('nieobsługiwany format pliku jest odrzucany', async () => {

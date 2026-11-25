@@ -24,7 +24,7 @@ import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { unzipSync } from 'fflate';
-import { HttpError } from './db.js';
+import { componentId, HttpError } from './db.js';
 
 // figcraft-cli: z FIGCRAFT_CLI, z typowej instalacji FigCraft na Windows albo z PATH (Docker).
 const WIN_CLI = 'C:\\Program Files\\ArtCraft\\FigCraft\\figcraft-cli.exe';
@@ -33,6 +33,8 @@ const WORK = process.env.RENDER_DIR || join(tmpdir(), 'offer-studio-renders');
 
 const PLACEHOLDER = /\{\{|\[\[/;
 const SLOT = /^#item(?::([A-Za-z_][\w]*))?$/;
+const PICK = /^#pick:([\w-]+)$/;
+const SET = /^@([\w-]+)$/;
 
 // ------------------------------------------------------------------ analiza szablonu
 const hex = (c) => `#${[c.r, c.g, c.b].map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
@@ -56,17 +58,63 @@ export function parseTemplate(buffer) {
   if (!files['document.json']) throw new HttpError(400, 'W pliku .figcraft brakuje document.json');
   const doc = JSON.parse(Buffer.from(files['document.json']).toString('utf8'));
   const N = doc.nodes;
-  // Slajdy to ramki najwyższego poziomu ze wszystkich stron (plik może mieć ich kilka).
+  // Ramki najwyższego poziomu ze wszystkich stron (plik może mieć ich kilka): slajdy albo zestawy `@…`.
   const tops = doc.pages.flatMap((pid) =>
     (N[String(pid)]?.children || []).map((fid) => ({ page: Number(pid), frame: N[String(fid)] })))
     .filter((x) => x.frame && x.frame.type === 'frame');
 
-  const frames = tops.map(({ page, frame }) => {
-    const texts = []; // {id, name, slot (id slotu albo null), runs}
-    const slots = []; // {id, source, parentLayout}
-    const walk = (id, slotId) => {
+  // Teksty z polami {{…}} w poddrzewie; `stopAt` zatrzymuje zejście (sloty #pick podmieniamy w całości).
+  const collect = (rootId, onNode) => {
+    const walk = (id, ctx) => {
       const n = N[String(id)];
       if (!n) return;
+      const next = onNode(n, ctx);
+      if (next === false) return;
+      for (const c of n.children || []) walk(c, next ?? ctx);
+    };
+    walk(rootId, null);
+  };
+  const textOf = (rootId) => {
+    const out = [];
+    collect(rootId, (n) => { if (n.type === 'text' && n.visible !== false && n.characters) out.push(n.characters.trim()); });
+    return out.filter(Boolean).join('\n');
+  };
+
+  // Zestawy komponentów: @nazwa -> dzieci ramki to karty.
+  const components = [];
+  for (const { frame } of tops.filter((t) => SET.test(t.frame.name || ''))) {
+    const set = SET.exec(frame.name)[1];
+    for (const cid of frame.children || []) {
+      const n = N[String(cid)];
+      if (!n || !['frame', 'group', 'component', 'instance'].includes(n.type)) continue;
+      const texts = [];
+      collect(n.id, (x) => {
+        if (x.type === 'text' && PLACEHOLDER.test(x.name || '')) texts.push({ id: x.id, name: x.name, runs: (x.runs || []).map((r) => runStyle(r.style)) });
+      });
+      const fields = new Set();
+      for (const t of texts) for (const [, expr] of t.name.matchAll(/\{\{\s*([^}|]+?)\s*(?:\|[^}]*)?\}\}/g)) fields.add(expr);
+      const text = textOf(n.id);
+      components.push({
+        id: componentId(set, n.name), set, key: n.name, node: n.id, width: n.width, height: n.height,
+        texts, fields: [...fields], text, title: text.split('\n')[0].slice(0, 80) || n.name,
+      });
+    }
+  }
+
+  const frames = tops.filter((t) => !SET.test(t.frame.name || '')).map(({ page, frame }) => {
+    const texts = []; // {id, name, slot (id slotu albo null), runs}
+    const slots = []; // {id, source, grid}
+    const picks = []; // {id, set, parent, index, sizingH}
+    collect(frame.id, (n, slotId) => {
+      const pm = PICK.exec(n.name || '');
+      if (pm && slotId == null) {
+        const parent = N[String(n.parent)];
+        picks.push({
+          id: n.id, set: pm[1], parent: n.parent, grid: parent?.layout?.mode === 'grid',
+          index: (parent?.children || []).indexOf(n.id), sizingH: n.child_layout?.sizing_h,
+        });
+        return false;
+      }
       const m = SLOT.exec(n.name || '');
       let inSlot = slotId;
       if (m && slotId == null) {
@@ -77,9 +125,8 @@ export function parseTemplate(buffer) {
       if (n.type === 'text' && PLACEHOLDER.test(n.name || '')) {
         texts.push({ id: n.id, name: n.name, slot: inSlot, runs: (n.runs || []).map((r) => runStyle(r.style)) });
       }
-      for (const c of n.children || []) walk(c, inSlot);
-    };
-    walk(frame.id, null);
+      return inSlot;
+    });
 
     const dataKeys = new Set();
     const itemKeys = new Set();
@@ -91,6 +138,8 @@ export function parseTemplate(buffer) {
     }
     const sources = [...new Set(slots.map((s) => s.source))];
     for (const s of sources) if (s !== 'blocks') dataKeys.add(s);
+    const pickSets = {};
+    for (const p of picks) pickSets[p.set] = (pickSets[p.set] || 0) + 1;
     return {
       id: frame.id,
       page,
@@ -99,15 +148,18 @@ export function parseTemplate(buffer) {
       height: frame.height,
       texts,
       slots,
-      fields: { data: [...dataKeys], item: [...itemKeys], sources },
+      picks,
+      fields: { data: [...dataKeys], item: [...itemKeys], sources, picks: pickSets },
     };
   });
-  return { name: doc.name, pages: doc.pages.map(Number), frames, images: (doc.imageIndex || []).length };
+  return { name: doc.name, pages: doc.pages.map(Number), frames, components, images: (doc.imageIndex || []).length };
 }
 
 // Krótki opis do API/UI (bez wewnętrznych id).
 export const describeTemplate = (parsed) =>
   parsed.frames.map((f) => ({ name: f.name, width: f.width, height: f.height, fields: f.fields, slots: f.slots.length }));
+export const describeComponents = (parsed) =>
+  parsed.components.map((c) => ({ id: c.id, set: c.set, key: c.key, title: c.title, text: c.text, fields: c.fields, width: c.width, height: c.height }));
 
 // ------------------------------------------------------------------ wartości i style
 function lookup(ctx, path) {
@@ -181,7 +233,8 @@ const results = (stdout) =>
   stdout.split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l));
 
 // ------------------------------------------------------------------ budowa dokumentu oferty
-// slides: [{ id, frame, data, items: { blocks: [...], lines: [...] } }]
+// slides: [{ id, frame, data, items: { blocks: [...], lines: [...] }, picks: { zestaw: [{ comp, data }] } }]
+//   comp = komponent z parsed.components (ten sam dokument biblioteki), data = nadpisania pól {{…}}
 // templateBuf/parsed: dokument biblioteki (wszystkie pliki ze slajdami sklejone w jeden).
 async function build({ templateBuf, parsed, slides, offer, dir }) {
   const frames = {};
@@ -212,6 +265,24 @@ async function build({ templateBuf, parsed, slides, offer, dir }) {
         p1.push({ command: 'edit.duplicate', as: `x${i}_${source}_${k}`, params: { ids: [prev], map: true } });
       }
       if (need > 0) extras.push({ slide: i, source, count: need, lastSlot: lastSlot.id });
+    }
+    // Komponenty: kopie kart z zestawu wchodzą w miejsce slotów #pick (w kolejności wyboru),
+    // a sloty znikają. Bez wyboru sloty zostają takie, jak je narysowano.
+    for (const [set, chosen] of Object.entries(s.picks || {})) {
+      const group = f.picks.filter((p) => p.set === set);
+      if (!group.length || !chosen.length) continue;
+      const first = group[0];
+      chosen.forEach((pick, j) => {
+        const as = `p${i}_${set}_${j}`;
+        const copyRef = { $ref: as, field: 'ids/0' };
+        p1.push({ command: 'edit.duplicate', as, params: { ids: [pick.comp.node], map: true } });
+        p1.push({ command: 'node.reparent', params: { ids: [copyRef], parent: { $ref: `s${i}`, field: `map/${first.parent}` }, index: first.index + j } });
+        const props = { visible: true };
+        if (first.grid) Object.assign(props, { gridColumn: null, gridRow: null });
+        if (first.sizingH) props.sizingH = first.sizingH;
+        p1.push({ command: 'node.set', params: { ids: [copyRef], props } });
+      });
+      p1.push({ command: 'edit.delete', params: { ids: group.map((p) => ({ $ref: `s${i}`, field: `map/${p.id}` })) } });
     }
   });
   p1.push({ command: 'page.select', params: { id: { $ref: 'out' } } });
@@ -285,6 +356,23 @@ async function build({ templateBuf, parsed, slides, offer, dir }) {
         for (const r of ranges) {
           const style = t.runs[r.run - 1] || ACCENT;
           p2.push({ command: 'text.style', params: { id, start: r.start, end: r.end, ...style } });
+        }
+      });
+    }
+
+    // Teksty w komponentach: tylko pola, które mają wartość (nadpisanie z wyboru albo z bazy);
+    // reszta zostaje tak, jak narysowano w FigCraft.
+    for (const [set, chosen] of Object.entries(s.picks || {})) {
+      if (!f.picks.some((p) => p.set === set)) continue;
+      chosen.forEach((pick, j) => {
+        const cmap = byName[`p${i}_${set}_${j}`].map;
+        for (const t of pick.comp.texts) {
+          const { text: raw, hadValue } = fill(t.name, { ...ctx, ...pick.data, n: j + 1 });
+          if (!hadValue) continue;
+          const id = cmap[String(t.id)];
+          const { text, ranges } = parseMarks(raw);
+          p2.push({ command: 'text.set', params: { id, characters: text } });
+          for (const r of ranges) p2.push({ command: 'text.style', params: { id, start: r.start, end: r.end, ...(t.runs[r.run - 1] || ACCENT) } });
         }
       });
     }
@@ -383,14 +471,19 @@ export async function renderThumbnails(buf, parsed, { scale = 0.25 } = {}) {
   const dir = await workdir('thumb');
   try {
     await writeFile(join(dir, 'src.figcraft'), buf);
-    const steps = parsed.frames.map((f, i) => ({
+    // slajdy pod nazwą ramki, komponenty pod "@<id>" (karty są mniejsze, więc w większej skali)
+    const items = [
+      ...parsed.frames.map((f) => ({ key: f.name, id: f.id, scale })),
+      ...parsed.components.map((c) => ({ key: `@${c.id}`, id: c.node, scale: scale * 2 })),
+    ];
+    const steps = items.map((it, i) => ({
       command: 'file.export',
-      params: { ids: [f.id], format: 'png', scale, path: join(dir, `t${i}.png`) },
+      params: { ids: [it.id], format: 'png', scale: it.scale, path: join(dir, `t${i}.png`) },
     }));
     await writeFile(join(dir, 'thumbs.json'), JSON.stringify(steps));
     await cli(['run', 'thumbs.json', '--in', 'src.figcraft'], dir);
     const out = {};
-    for (const [i, f] of parsed.frames.entries()) out[f.name] ??= await readFile(join(dir, `t${i}.png`)).catch(() => null);
+    for (const [i, it] of items.entries()) out[it.key] ??= await readFile(join(dir, `t${i}.png`)).catch(() => null);
     return out;
   } finally {
     rm(dir, { recursive: true, force: true }).catch(() => {});

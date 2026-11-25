@@ -5,11 +5,16 @@
 //               `type` i `tags` są dowolnymi stringami, a pola specyficzne dla typu siedzą w `data` (JSON).
 //   templates – szablony prezentacji: pliki .figcraft (BLOB). Każda ramka najwyższego poziomu = slajd szablonu.
 //   offers    – oferta: nazwa, szablon i zmienne (`data`, np. klient, cena).
-//   slides    – uporządkowane slajdy oferty: slajd szablonu (`frame`) + treść + bloki (lista id albo zapytanie).
+//   slides    – uporządkowane slajdy oferty: slajd szablonu (`frame`) + treść + bloki (lista id albo zapytanie)
+//               + `picks`: komponenty wybrane do slotów `#pick:<zestaw>` ({zestaw: [{component, data}]}).
+//   components     – karty narysowane w FigCraft (ramka `@zestaw`, w niej karty) z opisem dla AI:
+//                    co pokazuje, kiedy ją wybrać, kiedy nie, temat (warianty jednego argumentu), tagi.
+//                    Wiersze zakłada i aktualizuje synchronizacja z biblioteką; opisy pisze człowiek albo AI.
+//   component_sets – zasady zestawu dla AI (np. „dokładnie jedna karta wyróżniona”).
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes } from 'node:crypto';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS blocks (
@@ -49,11 +54,41 @@ CREATE TABLE IF NOT EXISTS slides (
   data TEXT NOT NULL DEFAULT '{}',
   block_ids TEXT NOT NULL DEFAULT '[]',
   query TEXT,
+  picks TEXT NOT NULL DEFAULT '{}',
   hidden INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS slides_offer ON slides(offer_id, position);
+
+CREATE TABLE IF NOT EXISTS components (
+  id TEXT PRIMARY KEY,                     -- "<zestaw>/<nazwa karty>", np. dlaczego/on-premise
+  set_name TEXT NOT NULL,
+  key TEXT NOT NULL,
+  source TEXT,                             -- plik biblioteki (templates.id)
+  title TEXT NOT NULL DEFAULT '',          -- krótka nazwa dla ludzi
+  description TEXT NOT NULL DEFAULT '',    -- co karta pokazuje (treść, wygląd)
+  use_when TEXT NOT NULL DEFAULT '',       -- kiedy AI ma ją wybrać
+  avoid_when TEXT NOT NULL DEFAULT '',     -- kiedy jej nie wybierać
+  topic TEXT NOT NULL DEFAULT '',          -- warianty tego samego argumentu mają ten sam temat
+  variant TEXT NOT NULL DEFAULT '',        -- np. zwykla, wyroznienie, liczba
+  tags TEXT NOT NULL DEFAULT '[]',
+  data TEXT NOT NULL DEFAULT '{}',         -- stałe nadpisania pól {{...}} karty
+  figma_text TEXT NOT NULL DEFAULT '',     -- tekst narysowany w FigCraft (z synchronizacji)
+  fields TEXT NOT NULL DEFAULT '[]',       -- pola {{...}} karty (z synchronizacji)
+  missing INTEGER NOT NULL DEFAULT 0,      -- 1: karty nie ma już w bibliotece
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS components_set ON components(set_name);
+
+CREATE TABLE IF NOT EXISTS component_sets (
+  id TEXT PRIMARY KEY,                     -- nazwa zestawu bez @
+  title TEXT NOT NULL DEFAULT '',
+  rules TEXT NOT NULL DEFAULT '',          -- zasady doboru dla AI
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 `;
 
 // Opis tabel: które kolumny są JSON-em, które wolno ustawiać przez API, domyślne sortowanie.
@@ -75,12 +110,26 @@ export const TABLES = {
     order: 'updated_at DESC',
   },
   slides: {
-    fields: ['offer_id', 'position', 'frame', 'data', 'block_ids', 'query', 'hidden'],
-    json: { data: {}, block_ids: [], query: null },
+    fields: ['offer_id', 'position', 'frame', 'data', 'block_ids', 'query', 'picks', 'hidden'],
+    json: { data: {}, block_ids: [], query: null, picks: {} },
     bool: ['hidden'],
     order: 'offer_id, position',
   },
+  components: {
+    fields: ['set_name', 'key', 'source', 'title', 'description', 'use_when', 'avoid_when', 'topic', 'variant', 'tags', 'data', 'figma_text', 'fields', 'missing'],
+    json: { tags: [], data: {}, fields: [] },
+    bool: ['missing'],
+    order: 'set_name, topic, variant, key',
+  },
+  component_sets: {
+    fields: ['title', 'rules'],
+    json: {},
+    order: 'id',
+  },
 };
+
+// Pola komponentu, które opisuje człowiek (reszta przychodzi z synchronizacji z biblioteką).
+export const COMPONENT_EDITABLE = ['title', 'description', 'use_when', 'avoid_when', 'topic', 'variant', 'tags', 'data'];
 
 export class HttpError extends Error {
   constructor(status, message) {
@@ -107,35 +156,45 @@ export function slugify(s) {
 }
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
+// Komponenty mają id "<zestaw>/<karta>" (oba człony po slugify).
+const COMPONENT_ID_RE = /^[a-z0-9][a-z0-9-]{0,59}\/[a-z0-9][a-z0-9-]{0,79}$/;
+const idOk = (table, id) => (table === 'components' ? COMPONENT_ID_RE : ID_RE).test(id);
+export const componentId = (set, key) => `${slugify(set)}/${slugify(key)}`;
 
 export function openDb(path) {
   const db = new DatabaseSync(path);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
-  const migrated = migrate(db);
+  const from = migrate(db);
   db.exec(SCHEMA);
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
   const store = new Store(db);
-  store.migratedFromV1 = migrated;
+  store.migratedFrom = from;
+  store.migratedFromV1 = from === 1;
   return store;
 }
 
-// v1 (layouty HTML) -> v2 (szablony FigCraft). Bloki i oferty zostają, slajdy dostają kolumnę `frame`.
+// v1 (layouty HTML) -> v2 (szablony FigCraft): bloki i oferty zostają, slajdy dostają kolumnę `frame`.
+// v2 -> v3: slajdy dostają `picks` (komponenty); tabele components i component_sets tworzy SCHEMA.
+// Zwraca wersję, z której zmigrowano (0 = nowa baza albo już aktualna).
 function migrate(db) {
   const version = db.prepare('PRAGMA user_version').get().user_version;
   const has = (t) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t);
-  if (version >= SCHEMA_VERSION || !has('slides')) return false;
+  if (version >= SCHEMA_VERSION || !has('slides')) return 0;
   const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
   db.exec('BEGIN');
   try {
-    if (cols('slides').includes('layout_id')) db.exec('ALTER TABLE slides RENAME COLUMN layout_id TO frame');
-    if (has('offers') && !cols('offers').includes('template_id')) db.exec('ALTER TABLE offers ADD COLUMN template_id TEXT');
-    for (const t of ['layouts', 'assets', 'settings']) if (has(t)) db.exec(`DROP TABLE ${t}`);
+    if (version < 2) {
+      if (cols('slides').includes('layout_id')) db.exec('ALTER TABLE slides RENAME COLUMN layout_id TO frame');
+      if (has('offers') && !cols('offers').includes('template_id')) db.exec('ALTER TABLE offers ADD COLUMN template_id TEXT');
+      for (const t of ['layouts', 'assets', 'settings']) if (has(t)) db.exec(`DROP TABLE ${t}`);
+    }
+    if (!cols('slides').includes('picks')) db.exec("ALTER TABLE slides ADD COLUMN picks TEXT NOT NULL DEFAULT '{}'");
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
     throw e;
   }
-  return true;
+  return version < 2 ? 1 : version;
 }
 
 export class Store {
@@ -187,7 +246,7 @@ export class Store {
 
   insert(table, obj, idPrefix = '') {
     const id = obj.id ?? newId(idPrefix);
-    if (!ID_RE.test(id)) throw new HttpError(400, `Niepoprawne id "${id}" (litery, cyfry, . _ -, max 80 znaków)`);
+    if (!idOk(table, id)) throw new HttpError(400, `Niepoprawne id "${id}" (litery, cyfry, . _ -, max 80 znaków)`);
     if (this.get(table, id)) throw new HttpError(409, `${table}/${id} już istnieje`);
     const ts = now();
     const row = { ...this.encode(table, obj), id, created_at: obj.created_at ?? ts, updated_at: obj.updated_at ?? ts };
@@ -276,6 +335,44 @@ export class Store {
     return this.get('templates', id);
   }
 
+  // ------------------------------------------------------------ komponenty
+  // Synchronizacja z biblioteką: `found` = [{id, set, key, source, title, text, fields}] ze wszystkich plików.
+  // Nowe karty dostają wiersz (opis pusty, do uzupełnienia), istniejące tylko tekst/pola/źródło,
+  // a karty, których już nie ma, są oznaczane `missing` (opisy zostają, gdyby wróciły).
+  syncComponents(found) {
+    const stats = { added: [], missing: [] };
+    this.tx(() => {
+      const seen = new Set();
+      for (const c of found) {
+        seen.add(c.id);
+        const cur = this.get('components', c.id);
+        const synced = { set_name: c.set, key: c.key, source: c.source, figma_text: c.text, fields: c.fields, missing: false };
+        if (!cur) {
+          this.insert('components', { id: c.id, ...synced, title: c.title });
+          stats.added.push(c.id);
+        } else if (cur.source !== c.source || cur.figma_text !== c.text || cur.missing || JSON.stringify(cur.fields) !== JSON.stringify(c.fields)) {
+          this.update('components', c.id, synced);
+        }
+        if (!this.get('component_sets', c.set)) this.insert('component_sets', { id: c.set, title: c.set });
+      }
+      for (const cur of this.list('components', 'missing = 0')) {
+        if (!seen.has(cur.id)) {
+          this.update('components', cur.id, { missing: true });
+          stats.missing.push(cur.id);
+        }
+      }
+    });
+    return stats;
+  }
+
+  listComponents({ set, includeMissing = false } = {}) {
+    const where = [];
+    const p = {};
+    if (set) { where.push('set_name = :set'); p.set = set; }
+    if (!includeMissing) where.push('missing = 0');
+    return this.list('components', where.join(' AND '), p);
+  }
+
   // ------------------------------------------------------------ oferty i slajdy
   getOffer(id) {
     const offer = this.mustGet('offers', id);
@@ -338,27 +435,30 @@ export class Store {
       .map((t) => ({ id: t.id, name: t.name, created_at: t.created_at, updated_at: t.updated_at, file_base64: Buffer.from(t.file).toString('base64') }));
     return {
       format: 'offer-studio',
-      version: 2,
+      version: 3,
       exported_at: now(),
       blocks: this.list('blocks'),
       templates,
       offers: this.list('offers'),
       slides: this.list('slides'),
+      components: this.list('components'),
+      component_sets: this.list('component_sets'),
     };
   }
 
   // mode = 'merge' (wstaw albo nadpisz rekordy o tych samych id, reszty nie rusza)
   //      | 'replace' (wyczyść wszystko i wczytaj tylko to, co w pliku)
   // Eksport v1 (layouty HTML) wczytuje bloki i oferty; layouty, obrazki i motyw pomija.
+  // Eksport v2 nie ma komponentów: po imporcie dopisze je synchronizacja z biblioteką.
   importAll(dump, mode = 'merge') {
     if (!dump || dump.format !== 'offer-studio') throw new HttpError(400, 'To nie jest eksport offer-studio (brak format: "offer-studio")');
-    if (![1, 2].includes(dump.version)) throw new HttpError(400, `Nieobsługiwana wersja eksportu: ${dump.version}`);
+    if (![1, 2, 3].includes(dump.version)) throw new HttpError(400, `Nieobsługiwana wersja eksportu: ${dump.version}`);
     if (!['merge', 'replace'].includes(mode)) throw new HttpError(400, 'mode: merge albo replace');
     const slides = (dump.slides || []).map((s) => (dump.version === 1 ? { ...s, frame: s.layout_id } : s));
     const counts = {};
     this.tx(() => {
       if (mode === 'replace') {
-        for (const t of ['slides', 'offers', 'blocks', 'templates']) this.db.exec(`DELETE FROM ${t}`);
+        for (const t of ['slides', 'offers', 'blocks', 'templates', 'components', 'component_sets']) this.db.exec(`DELETE FROM ${t}`);
       }
       counts.templates = 0;
       for (const t of dump.templates || []) {
@@ -366,7 +466,7 @@ export class Store {
         counts.templates++;
       }
       // Kolejność ma znaczenie: slajdy wskazują na oferty.
-      for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides]]) {
+      for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides], ['components', dump.components], ['component_sets', dump.component_sets]]) {
         counts[table] = 0;
         for (const item of items || []) {
           this.upsert(table, item);
@@ -378,7 +478,7 @@ export class Store {
   }
 
   upsert(table, item) {
-    if (!item.id || !ID_RE.test(item.id)) throw new HttpError(400, `${table}: rekord bez poprawnego id`);
+    if (!item.id || !idOk(table, item.id)) throw new HttpError(400, `${table}: rekord bez poprawnego id`);
     const ts = now();
     const row = { ...this.encode(table, item), id: item.id, created_at: item.created_at ?? ts, updated_at: item.updated_at ?? ts };
     const cols = Object.keys(row);

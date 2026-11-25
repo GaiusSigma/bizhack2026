@@ -6,9 +6,10 @@ import { timingSafeEqual } from 'node:crypto';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HttpError, openDb, slugify } from './db.js';
+import { pickComponents } from './ai.js';
+import { COMPONENT_EDITABLE, HttpError, openDb, slugify } from './db.js';
 import {
-  buildLibrary, describeTemplate, hashOf, normalizeUpload, parseTemplate, renderFigcraft, renderPdf, renderPreview, renderThumbnails, UPLOAD_EXT,
+  buildLibrary, describeComponents, describeTemplate, hashOf, normalizeUpload, parseTemplate, renderFigcraft, renderPdf, renderPreview, renderThumbnails, UPLOAD_EXT,
 } from './figcraft.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -43,6 +44,22 @@ if (store.isEmpty() && env.STUDIO_SEED !== 'false') {
     }
   });
   console.log('offer-studio: zmigrowano bazę z layoutów HTML na szablony FigCraft');
+}
+// Komponenty (v3): baza z plikiem Gaius sprzed komponentów (bez ramek @…) i bez opisów kart dostaje
+// nowy plik Gaius (zestaw @dlaczego, sloty #pick), opisy kart i wybór kart na slajdzie „dlaczego”
+// (jeśli nikt go jeszcze nie ustawił). Sprawdzane przy każdym starcie, działa raz.
+const gaiusRow = store.get('templates', seedModule.TEMPLATE.id);
+if (gaiusRow && env.STUDIO_SEED !== 'false' && !store.list('components').length
+  && !parseTemplate(store.templateFile(gaiusRow.id).file).components.length) {
+  store.tx(() => {
+    seedTemplate();
+    for (const c of seedModule.components) if (!store.get('components', c.id)) store.upsert('components', c);
+    for (const cs of seedModule.componentSets) if (!store.get('component_sets', cs.id)) store.upsert('component_sets', cs);
+    const seedSlide = seedModule.slides.find((x) => x.id === 's-dlaczego');
+    const cur = store.get('slides', 's-dlaczego');
+    if (cur && !Object.keys(cur.picks || {}).length) store.update('slides', cur.id, { picks: seedSlide.picks, block_ids: [] });
+  });
+  console.log('offer-studio: dodano komponenty (zestaw @dlaczego) i ich opisy');
 }
 
 // ------------------------------------------------------------------ live: Server-Sent Events
@@ -88,6 +105,29 @@ function librarySlides() {
   });
 }
 
+// Komponenty ze wszystkich plików biblioteki -> tabela components (opisy zostają, tekst i pola się odświeżają).
+function libraryComponents() {
+  return store.list('templates').flatMap((t) => {
+    const { parsed, updated_at } = template(t.id);
+    const v = hashOf([t.id, updated_at]).slice(0, 8);
+    return describeComponents(parsed).map((c) => ({
+      ...c, source: t.id, source_name: t.name,
+      thumb: `/thumb/${encodeURIComponent(t.id)}/${v}/${encodeURIComponent(`@${c.id}`)}`,
+    }));
+  });
+}
+function syncComponents() {
+  const found = libraryComponents();
+  const stats = store.syncComponents(found);
+  if (stats.added.length || stats.missing.length) console.log('offer-studio: komponenty', stats);
+  return stats;
+}
+// Komponenty z bazy + miniatura i dane z biblioteki.
+function componentsView({ set, includeMissing } = {}) {
+  const lib = Object.fromEntries(libraryComponents().map((c) => [c.id, c]));
+  return store.listComponents({ set, includeMissing }).map((c) => ({ ...c, thumb: lib[c.id]?.thumb || null, source_name: lib[c.id]?.source_name || null }));
+}
+
 const thumbCache = new Map(); // `${id}@${updated_at}` -> Promise<{frame: png}>
 function thumbs(id) {
   const { file, parsed, updated_at } = template(id);
@@ -114,8 +154,16 @@ async function uploadSource({ buf, filename, id, name }) {
   if (taken.length) {
     throw new HttpError(409, `Slajdy o tych nazwach są już w innym pliku: ${taken.map((s) => `„${s.frame}” (${s.source_name})`).join(', ')}. Zmień nazwę ramki w FigCraft albo podmień tamten plik.`);
   }
+  const compIds = parsed.components.map((c) => c.id);
+  const compDupes = [...new Set(compIds.filter((n, i) => compIds.indexOf(n) !== i))];
+  if (compDupes.length) throw new HttpError(400, `Karty w zestawie muszą mieć różne nazwy. Powtarzają się: ${compDupes.join(', ')}`);
+  const compTaken = libraryComponents().filter((c) => c.source !== sourceId && compIds.includes(c.id));
+  if (compTaken.length) {
+    throw new HttpError(409, `Komponenty o tych nazwach są już w innym pliku: ${compTaken.map((c) => `„${c.id}” (${c.source_name})`).join(', ')}. Zmień nazwę zestawu (@…) albo karty.`);
+  }
   const t = store.putTemplate({ id: sourceId, name: name || store.get('templates', sourceId)?.name || String(filename || parsed.name).replace(/\.[a-z]+$/i, ''), file });
-  return { ...t, frames: describeTemplate(parsed) };
+  const sync = syncComponents();
+  return { ...t, frames: describeTemplate(parsed), components: describeComponents(parsed), new_components: sync.added };
 }
 
 // Bloki slajdu: jawna lista `block_ids` (w tej kolejności) albo zapytanie `query` {type, tag, limit}.
@@ -144,6 +192,7 @@ async function renderInput(offerId, { includeHidden }) {
   const lib = await library();
   const frames = {};
   for (const f of lib.parsed.frames) frames[f.name] ??= f;
+  const comps = Object.fromEntries(lib.parsed.components.map((c) => [c.id, c]));
   const report = [];
   const slides = [];
   for (const s of offer.slides) {
@@ -154,14 +203,24 @@ async function renderInput(offerId, { includeHidden }) {
     if (s.hidden && !includeHidden) { entry.skipped = true; continue; }
     const items = {};
     for (const source of f.fields.sources) items[source] = source === 'blocks' ? resolveBlocks(s) : lines(s.data?.[source]);
+    const picks = {};
+    for (const [set, chosen] of Object.entries(s.picks || {})) {
+      if (!f.fields.picks[set] || !Array.isArray(chosen)) continue;
+      picks[set] = [];
+      for (const p of chosen) {
+        const comp = comps[p.component];
+        if (!comp) { (entry.warnings ||= []).push(`brak komponentu ${p.component} w bibliotece`); continue; }
+        picks[set].push({ comp, data: { ...(store.get('components', p.component)?.data || {}), ...(p.data || {}) } });
+      }
+    }
     entry.index = slides.length;
-    slides.push({ id: s.id, frame: s.frame, data: s.data || {}, items });
+    slides.push({ id: s.id, frame: s.frame, data: s.data || {}, items, picks });
   }
   return {
     offer,
     report,
     input: { templateBuf: lib.buf, parsed: lib.parsed, slides, offer: { id: offer.id, name: offer.name, ...offer.data } },
-    key: hashOf({ l: lib.key, o: offer.data, s: slides }),
+    key: hashOf({ l: lib.key, o: offer.data, s: slides.map((x) => ({ ...x, picks: Object.fromEntries(Object.entries(x.picks).map(([k, v]) => [k, v.map((p) => [p.comp.id, p.data])])) })) }),
   };
 }
 
@@ -200,6 +259,34 @@ async function preview(offerId) {
   })();
   inflight.set(offerId, { key, promise });
   return promise;
+}
+
+// Kontekst doboru kart dla slajdu: zestawy ze slotami #pick, zasady i opisy kart z bazy.
+// Ten sam JSON dostaje Claude (POST /slides/:id/pick) i każdy zewnętrzny agent (GET …/pick-context).
+function pickContext(slideId) {
+  const slide = store.mustGet('slides', slideId);
+  const offer = store.mustGet('offers', slide.offer_id);
+  const frame = librarySlides().find((f) => f.frame === slide.frame);
+  if (!frame) throw new HttpError(400, `W bibliotece nie ma slajdu "${slide.frame}"`);
+  const pickSets = Object.entries(frame.fields.picks || {});
+  if (!pickSets.length) throw new HttpError(400, `Slajd "${slide.frame}" nie ma slotów #pick:… na komponenty`);
+  return {
+    offer: { id: offer.id, name: offer.name, data: offer.data },
+    slide: { id: slide.id, frame: slide.frame, data: slide.data, picks: slide.picks },
+    sets: pickSets.map(([set, slots]) => {
+      const meta = store.get('component_sets', set);
+      return {
+        set, slots, title: meta?.title || set, rules: meta?.rules || '',
+        components: store.listComponents({ set }).map(({ created_at: _c, updated_at: _u, missing: _m, source: _s, set_name: _n, key: _k, ...c }) => c),
+      };
+    }),
+  };
+}
+
+try {
+  syncComponents();
+} catch (e) {
+  console.error('offer-studio: synchronizacja komponentów nie powiodła się:', e.message);
 }
 
 const safeEq = (a, b) => {
@@ -350,6 +437,7 @@ api.patch('/templates/:id', async (c) => {
 });
 api.delete('/templates/:id', (c) => {
   store.remove('templates', c.req.param('id'));
+  syncComponents();
   changed('templates', c.req.param('id'));
   return c.body(null, 204);
 });
@@ -447,6 +535,47 @@ api.delete('/slides/:id', (c) => {
   return c.body(null, 204);
 });
 
+// komponenty: karty z zestawów @… w bibliotece + opisy dla AI (SQLite)
+api.get('/components', (c) => c.json(componentsView({ set: c.req.query('set'), includeMissing: c.req.query('missing') === '1' })));
+api.get('/components/:set/:key', (c) => {
+  const id = `${c.req.param('set')}/${c.req.param('key')}`;
+  const row = componentsView({ includeMissing: true }).find((x) => x.id === id);
+  if (!row) throw new HttpError(404, `components/${id}: nie ma takiego komponentu`);
+  return c.json(row);
+});
+api.patch('/components/:set/:key', async (c) => {
+  const id = `${c.req.param('set')}/${c.req.param('key')}`;
+  const b = await body(c);
+  const patch = Object.fromEntries(Object.entries(b).filter(([k]) => COMPONENT_EDITABLE.includes(k)));
+  const ignored = Object.keys(b).filter((k) => !COMPONENT_EDITABLE.includes(k));
+  if (ignored.length && !Object.keys(patch).length) throw new HttpError(400, `Można zmieniać tylko: ${COMPONENT_EDITABLE.join(', ')}`);
+  const row = store.update('components', id, patch, { replaceData: c.req.query('replace') === '1' });
+  changed('components', id);
+  return c.json(row);
+});
+api.get('/component-sets', (c) => c.json(store.list('component_sets').map((cs) => ({ ...cs, components: store.listComponents({ set: cs.id }).length }))));
+api.patch('/component-sets/:id', async (c) => {
+  const { title, rules } = await body(c);
+  const row = store.update('component_sets', c.req.param('id'), { ...(title != null ? { title } : {}), ...(rules != null ? { rules } : {}) });
+  changed('component_sets', row.id);
+  return c.json(row);
+});
+
+// dobór kart na slajd: kontekst dla dowolnego agenta albo od razu Claude
+api.get('/slides/:id/pick-context', (c) => c.json(pickContext(c.req.param('id'))));
+api.post('/slides/:id/pick', async (c) => {
+  const b = c.req.header('content-type')?.includes('json') ? await body(c) : {};
+  const ctx = pickContext(c.req.param('id'));
+  const result = await pickComponents({ offer: ctx.offer, slide: ctx.slide, brief: b.brief, sets: ctx.sets });
+  let slide = store.mustGet('slides', ctx.slide.id);
+  if (b.apply !== false) {
+    slide = store.update('slides', slide.id, { picks: { ...(slide.picks || {}), ...result.picks } });
+    store.touch('offers', slide.offer_id);
+    changed('slides', slide.id, { offer_id: slide.offer_id });
+  }
+  return c.json({ applied: b.apply !== false, ...result, slide });
+});
+
 // eksport / import całej bazy
 api.get('/export', (c) => {
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
@@ -461,6 +590,7 @@ api.post('/import', async (c) => {
   thumbCache.clear();
   libCache = null;
   previews.clear();
+  syncComponents();
   emit({ table: '*', id: null });
   return c.json({ imported: counts });
 });

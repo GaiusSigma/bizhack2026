@@ -50,6 +50,31 @@ Kart `#item` może być więcej niż bloków (nadmiar znika) albo mniej (ostatni
 Najlepiej działa to w auto-layoucie (siatka albo lista), bo wtedy dodatkowe karty układają się same.
 Karty, które mają rosnąć z tekstem, ustaw na „hug” w pionie.
 
+## Komponenty: wymienne karty dobierane przez AI
+
+Slajd może mieć sloty na gotowe karty z Figmy/FigCraft, które różnią się nie tylko tekstem
+(ikona, kolor, układ, np. karta z dużą liczbą zamiast ikony). Przykład w pliku startowym: slajd
+`dlaczego` ma 6 slotów, a zestaw `@dlaczego` (strona „Komponenty”) ma 19 kart: 9 argumentów
+w wersji zwykłej i zielonej (wyróżnionej) plus kartę „3 mies.”.
+
+1. W FigCraft narysuj ramkę najwyższego poziomu `@nazwa-zestawu`. Każda ramka w środku to jedna karta,
+   nazwa karty to jej klucz (id w bazie: `zestaw/klucz`). Ramki `@…` nie są slajdami.
+2. Na slajdzie miejsca na karty nazwij `#pick:nazwa-zestawu` (najlepiej w siatce auto-layout).
+   Wybrane karty wchodzą w ich miejsce w kolejności wyboru. Bez wyboru zostaje to, co narysowano.
+3. Teksty karty, które wolno zmienić pod klienta, nazwij `{{title}}`, `{{body}}`… Bez wartości zostaje
+   tekst z rysunku.
+4. Po wgraniu pliku karty pojawiają się w zakładce **Komponenty** (i w tabeli `components` w SQLite).
+   Tam opisujesz, co karta pokazuje, **kiedy ją wybrać**, kiedy nie, temat (warianty jednego argumentu
+   mają ten sam temat) i wariant. Zasady całego zestawu (np. „6 kart, dokładnie jedna wyróżniona”)
+   są w `component_sets`. Podmiana pliku odświeża tekst i pola kart, ale opisów nie rusza.
+5. W edytorze slajdu wybierasz karty ręcznie (miniatury + „kiedy”) albo klikasz **Dobierz karty (AI)**
+   z krótkim briefem. Claude (`STUDIO_AI_MODEL`, domyślnie `claude-opus-5-5`) czyta opisy z bazy,
+   zasady zestawu i zmienne oferty, wybiera karty, ustawia kolejność i pisze uzasadnienie przy każdej.
+   Ten sam kontekst dla innego agenta: `GET /api/slides/:id/pick-context`.
+
+`seed/build-components.mjs` pokazuje, jak zrobiono zestaw startowy (z kart slajdu „dlaczego”).
+Przy starcie baza bez komponentów dostaje nowy plik Gaius, opisy 19 kart i wybór kart w ofercie bazowej.
+
 ## Uruchomienie lokalne bez Dockera
 
 Potrzebny zainstalowany FigCraft. Na Windows `figcraft-cli.exe` jest wykrywany automatycznie, a w innym
@@ -80,6 +105,8 @@ i font Figtree (`fonts/`, licencja OFL). W Coolify ustaw domenę dla `offer-stud
 | `FIGCRAFT_CLI` | `/usr/local/bin/figcraft-cli` | Ścieżka do figcraft-cli |
 | `STUDIO_DB` | `/data/studio.db` | Plik bazy (wolumen `offer-studio-data`) |
 | `STUDIO_SEED` | – | `false` wyłącza dane startowe przy pustej bazie |
+| `ANTHROPIC_API_KEY` | ustaw ręcznie | Dobór kart przez AI; bez klucza reszta działa |
+| `STUDIO_AI_MODEL` | `claude-opus-5-5` | Model do doboru kart |
 
 Bez `STUDIO_PASSWORD` i `STUDIO_API_TOKEN` aplikacja jest otwarta. Tak ma być tylko lokalnie.
 

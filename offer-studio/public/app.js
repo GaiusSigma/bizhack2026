@@ -138,11 +138,12 @@ async function download(path, fallbackName) {
 }
 
 // ------------------------------------------------------------------ stan i routing
-const state = { blocks: [], offers: [], templates: [], library: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
+const state = { blocks: [], offers: [], templates: [], library: [], components: [], componentSets: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
 
 async function loadAll() {
-  [state.blocks, state.offers, state.templates, state.library, state.meta] = await Promise.all([
-    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/library'), api('GET', '/meta'),
+  [state.blocks, state.offers, state.templates, state.library, state.components, state.componentSets, state.meta] = await Promise.all([
+    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/library'),
+    api('GET', '/components?missing=1'), api('GET', '/component-sets'), api('GET', '/meta'),
   ]);
 }
 
@@ -222,7 +223,7 @@ function pickSlide(title = 'Wybierz slajd z biblioteki') {
 function route() {
   const [view = 'offers', id = '', sub = ''] = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
-  ({ blocks: viewBlocks, offers: viewOffers, templates: viewTemplates }[view] || viewOffers)(id, sub);
+  ({ blocks: viewBlocks, offers: viewOffers, templates: viewTemplates, components: viewComponents }[view] || viewOffers)(id, sub);
 }
 const go = (...parts) => { location.hash = `#/${parts.filter((p) => p != null && p !== '').map(encodeURIComponent).join('/')}`; };
 document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => go(b.dataset.view)));
@@ -582,7 +583,8 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
   };
   renderBlocks();
 
-  const fields = frame?.fields || { data: [], item: [], sources: [] };
+  const fields = frame?.fields || { data: [], item: [], sources: [], picks: {} };
+  const pickBoxes = Object.entries(fields.picks || {}).map(([set, slots]) => picksBox(slide, set, slots, save));
   return h('div', { class: 'box', style: 'border-color: var(--accent)' },
     h('div', { class: 'bar' },
       h('h2', { style: 'font-size:14px' }, `Slajd ${offer.slides.indexOf(slide) + 1}`), status,
@@ -597,7 +599,182 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
     h('label', { class: 'f' }, 'Treść slajdu (**słowo** = wyróżnienie z szablonu; puste pole ukrywa warstwę)'),
     kvEditor(slide.data || {}, fields.data, (data) => save({ data })),
     fields.sources.includes('blocks') ? blocksBox : null,
+    pickBoxes,
   );
+}
+
+// ------------------------------------------------------------------ komponenty na slajdzie (#pick:zestaw)
+const compChips = (c) => [
+  c.variant ? h('span', { class: `chip ${c.variant === 'wyroznienie' ? 'green' : ''}` }, c.variant) : null,
+  c.topic ? h('span', { class: 'chip' }, c.topic) : null,
+];
+
+function picksBox(slide, set, slots, save) {
+  const box = h('div', { class: 'box' });
+  const meta = state.componentSets.find((x) => x.id === set);
+  const render = (aiResult) => {
+    const byId = Object.fromEntries(state.components.map((c) => [c.id, c]));
+    const picks = slide.picks?.[set] || [];
+    const setPicks = (next) => {
+      slide.picks = { ...(slide.picks || {}), [set]: next };
+      save({ picks: slide.picks });
+      render();
+    };
+    const swap = (i, j) => { const n = [...picks]; [n[i], n[j]] = [n[j], n[i]]; setPicks(n); };
+    const brief = autosize(h('textarea', { rows: 2, placeholder: 'Brief dla AI, np. „bank, boją się chmury, decyduje zarząd”. Zmienne oferty (klient itp.) AI widzi samo.' }, box.dataset.brief || ''));
+    brief.oninput = () => (box.dataset.brief = brief.value);
+    const aiBtn = h('button', { class: 'btn primary sm', onclick: async () => {
+      aiBtn.disabled = true;
+      aiBtn.textContent = 'AI dobiera karty…';
+      try {
+        const r = await api('POST', `/slides/${encodeURIComponent(slide.id)}/pick`, { brief: brief.value });
+        slide.picks = r.slide.picks;
+        toast(`AI wybrało ${r.picks[set]?.length ?? 0} kart`);
+        render(r);
+      } catch (e) {
+        toast(e.message, true);
+        aiBtn.disabled = false;
+        aiBtn.textContent = 'Dobierz karty (AI)';
+      }
+    } }, 'Dobierz karty (AI)');
+    box.replaceChildren(...[
+      h('h3', {}, `Karty z zestawu @${set}: ${picks.length} / ${slots} `,
+        h('button', { class: 'btn sm', onclick: async () => {
+          const id = await pickComponent(set, picks.map((p) => p.component));
+          if (id) setPicks([...picks, { component: id }]);
+        } }, '+ karta'), ' ',
+        h('a', { class: 'btn sm ghost', href: `#/components/${encodeURIComponent(set)}` }, 'opisy kart')),
+      meta?.rules ? h('div', { class: 'hint' }, `Zasady: ${meta.rules}`) : null,
+      picks.length ? null : h('div', { class: 'hint' }, 'Brak wyboru: slajd pokazuje karty tak, jak je narysowano w FigCraft.'),
+      h('div', { class: 'pick-list' }, picks.map((p, i) => {
+        const c = byId[p.component];
+        return h('div', { class: 'pick-row' },
+          h('span', { class: 'n' }, i + 1),
+          c?.thumb ? h('img', { src: c.thumb, alt: c.title }) : h('div', { class: 'shot-error' }, 'brak'),
+          h('div', {},
+            h('div', {}, h('b', {}, c ? c.title : h('s', {}, p.component)), ' ', c ? compChips(c) : null),
+            p.reason ? h('div', { class: 'why' }, p.reason) : null,
+            p.data && Object.keys(p.data).length ? h('div', { class: 'why' }, `tekst zmieniony: ${Object.keys(p.data).join(', ')}`) : null),
+          h('span', { class: 'acts' },
+            c?.fields?.length ? h('button', { class: 'icon', title: 'Zmień teksty tej karty na tym slajdzie', onclick: () => editPickText(p, c, (data) => {
+              const n = [...picks];
+              n[i] = { ...p, data };
+              if (!Object.keys(data).length) delete n[i].data;
+              setPicks(n);
+            }) }, '✎') : null,
+            h('button', { class: 'icon', title: 'Zamień na inną kartę', onclick: async () => {
+              const id = await pickComponent(set, picks.map((x) => x.component).filter((x) => x !== p.component));
+              if (!id) return;
+              const n = [...picks];
+              n[i] = { component: id };
+              setPicks(n);
+            } }, '⇄'),
+            h('button', { class: 'icon', onclick: () => i > 0 && swap(i - 1, i) }, '↑'),
+            h('button', { class: 'icon', onclick: () => i < picks.length - 1 && swap(i, i + 1) }, '↓'),
+            h('button', { class: 'icon', title: 'Zdejmij ze slajdu', onclick: () => setPicks(picks.filter((_, j) => j !== i)) }, '×')));
+      })),
+      h('div', { class: 'ai-box' },
+        brief,
+        h('div', { class: 'bar' }, aiBtn,
+          h('span', { class: 'hint' }, 'AI czyta opisy kart z bazy (zakładka Komponenty), zasady zestawu i zmienne oferty.')),
+        aiResult ? h('div', { class: 'ai-note' },
+          aiResult.note, aiResult.warnings?.length ? h('div', { class: 'hint' }, `Uwagi: ${aiResult.warnings.join('; ')}`) : null) : null),
+    ].filter(Boolean));
+  };
+  render();
+  return box;
+}
+
+// Okienko wyboru karty z zestawu (miniatury + kiedy jej użyć). Zwraca id albo null.
+function pickComponent(set, taken = []) {
+  return new Promise((resolve) => {
+    let picked = null;
+    const comps = state.components.filter((c) => c.set_name === set && !c.missing);
+    const close = modal(h('div', {},
+      h('div', { class: 'bar' }, h('h3', { style: 'flex:1' }, `Wybierz kartę z zestawu @${set}`)),
+      h('div', { class: 'comp-grid' }, comps.map((c) => h('button', { class: 'comp-card', disabled: taken.includes(c.id), onclick: () => { picked = c.id; close(); } },
+        c.thumb ? h('img', { src: c.thumb, alt: c.title, loading: 'lazy' }) : null,
+        h('div', { class: 'body' },
+          h('b', {}, c.title), h('div', {}, compChips(c)),
+          c.use_when ? h('div', {}, h('span', { class: 'muted' }, 'Kiedy: '), c.use_when) : h('div', { class: 'muted' }, 'bez opisu: uzupełnij w zakładce Komponenty')))))));
+    onModalClose = () => resolve(picked);
+  });
+}
+
+function editPickText(pick, comp, onSave) {
+  const inputs = {};
+  const close = modal(h('div', {},
+    h('h3', {}, `Teksty karty „${comp.title}” na tym slajdzie`),
+    h('p', { class: 'hint' }, 'Puste pole = tekst z FigCraft. **słowo** = wyróżnienie.'),
+    comp.fields.map((f) => [
+      h('label', { class: 'f' }, `{{${f}}}`),
+      (inputs[f] = autosize(h('textarea', { rows: 2, placeholder: '(jak w FigCraft)' }, pick.data?.[f] ?? ''))),
+    ]),
+    h('div', { class: 'bar', style: 'margin-top:14px' }, h('span', { class: 'spacer' }),
+      h('button', { class: 'btn', onclick: () => close() }, 'Anuluj'),
+      h('button', { class: 'btn primary', onclick: () => {
+        const data = {};
+        for (const [f, el] of Object.entries(inputs)) if (el.value.trim()) data[f] = el.value;
+        close();
+        onSave(data);
+      } }, 'Zapisz'))));
+}
+
+// ------------------------------------------------------------------ widok: Komponenty (opisy kart dla AI)
+function viewComponents(focusSet) {
+  refreshLists = null;
+  const sets = [...new Set([...state.componentSets.map((x) => x.id), ...state.components.map((c) => c.set_name)])];
+  const view = h('div', { class: 'editor library' },
+    h('div', { class: 'bar' }, h('h2', {}, `Komponenty (${state.components.filter((c) => !c.missing).length})`)),
+    h('details', { class: 'help', open: !state.components.length },
+      h('summary', {}, 'Jak to działa?'),
+      h('ol', {},
+        h('li', {}, 'W FigCraft (albo Figmie) narysuj ramkę najwyższego poziomu o nazwie ', h('code', {}, '@nazwa-zestawu'), ', np. ', h('code', {}, '@dlaczego'), '. Każda ramka w środku to jedna gotowa karta: własna ikona, kolor, układ. Nazwa karty = jej klucz.'),
+        h('li', {}, 'Na slajdzie miejsca na karty nazwij ', h('code', {}, '#pick:nazwa-zestawu'), ' (np. 6 slotów w siatce). Bez wyboru slajd pokazuje to, co narysowano.'),
+        h('li', {}, 'Teksty w kartach, które wolno zmieniać, nazwij ', h('code', {}, '{{title}}'), ', ', h('code', {}, '{{body}}'), '… Bez wartości zostaje tekst z rysunku.'),
+        h('li', {}, 'Wgraj plik w zakładce Slajdy. Karty pojawią się tutaj: opisz, kiedy której użyć. Te opisy (SQLite) czyta AI przy „Dobierz karty”.'))),
+  );
+  for (const set of sets) {
+    const meta = state.componentSets.find((x) => x.id === set) || { id: set, title: set, rules: '' };
+    const comps = state.components.filter((c) => c.set_name === set);
+    const sstatus = h('span', { class: 'status' });
+    const saveSet = saver(sstatus, (patch) => api('PATCH', `/component-sets/${encodeURIComponent(set)}`, patch));
+    const usedBy = state.library.filter((f) => f.fields.picks?.[set]).map((f) => `${f.frame} (${f.fields.picks[set]})`).join(', ');
+    const section = h('section', { class: `lib-file ${set === focusSet ? 'focus' : ''}`, id: `set-${set}` },
+      h('div', { class: 'bar' },
+        h('code', {}, `@${set}`),
+        h('input', { class: 'lib-name', value: meta.title, oninput: (e) => saveSet({ title: e.target.value }) }), sstatus,
+        h('span', { class: 'hint' }, `${comps.filter((c) => !c.missing).length} kart · sloty: ${usedBy || 'żaden slajd'}`)),
+      h('label', { class: 'f' }, 'Zasady zestawu dla AI (ile kart, ile wyróżnionych, czego nie łączyć)'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => saveSet({ rules: e.target.value }) }, meta.rules)));
+    for (const c of comps) section.append(componentEditor(c));
+    view.append(section);
+  }
+  if (!sets.length) view.append(h('div', { class: 'empty' }, 'Brak komponentów. Wgraj plik z ramką @zestaw w zakładce Slajdy.'));
+  $('#view').replaceChildren(view);
+  if (focusSet) $(`#set-${CSS.escape(focusSet)}`)?.scrollIntoView({ block: 'start' });
+}
+
+function componentEditor(c) {
+  const status = h('span', { class: 'status' });
+  const [set, key] = c.id.split('/');
+  const save = saver(status, async (patch) => Object.assign(c, await api('PATCH', `/components/${encodeURIComponent(set)}/${encodeURIComponent(key)}`, patch)));
+  const field = (label, k, ph) => [h('label', { class: 'f' }, label), autosize(h('textarea', { rows: 2, placeholder: ph, oninput: (e) => save({ [k]: e.target.value }) }, c[k] || ''))];
+  return h('div', { class: `comp-edit ${c.missing ? 'missing' : ''}` },
+    h('div', {},
+      c.thumb ? h('img', { src: c.thumb, alt: c.title, loading: 'lazy' }) : h('div', { class: 'shot-error' }, 'brak w bibliotece'),
+      h('div', { class: 'id' }, c.id, c.missing ? ' · nie ma już w bibliotece' : ''),
+      h('div', { class: 'hint' }, c.fields.length ? `pola: ${c.fields.map((f) => `{{${f}}}`).join(', ')}` : 'karta stała (bez pól)')),
+    h('div', {},
+      h('div', { class: 'bar' }, h('input', { value: c.title, style: 'flex:1;font-weight:600', oninput: (e) => save({ title: e.target.value }) }), status),
+      h('div', { class: 'two' },
+        h('div', {}, h('label', { class: 'f' }, 'Temat (warianty jednego argumentu mają ten sam)'), h('input', { value: c.topic, oninput: (e) => save({ topic: e.target.value.trim() }) })),
+        h('div', {}, h('label', { class: 'f' }, 'Wariant (np. zwykla, wyroznienie, liczba)'), h('input', { value: c.variant, oninput: (e) => save({ variant: e.target.value.trim() }) }))),
+      field('Co pokazuje', 'description', 'treść i wygląd karty'),
+      field('Kiedy wybrać', 'use_when', 'jaki klient, branża, obawa, etap rozmowy'),
+      field('Kiedy nie wybierać', 'avoid_when', 'np. gdy na slajdzie jest już karta X'),
+      h('label', { class: 'f' }, 'Tagi (po przecinku)'),
+      h('input', { value: (c.tags || []).join(', '), oninput: (e) => save({ tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) }) })));
 }
 
 // ------------------------------------------------------------------ widok: Biblioteka slajdów
@@ -617,6 +794,7 @@ function viewTemplates(focusId) {
       h('li', {}, 'W FigCraft narysuj ramkę 1920×1080 i nazwij ją, np. ', h('code', {}, 'case-study'), '. Nazwa ramki to nazwa slajdu w bibliotece.'),
       h('li', {}, 'Teksty, które mają się zmieniać, nazwij polami: ', h('code', {}, '{{data.title}}'), ', ', h('code', {}, '{{offer.client}}'), '. Reszta zostaje taka, jak ją narysujesz.'),
       h('li', {}, 'Karty na bloki z bazy wiedzy nazwij ', h('code', {}, '#item'), ', a teksty w nich ', h('code', {}, '{{title}}'), ', ', h('code', {}, '{{body}}'), ', ', h('code', {}, '{{effect}}'), '…'),
+      h('li', {}, 'Wymienne karty (różne ikony, kolory, układy) narysuj w ramce ', h('code', {}, '@zestaw'), ', a na slajdzie daj sloty ', h('code', {}, '#pick:zestaw'), '. Opisy kart dla AI: zakładka Komponenty.'),
       h('li', {}, 'Zapisz plik .figcraft (albo stronę jako .json) i przeciągnij go tutaj. Działa też .fig, .penpot, .sketch i .svg.')),
     h('table', {},
       h('tr', {}, h('td', {}, h('code', {}, 'Efekt: {{effect}}')), h('td', {}, 'tekst stały + pole; pusty wynik ukrywa warstwę')),
@@ -638,7 +816,7 @@ function viewTemplates(focusId) {
     view.append(h('section', { class: `lib-file ${t.id === focusId ? 'focus' : ''}`, id: `lib-${t.id}` },
       h('div', { class: 'bar' },
         h('input', { class: 'lib-name', value: t.name, oninput: (e) => save({ name: e.target.value }) }), status,
-        h('span', { class: 'hint' }, `${slides.length} slajd(ów) · ${t.size > 1048576 ? `${(t.size / 1048576).toFixed(1)} MB` : `${Math.ceil(t.size / 1024)} KB`} · ${new Date(t.updated_at).toLocaleString('pl-PL')}`),
+        h('span', { class: 'hint' }, `${slides.length} slajd(ów) · ${state.components.filter((c) => c.source === t.id && !c.missing).length} komponentów · ${t.size > 1048576 ? `${(t.size / 1048576).toFixed(1)} MB` : `${Math.ceil(t.size / 1024)} KB`} · ${new Date(t.updated_at).toLocaleString('pl-PL')}`),
         h('span', { class: 'spacer' }),
         h('a', { class: 'btn sm', href: `/api/templates/${encodeURIComponent(t.id)}/file` }, 'Pobierz .figcraft'),
         h('label', { class: 'btn sm', title: 'Wgraj poprawioną wersję tego pliku' }, 'Podmień', fileInput(t.id)),
@@ -656,6 +834,7 @@ function viewTemplates(focusId) {
           h('div', { class: 'hint' }, [
             s.fields.data.length ? `pola: ${s.fields.data.join(', ')}` : 'slajd stały',
             s.slots ? `karty #item: ${s.slots} (${s.fields.item.join(', ')})` : null,
+            ...Object.entries(s.fields.picks || {}).map(([set, n]) => `sloty #pick:${set}: ${n}`),
           ].filter(Boolean).join(' · '))))))));
   }
   $('#view').replaceChildren(view);
