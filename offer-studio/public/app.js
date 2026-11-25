@@ -2,10 +2,17 @@
 // z którego mogą korzystać skrypty i n8n (patrz /static/api.html). Slajdy renderuje FigCraft.
 
 import {
-  $, UPLOAD_ACCEPT, api, autosize, debounce, download, go, h, kvEditor, loadAll, modal, saver, slugify, state, toast, ui,
+  $, CATEGORY_LABELS, UPLOAD_ACCEPT, api, autosize, debounce, download, go, h, kvEditor, loadAll, modal, saver, slugify, state, tileLabel, toast, ui,
 } from './lib.js';
 import { viewNewOffer } from './views/new-offer.js';
 import { viewOffer, viewOfferList } from './views/offer.js';
+import { viewScenarios } from './views/scenarios.js';
+import { plainTags, tileTagEditor, viewTiles } from './views/tiles.js';
+
+const BLOCK_TYPE_LABELS = {
+  rozwiazanie: 'Rozwiązania', use_case: 'Przypadki użycia', problem: 'Problemy', pillar: 'Filary', signal: 'Sygnały gotowości', step: 'Kroki wdrożenia',
+  comparison: 'Porównanie', package: 'Składniki pakietu', person: 'Osoby', differentiator: 'Wyróżniki',
+};
 
 // Wgranie plików ze slajdami (każda ramka najwyższego poziomu = slajd w bibliotece).
 async function uploadSlideFiles(files, { replaceId } = {}) {
@@ -81,6 +88,8 @@ const VIEWS = {
   templates: (...a) => viewTemplates(...a),
   components: (...a) => viewComponents(...a),
   'offer-advanced': (...a) => viewOffers(...a),
+  tiles: (...a) => viewTiles(...a),
+  scenarios: (...a) => viewScenarios(...a),
 };
 
 function route() {
@@ -128,7 +137,7 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
     const b = await api('PATCH', `/blocks/${encodeURIComponent(block.id)}`, patch);
     Object.assign(block, b);
   });
-  const tagList = state.meta.tags.map((t) => t.tag).join(', ');
+  const tagList = state.meta.tags.map((t) => t.tag).filter((t) => !t.includes(':')).join(', ');
   return h('div', {},
     h('div', { class: 'bar' },
       h('h2', {}, block.title || '(bez tytułu)'),
@@ -154,13 +163,35 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
     h('input', { value: block.type, list: 'types-dl', oninput: (e) => e.target.value.trim() && save({ type: e.target.value.trim() }) }),
     h('label', { class: 'f' }, 'Tytuł'),
     h('input', { value: block.title, oninput: (e) => save({ title: e.target.value }) }),
-    h('label', { class: 'f' }, 'Treść (listy „- ” zamieniają się w linie, **tekst** = akcent)'),
-    autosize(h('textarea', { rows: 4, oninput: (e) => save({ body: e.target.value }) }, block.body)),
-    h('label', { class: 'f' }, 'Tagi (po przecinku)'),
-    h('input', { value: (block.tags || []).join(', '), placeholder: tagList, oninput: (e) => save({ tags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }) }),
-    h('label', { class: 'f' }, 'Dodatkowe pola'),
-    kvEditor(block.data || {}, [], (data) => save({ data })),
-    h('div', { class: 'hint' }, 'W szablonie FigCraft pole wstawiasz nazwą warstwy, np. {{effect}}. Zmiany zapisują się same.'),
+    block.type === 'rozwiazanie' ? [
+      h('label', { class: 'f' }, 'Problem klienta'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { problem: e.target.value } }) }, block.data?.problem || '')),
+      h('label', { class: 'f' }, 'Rozwiązanie (co robi Gaius)'),
+      autosize(h('textarea', { rows: 3, oninput: (e) => save({ body: e.target.value }) }, block.body)),
+      h('label', { class: 'f' }, 'Korzyść (trafia na slajd)'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { effect: e.target.value } }) }, block.data?.effect || '')),
+      h('label', { class: 'f' }, 'Wartość'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { wartosc: e.target.value } }) }, block.data?.wartosc || '')),
+    ] : [
+      h('label', { class: 'f' }, 'Treść (listy „- ” zamieniają się w linie, **tekst** = akcent)'),
+      autosize(h('textarea', { rows: 4, oninput: (e) => save({ body: e.target.value }) }, block.body)),
+    ],
+    h('label', { class: 'f' }, 'Kafelki: dla jakich klientów jest ten blok (klik włącza i wyłącza)'),
+    tileTagEditor(block.tags, (tags) => {
+      const next = [...plainTags(block.tags), ...tags.filter((t) => t.includes(':'))];
+      block.tags = next;
+      save({ tags: next });
+    }),
+    h('details', { class: 'advanced' }, h('summary', {}, 'Zaawansowane: zwykłe tagi i pola dla szablonu'),
+      h('label', { class: 'f' }, 'Zwykłe tagi (po przecinku)'),
+      h('input', { value: plainTags(block.tags).join(', '), placeholder: tagList, oninput: (e) => {
+        const next = [...e.target.value.split(',').map((x) => x.trim()).filter(Boolean), ...(block.tags || []).filter((t) => t.includes(':'))];
+        block.tags = next;
+        save({ tags: next });
+      } }),
+      h('label', { class: 'f' }, 'Dodatkowe pola'),
+      kvEditor(block.data || {}, [], (data) => save({ data })),
+      h('div', { class: 'hint' }, 'W szablonie FigCraft pole wstawiasz nazwą warstwy, np. {{effect}}. Zmiany zapisują się same.')),
   );
 }
 
@@ -175,15 +206,17 @@ function viewBlocks(selectedId) {
     const items = state.blocks.filter((b) =>
       (!f.type || b.type === f.type) &&
       (!f.tag || (b.tags || []).includes(f.tag)) &&
+      (!f.tile || (b.tags || []).includes(f.tile)) &&
       (!q || `${b.title} ${b.body} ${JSON.stringify(b.data)}`.toLowerCase().includes(q)));
     const groups = {};
     for (const b of items) (groups[b.type] ||= []).push(b);
     listEl.replaceChildren(...[
       ...Object.entries(groups).map(([type, bs]) => [
-        h('div', { class: 'group' }, `${type} · ${bs.length}`),
+        h('div', { class: 'group' }, `${BLOCK_TYPE_LABELS[type] || type} · ${bs.length}`),
         bs.map((b) => h('div', { class: `item ${b.id === selectedId ? 'active' : ''}`, onclick: () => go('blocks', b.id) },
           h('div', {}, b.title || '(bez tytułu)'),
-          h('div', { class: 'sub' }, (b.body || '').slice(0, 90) || (b.tags || []).join(', ')))),
+          h('div', { class: 'sub' }, (b.body || '').slice(0, 90)),
+          h('div', { class: 'item-tiles' }, (b.tags || []).filter((t) => t.includes(':')).map((t) => h('span', { class: `chip tile-chip small ${t.split(':')[0]}` }, tileLabel(t)))))),
       ]),
       items.length ? [] : [h('div', { class: 'empty' }, 'Brak bloków')],
     ].flat(Infinity));
@@ -193,9 +226,11 @@ function viewBlocks(selectedId) {
   const typeSel = h('select', { onchange: (e) => { f.type = e.target.value; renderList(); } },
     h('option', { value: '' }, 'wszystkie typy'), state.meta.types.map((t) => h('option', { value: t.type }, `${t.type} (${t.count})`)));
   typeSel.value = f.type;
-  const tagSel = h('select', { onchange: (e) => { f.tag = e.target.value; renderList(); } },
-    h('option', { value: '' }, 'wszystkie tagi'), state.meta.tags.map((t) => h('option', { value: t.tag }, `${t.tag} (${t.count})`)));
-  tagSel.value = f.tag;
+  const tagSel = h('select', { onchange: (e) => { f.tile = e.target.value; renderList(); } },
+    h('option', { value: '' }, 'wszystkie kafelki'),
+    Object.entries(CATEGORY_LABELS).map(([cat, title]) => h('optgroup', { label: title },
+      state.tiles.filter((t) => t.category === cat).map((t) => h('option', { value: t.id }, t.label)))));
+  tagSel.value = f.tile || '';
 
   const newBlock = async () => {
     const type = prompt('Typ nowego bloku (np. use_case, problem, faq):', f.type || 'use_case');

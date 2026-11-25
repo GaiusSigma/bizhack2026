@@ -245,3 +245,37 @@ details.advanced summary { cursor: pointer; color: var(--muted); font-size: 13px
   .slides-col { flex-basis: 400px; }
 }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* kafelki: zakładka, chipy w Wiedzy, scenariusze */
+.list .item.soon { opacity: .7; }
+.tl-group { display: flex; justify-content: space-between; align-items: center; }
+.item-tiles { margin-top: 2px; }
+.tile-tags { display: flex; flex-direction: column; gap: 6px; background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.tt-row { display: grid; grid-template-columns: 80px 1fr; gap: 6px; align-items: start; }
+.tt-k { font-size: 12px; color: var(--muted); padding-top: 3px; }
+.chip.tile-chip.toggle { border: 1px solid transparent; cursor: pointer; opacity: .55; font: inherit; font-size: 12px; }
+.chip.tile-chip.toggle.on { opacity: 1; border-color: currentColor; font-weight: 600; }
+.tile-editor { max-width: 760px; }
+h3.sec { margin: 24px 0 2px; font-size: 15px; }
+.pinned { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.pin { display: grid; grid-template-columns: 120px 1fr 24px; gap: 8px; align-items: center; padding: 5px 8px; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+.pin-type { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.pin a { text-decoration: none; }
+.pin-results { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.scenario-editor { max-width: 900px; }
+.step-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; }
+.stc-head { display: grid; grid-template-columns: 22px 128px 1fr auto; gap: 12px; align-items: start; padding: 10px 12px; }
+.stc-head img, .shot-error.mini { width: 128px; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 6px; padding: 0; font-size: 11px; }
+.stc-label { font-weight: 600; }
+.stc-edit { border-top: 1px solid var(--line); padding: 6px 14px 12px 46px; }
+.stc-edit summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.stc-grid .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+input.num { width: 70px !important; }
+label.check { display: inline-flex; gap: 4px; align-items: center; font-size: 13px; }
+.brand { white-space: nowrap; }
+#tabs { flex-wrap: wrap; }
+#tabs button, .top .btn { white-space: nowrap; }
+@media (max-width: 1100px) {
+  .nav-sep { display: none; }
+  #tabs button { padding: 6px 8px; }
+}
