@@ -1,6 +1,7 @@
 # FigCraft (web version, WebAssembly) served by nginx.
 # Downloads the official build from the github.com/storytold/figcraft release and checks its SHA-256
-# (from that release's SHA256SUMS.txt). When bumping the version, change both arguments.
+# (from that release's SHA256SUMS.txt). When bumping the version, change both arguments, and the same
+# version in offer-studio/scripts/fetch-figcraft-web.mjs (Offer Studio embeds this build as its slide editor).
 FROM alpine:3.22 AS fetch
 ARG FIGCRAFT_VERSION=0.18.1
 ARG FIGCRAFT_WEB_SHA256=2fbeb93f5022b0a7cc9d8528f1ed7e2b54c94d213ef79e65128aa898c399f02b

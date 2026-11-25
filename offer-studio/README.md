@@ -19,6 +19,29 @@ A minimal dashboard for collecting knowledge about an offer and assembling prese
 Out of the box the database holds the content of `gaius-offer.figcraft` (40 blocks, a base offer with
 11 slides) and `seed/gaius-template.figcraft` (the same file with marked-up fields) as the first library entry.
 
+## Editing slides in the browser (FigCraft web)
+
+Offer Studio ships the FigCraft web editor (WebAssembly) and serves it at `/figcraft/`, so slide files
+can be designed and changed without the desktop app or the CLI:
+
+- **Slides ▸ Edit in FigCraft** opens a file from the library in a new tab. **Ctrl+S saves it straight
+  back to the library**: thumbnails, components and every offer that uses its slides update right away.
+- **Slides ▸ New in FigCraft** starts an empty editor (Home screen ▸ new design file). The first Save asks
+  whether to add the file to the library; its file name becomes the library name.
+- **Offer ▸ Open in FigCraft** opens the finished offer for manual touch-ups. It is generated, so saving
+  there downloads a `.figcraft` and the offer in Offer Studio does not change.
+- Exports from the editor (PNG, PDF, SVG…) are ordinary downloads.
+
+Several people can work on the library at once. If someone saves a file you have open, a banner says so
+(load their version or keep editing yours), and saving over a newer version is refused until you choose
+**Overwrite with my version** (or download yours). "Set your name" in the editor bar names you on
+FigCraft comments. To edit one file together live, use FigCraft's own Share ▸ Online: in the stack the
+editor already knows the `figcraft-server` collaboration server.
+
+How it works: `/static/editor.html` frames `/figcraft/?host=parent` on the same origin. FigCraft's host
+mode hands every Save to the page over `postMessage` instead of downloading it, and the page uploads it with
+`POST /api/templates` plus `base` (the `x-updated-at` of the version it opened) for the conflict check.
+
 ## Adding a new slide
 
 1. In FigCraft, draw a frame (e.g. 1920×1080) and name it, e.g. `case-study`. The frame name is the slide's
@@ -82,8 +105,11 @@ You need FigCraft installed. On Windows `figcraft-cli.exe` is detected automatic
 point the `FIGCRAFT_CLI` variable at it.
 
 ```powershell
-cd offer-studio; npm install; npm run dev
+cd offer-studio; npm install; npm run figcraft-web; npm run dev
 ```
+
+`npm run figcraft-web` downloads the FigCraft web build (about 25 MB, SHA-256 checked) into
+`vendor/figcraft-web` once; without it everything works except the in-browser editor.
 
 The app starts at http://localhost:3000 with no password. The database lives in `offer-studio/data/studio.db`.
 
@@ -102,7 +128,9 @@ and the Figtree font (`fonts/`, OFL licence). In Coolify, set a domain for `offe
 |---|---|---|
 | `STUDIO_PASSWORD` | `SERVICE_PASSWORD_STUDIO` | Browser password (any username) |
 | `STUDIO_API_TOKEN` | `SERVICE_PASSWORD_64_STUDIOAPI` | `Authorization: Bearer …` for scripts and n8n |
-| `FIGCRAFT_WEB_URL` | `SERVICE_URL_FIGCRAFT` | "Open FigCraft" link |
+| `FIGCRAFT_WEB_URL` | `SERVICE_URL_FIGCRAFT` | The stack's FigCraft domain; the editor's collaboration server is derived from it (`wss://<domain>/sync/`) |
+| `FIGCRAFT_SERVER_URL` | – | Collaboration server for Share ▸ Online in the editor, if it is not at `FIGCRAFT_WEB_URL` + `/sync/` |
+| `FIGCRAFT_WEB_DIR` | `/app/vendor/figcraft-web` | The FigCraft web build served at `/figcraft/` |
 | `FIGCRAFT_CLI` | `/usr/local/bin/figcraft-cli` | Path to figcraft-cli |
 | `STUDIO_DB` | `/data/studio.db` | Database file (`offer-studio-data` volume) |
 | `STUDIO_SEED` | – | `false` disables starter data on an empty database |
@@ -117,7 +145,8 @@ to get the current starter content, start with an empty `offer-studio-data` volu
 On the first start of a new version against a database with HTML layouts, the database migrates itself:
 blocks and offers stay, the Gaius template is added and the base offer gets slides for that template.
 
-Upgrading FigCraft: in the `Dockerfile`, change `FIGCRAFT_VERSION` and both checksums from the release's `SHA256SUMS.txt`.
+Upgrading FigCraft: in the `Dockerfile`, change `FIGCRAFT_VERSION` and both checksums from the release's `SHA256SUMS.txt`,
+and in `scripts/fetch-figcraft-web.mjs` the web build's `VERSION` and `SHA256` (the `figcraft-web-<version>.zip` line).
 
 ### n8n
 
