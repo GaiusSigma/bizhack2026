@@ -657,12 +657,16 @@ api.get('/slides/:id', (c) => c.json(store.mustGet('slides', c.req.param('id')))
 api.patch('/slides/:id', async (c) => {
   const { offer_id: _ignored, origin: _origin, ...patch } = await body(c);
   // Każda zmiana z zewnątrz (UI, n8n) oznacza slajd jako poprawiony ręcznie. {"locked": false} przywraca automat.
+  // Odblokowanie i przeliczenie idą w jednej transakcji: gdy przeliczenie się nie uda (np. usunięty kafelek),
+  // slajd zostaje zablokowany. Odpowiedź to cała oferta, bo slajd może zostać zastąpiony nowym (inne id).
   if (patch.locked === false) {
-    const cur = store.update('slides', c.req.param('id'), { locked: false });
-    const offer = store.mustGet('offers', cur.offer_id);
-    if (offer.data?.scenario_id) recompute(offer.id);
-    changed('slides', null, { offer_id: offer.id });
-    return c.json(store.get('slides', cur.id) || cur);
+    const offerId = store.mustGet('slides', c.req.param('id')).offer_id;
+    const o = store.tx(() => {
+      store.update('slides', c.req.param('id'), { locked: false });
+      return store.mustGet('offers', offerId).data?.scenario_id ? recompute(offerId) : offerView(offerId);
+    });
+    changed('slides', null, { offer_id: offerId });
+    return c.json(o);
   }
   const s = store.update('slides', c.req.param('id'), { ...patch, locked: true }, { replaceData: c.req.query('replace') === '1' });
   store.touch('offers', s.offer_id);

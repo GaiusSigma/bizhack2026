@@ -355,3 +355,28 @@ test('applyRecompute: tworzy, ukrywa i układa slajdy w jednej transakcji, nie r
   assert.deepEqual(o.slides[1].data, { a: 1 });
   assert.equal(s.get('slides', auto.id), undefined);
 });
+
+test('applyRecompute: hide oznacza origin.auto_hidden, unhide pokazuje slajd i zdejmuje znacznik', () => {
+  const s = openDb(':memory:');
+  s.insert('offers', { id: 'o2', name: 'O2', data: {} });
+  const a = s.addSlide('o2', { frame: 'architektura', data: {}, origin: { step: 'architektura', matched: {} }, locked: true });
+  let o = s.applyRecompute('o2', { hide: [a.id], order: [a.id] });
+  assert.equal(o.slides[0].hidden, true);
+  assert.equal(o.slides[0].origin.auto_hidden, true);
+  o = s.applyRecompute('o2', { unhide: [a.id], order: [a.id] });
+  assert.equal(o.slides[0].hidden, false);
+  assert.equal(o.slides[0].origin.auto_hidden, undefined);
+  assert.equal(o.slides[0].locked, true);
+});
+
+test('tx: zagnieżdżona transakcja nie wywraca się, a błąd w środku cofa całość', () => {
+  const s = openDb(':memory:');
+  s.insert('offers', { id: 'o3', name: 'przed', data: {} });
+  s.tx(() => s.tx(() => s.update('offers', 'o3', { name: 'w środku' })));
+  assert.equal(s.get('offers', 'o3').name, 'w środku');
+  assert.throws(() => s.tx(() => {
+    s.update('offers', 'o3', { name: 'zewnętrzna' });
+    s.tx(() => { throw new Error('boom'); });
+  }), /boom/);
+  assert.equal(s.get('offers', 'o3').name, 'w środku');
+});

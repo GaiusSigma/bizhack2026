@@ -1,6 +1,7 @@
 // Oferty z kafelków: lista ofert i czytelny widok oferty w trzech kolumnach
 // (klient i pokrycie bólów · slajdy z opisem „dlaczego tu jest” · podgląd FigCraft).
 import { $, api, autosize, debounce, download, go, h, loadAll, modal, state, tileById, tileLabel, toast, ui } from '../lib.js';
+import { cleanSelection } from '../selection.js';
 import { scoreTags, segmentOk, selectionOf, selectionSummary, tilePicker } from './new-offer.js';
 
 // Nazwy pól slajdu dla ludzi (zamiast kluczy z szablonu).
@@ -112,7 +113,8 @@ export async function viewOffer(offerId, slideId) {
     } catch (e) { toast(e.message, true); }
   };
   const changeTiles = () => {
-    let ids = [...offer.data.tiles];
+    // Kafelki usunięte albo „wkrótce” wypadają z wyboru, żeby zapis się udał.
+    let ids = cleanSelection(offer.data.tiles, state.tiles);
     const summary = h('div', { class: 'summary-text' });
     const warn = h('div', { class: 'summary-warn' });
     const save = h('button', { class: 'btn primary', onclick: async () => {

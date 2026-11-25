@@ -154,7 +154,8 @@ const content = (s) => stable({ frame: s.frame, data: s.data || {}, block_ids: s
 
 // Plan przeliczenia oferty: istniejące slajdy (z id, w obecnej kolejności) kontra świeżo wyliczone.
 // - slajd automatyczny (bez blokady) o tej samej treści zostaje; inny jest wymieniany (remove + create);
-// - slajd zablokowany zostaje bez zmian; jeśli jego krok już nie obowiązuje, zostaje ukryty;
+// - slajd zablokowany zostaje bez zmian; jeśli jego krok już nie obowiązuje, zostaje ukryty (origin.auto_hidden),
+//   a gdy krok wróci, znowu się pokazuje (ukrytego ręcznie przeliczenie nie pokazuje);
 // - slajd dodany ręcznie (bez origin.step) zostaje;
 // - kolejność idzie za scenariuszem, a slajdy spoza niego stoją za swoim dawnym poprzednikiem.
 export function mergeRecompute(existing, fresh) {
@@ -163,6 +164,7 @@ export function mergeRecompute(existing, fresh) {
   const keep = [];
   const remove = [];
   const hide = [];
+  const unhide = []; // ukryte przez przeliczenie (origin.auto_hidden), których krok znowu obowiązuje
   const claimed = new Map(); // krok -> id slajdu, który go zajmuje
   const orphans = [];
 
@@ -171,10 +173,12 @@ export function mergeRecompute(existing, fresh) {
     const has = step != null && freshByStep.has(step);
     if (s.locked || step == null) {
       keep.push(s);
-      if (has && !claimed.has(step)) claimed.set(step, s.id);
-      else {
+      if (has && !claimed.has(step)) {
+        claimed.set(step, s.id);
+        if (s.hidden && s.origin?.auto_hidden) unhide.push(s.id);
+      } else {
         orphans.push(s);
-        if (step != null && !s.hidden) hide.push(s.id);
+        if (step != null && !s.hidden) hide.push(s.id); // slajd ręczny (bez kroku) nigdy nie jest ukrywany
       }
     } else if (has && !claimed.has(step) && content(s) === content(fresh[freshByStep.get(step)])) {
       keep.push(s);
@@ -210,5 +214,5 @@ export function mergeRecompute(existing, fresh) {
     }
     order.splice(pos, 0, o.id);
   }
-  return { keep, create, remove, hide, order };
+  return { keep, create, remove, hide, unhide, order };
 }

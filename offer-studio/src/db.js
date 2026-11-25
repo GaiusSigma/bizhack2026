@@ -327,15 +327,21 @@ export class Store {
     if (!r.changes) throw new HttpError(404, `${table}/${id}: nie ma takiego rekordu`);
   }
 
+  // Transakcja; zagnieżdżona działa jako SAVEPOINT (błąd w środku cofa ją, a wyjątek idzie dalej).
   tx(fn) {
-    this.db.exec('BEGIN');
+    const depth = (this.txDepth ||= 0);
+    const sp = `sp${depth}`;
+    this.db.exec(depth ? `SAVEPOINT ${sp}` : 'BEGIN');
+    this.txDepth = depth + 1;
     try {
       const r = fn();
-      this.db.exec('COMMIT');
+      this.db.exec(depth ? `RELEASE ${sp}` : 'COMMIT');
       return r;
     } catch (e) {
-      this.db.exec('ROLLBACK');
+      this.db.exec(depth ? `ROLLBACK TO ${sp}; RELEASE ${sp}` : 'ROLLBACK');
       throw e;
+    } finally {
+      this.txDepth = depth;
     }
   }
 
@@ -423,11 +429,20 @@ export class Store {
 
   // Wykonuje plan z mergeRecompute (src/generate.js) w jednej transakcji. Nie ustawia `locked`:
   // przeliczenie to jedyna zmiana slajdów, która nie oznacza ich jako poprawionych ręcznie.
-  applyRecompute(offerId, { create = [], remove = [], hide = [], order = [] }) {
+  applyRecompute(offerId, { create = [], remove = [], hide = [], unhide = [], order = [] }) {
     this.mustGet('offers', offerId);
+    const setHidden = (id, hidden) => {
+      const cur = this.get('slides', id);
+      if (!cur || cur.offer_id !== offerId) return;
+      const { auto_hidden: _a, ...origin } = cur.origin || {};
+      // origin.auto_hidden odróżnia ukrycie przez przeliczenie od ukrycia ręcznego
+      this.db.prepare('UPDATE slides SET hidden = ?, origin = ? WHERE id = ?')
+        .run(hidden ? 1 : 0, JSON.stringify(hidden ? { ...origin, auto_hidden: true } : origin), id);
+    };
     this.tx(() => {
       for (const id of remove) this.db.prepare('DELETE FROM slides WHERE id = ? AND offer_id = ?').run(id, offerId);
-      for (const id of hide) this.db.prepare('UPDATE slides SET hidden = 1 WHERE id = ? AND offer_id = ?').run(id, offerId);
+      for (const id of hide) setHidden(id, true);
+      for (const id of unhide) setHidden(id, false);
       const createdIds = create.map((s) => this.insert('slides', { ...s, offer_id: offerId, position: 0, locked: false }, 'slide').id);
       const setPos = this.db.prepare('UPDATE slides SET position = ? WHERE id = ? AND offer_id = ?');
       order.forEach((x, i) => setPos.run(i, typeof x === 'string' ? x : createdIds[x.create], offerId));

@@ -186,3 +186,20 @@ test('mergeRecompute: dwa przeliczenia z rzędu bez zmian -> brak create/remove 
   assert.deepEqual(plan.hide, []);
   assert.deepEqual(plan.order, existing.map((s) => s.id));
 });
+
+test('mergeRecompute: slajd ukryty przez przeliczenie wraca, gdy jego krok znowu obowiązuje; ukryty ręcznie nie', () => {
+  const vault = saved(buildSlides(SCENARIO, SEL, DATA));
+  vault[4] = { ...vault[4], locked: true }; // architektura poprawiona ręcznie
+  const saas = buildSlides(SCENARIO, { ...SEL, product: 'produkt:saas' }, DATA);
+  const p1 = mergeRecompute(vault, saas);
+  assert.deepEqual(p1.hide, ['s4']);
+
+  // po przeliczeniu (applyRecompute) slajd jest ukryty i oznaczony jako ukryty automatycznie
+  const after = vault.map((s) => (s.id === 's4' ? { ...s, hidden: true, origin: { ...s.origin, auto_hidden: true } } : s));
+  const p2 = mergeRecompute(after, buildSlides(SCENARIO, SEL, DATA));
+  assert.deepEqual(p2.unhide, ['s4']);
+  assert.deepEqual(p2.hide, []);
+
+  const byHand = vault.map((s) => (s.id === 's4' ? { ...s, hidden: true } : s));
+  assert.deepEqual(mergeRecompute(byHand, buildSlides(SCENARIO, SEL, DATA)).unhide, []);
+});

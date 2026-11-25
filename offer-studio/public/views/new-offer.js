@@ -1,6 +1,7 @@
 // Nowa oferta z kafelków: sprzedawca opisuje klienta (rola, segment, bóle, produkt),
 // a prezentacja składa się według scenariusza roli. Ten sam wybór kafelków służy do „Zmień kafelki”.
 import { $, CATEGORY_LABELS, api, go, h, loadAll, state, toast } from '../lib.js';
+import { cleanSelection } from '../selection.js';
 
 export const MAX_PAINS = 5;
 const WEIGHTS = { bol: 3, segment: 2, rola: 1, produkt: 1 };
@@ -26,7 +27,7 @@ export const painsWithContent = (sel) => sel.pains.filter((p) => state.blocks.so
 
 // Wybór kafelków. `selected` = lista id; onChange dostaje nową listę.
 export function tilePicker(selected, onChange) {
-  let ids = [...selected];
+  let ids = cleanSelection(selected, state.tiles);
   const root = h('div', { class: 'tile-picker' });
   const render = () => {
     root.replaceChildren(...Object.entries(CATEGORY_LABELS).map(([cat, title]) => {

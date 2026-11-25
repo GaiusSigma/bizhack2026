@@ -403,7 +403,7 @@ export const DOCS = {
   },
   'PATCH /api/slides/:id': {
     tag: 'Slajdy', operationId: 'updateSlide', summary: 'Zmień slajd',
-    description: 'Pole data jest scalane, chyba że replace=1',
+    description: 'Pole data jest scalane, chyba że replace=1. Zmiana oznacza slajd jako poprawiony ręcznie (locked). Samo {"locked": false} przywraca automat: przelicza ofertę i zwraca całą ofertę (slajd może dostać nowe id)',
     parameters: [idParam('slajdu'), replaceParam],
     requestBody: body(slideFields),
     responses: { 200: json(one('Slide')) },
