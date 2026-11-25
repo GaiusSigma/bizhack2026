@@ -64,9 +64,24 @@ const ranked = (items, sel) =>
     .filter((x) => segmentOk(x.item.tags, sel))
     .sort((a, b) => b.score - a.score || a.i - b.i);
 
+// First every selected pain (in selection order) gets its best-scoring block, so a pain with content is never
+// left unsolved because other pains' blocks score higher; the remaining slots go by score. Up to `max` blocks,
+// shown on the slide by score.
 export function pickBlocks(candidates, fill, sel) {
   const r = ranked(candidates, sel);
-  const hits = r.filter((x) => x.score > 0).slice(0, fill.max);
+  const scored = r.filter((x) => x.score > 0);
+  const hits = [];
+  for (const p of sel.pains) {
+    if (hits.length >= fill.max) break;
+    if (hits.some((x) => x.matched.includes(p))) continue;
+    const best = scored.find((x) => !hits.includes(x) && x.matched.includes(p));
+    if (best) hits.push(best);
+  }
+  for (const x of scored) {
+    if (hits.length >= fill.max) break;
+    if (!hits.includes(x)) hits.push(x);
+  }
+  hits.sort((a, b) => b.score - a.score || a.i - b.i);
   const zeros = r.filter((x) => x.score === 0).slice(0, Math.max(0, (fill.min || 0) - hits.length));
   return [...hits, ...zeros].map((x) => ({ id: x.item.id, matched: x.matched }));
 }

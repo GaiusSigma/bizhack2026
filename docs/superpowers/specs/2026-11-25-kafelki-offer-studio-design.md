@@ -165,6 +165,8 @@ Dla każdego kroku `blocks` / `picks`:
 3. **Wynik**: suma wag trafionych kafelków: ból 3, segment 2, rola 1, produkt 1.
 4. Kolejność: wynik malejąco, przy remisie kolejność bloków w bazie (stała, żeby wynik był powtarzalny).
 5. Bierzemy od `min` do `max`. Bloki z wynikiem 0 dobieramy tylko, żeby dobić do `min`.
+   Zanim miejsca wypełni wynik, każdy wybrany ból (w kolejności wyboru) dostaje swój najlepiej pasujący blok,
+   żeby ból z gotową treścią nie przepadł, bo bloki innych bólów mają wyższy wynik (dopisane 2026-11-25).
 6. Karty: z jednego `topic` najwyżej jedna (tak jak dziś przy AI).
 
 Przy każdym wybranym bloku zapisujemy, które kafelki trafił. To jest „dlaczego tu jest” w UI.

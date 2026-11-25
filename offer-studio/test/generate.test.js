@@ -203,3 +203,19 @@ test('mergeRecompute: a slide hidden by recompute comes back when its step appli
   const byHand = vault.map((s) => (s.id === 's4' ? { ...s, hidden: true } : s));
   assert.deepEqual(mergeRecompute(byHand, buildSlides(SCENARIO, SEL, DATA)).unhide, []);
 });
+
+test('pickBlocks: every selected pain gets a block before the rest is filled by score', () => {
+  const sel = { ...SEL, pains: ['pain:a', 'pain:b', 'pain:c'] };
+  const cands = [
+    block('x1', 'solution', ['pain:a', 'pain:b']),
+    block('x2', 'solution', ['pain:a', 'pain:b']),
+    block('x3', 'solution', ['pain:a', 'pain:b']),
+    block('x4', 'solution', ['pain:c']),
+  ];
+  // x1–x3 score 6, x4 only 3, but without x4 pain:c would stay unsolved
+  assert.deepEqual(pickBlocks(cands, { min: 2, max: 3 }, sel).map((x) => x.id), ['x1', 'x2', 'x4']);
+  // with room for all four, the order on the slide is still by score
+  assert.deepEqual(pickBlocks(cands, { min: 0, max: 4 }, sel).map((x) => x.id), ['x1', 'x2', 'x3', 'x4']);
+  // more pains than slots: the first pains in the selection win the slots
+  assert.deepEqual(pickBlocks(cands, { min: 1, max: 1 }, sel).map((x) => x.id), ['x1']);
+});

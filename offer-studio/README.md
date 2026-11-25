@@ -33,8 +33,9 @@ Out of the box the database holds the content of `gaius-offer.figcraft` (40 bloc
 | Product / scale | one | SaaS, Vault, On-premise |
 
 The role picks a **scenario** (slide order and default copy), and the other tiles pick the content:
-blocks and cards carry tiles in their tags, and the highest sum of matched tile weights wins (pain 3,
-segment 2, role 1, product 1), with ties broken by a fixed order. Content tagged with a segment only goes to
+blocks and cards carry tiles in their tags. On a slide like "How we solve it", every selected pain first
+gets its best-matching block, so a pain that has content is never left out; the remaining slots go to the
+highest sum of matched tile weights (pain 3, segment 2, role 1, product 1), with ties broken by a fixed order. Content tagged with a segment only goes to
 that segment. The same tiles always give the same offer. Every slide shows "because: …", the tiles that
 picked it, and the left column shows "X of Y pains solved" (only solutions and use cases count).
 
