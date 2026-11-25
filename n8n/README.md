@@ -73,21 +73,19 @@ deleted it sets `deleted: true`.
 ## Workflow "Offer Studio · offer for a lead"
 
 File: [`workflows/offer-studio-lead.json`](workflows/offer-studio-lead.json). n8n runs the whole offer
-process; Offer Studio is the tool it calls: it holds the knowledge, copies the base offer and renders the PDF.
+process and decides which tiles the offer is built from; Offer Studio generates the offer from those
+tiles (the champion and board scenarios live there) and renders the PDF.
 
 ```
 Lead (webhook POST /webhook/offer)
   → Brief                        one input format for every source
   → CRM: what we already know    DISABLED (after the hackathon: client data from the CRM)
   → Do we know anything?         is there text (email, transcript, note)?
-      true  → Analyze lead (AI)  POST /api/leads/analyze: segment, role, concerns
+      true  → Analyze lead (AI)  POST /api/leads/analyze: segment, role, product, pain tiles
       false → (defaults)
-  → Offer plan                   segment, decision-maker role, copy
-  → Segment use cases            GET /api/blocks?type=use_case&tag=…
-  → Copy base offer              POST /api/offers/gaius-vault-base/duplicate
-  → Changes for role and segment list of PATCHes: visible/hidden slides, cover, use cases
-  → Apply changes
-  → Why slide → Pick arguments (AI)   POST /api/slides/:id/pick with the brief
+  → Offer plan                   tiles: role, segment, product, 1–5 pains
+  → Generate offer               POST /api/offers/generate
+  → Mark as lead offer           data.origin = "n8n-lead"
   → Result → Reply to source (JSON) + CRM + Discord (mock)
 
 Offer PDF (webhook GET /webhook/offer-pdf?id=…)
@@ -105,15 +103,15 @@ Offer PDF (webhook GET /webhook/offer-pdf?id=…)
 | `text` | an email, transcript or note. When present, the AI fills in the missing fields |
 
 **We know nothing** (no `text`): the segment comes from `segment` or the email domain, otherwise
-`in-house`; the role comes from `role`, otherwise `board`. **We know something**: fields sent in the
+`in-house`; the role comes from `role`, otherwise `board`; product Vault; pains confidentiality and
+hallucinated citations. **We know something**: fields sent in the
 request are taken as given, the AI fills in the rest and extracts concerns. An AI error (e.g. no
 `ANTHROPIC_API_KEY`) does not stop the offer.
 
-**The role shapes the offer.** The board gets a short offer: cover, why Vault, rollout plan, use cases,
-pricing, contact. The champion gets a longer one: the team's problems, what Vault is, use cases,
-comparison, arguments for the board, pricing, contact.
+**The role shapes the offer** through Offer Studio's scenarios (`role:champion`, `role:board`): change
+which slides each reader gets in Offer Studio, not in n8n.
 
-**Reply**: `{offerId, offerName, known, segment, role, who, client, concerns, summary, pdfPath, ms}`.
+**Reply**: `{offerId, offerName, known, segment, role, who, client, concerns, tiles, coverage, summary, pdfPath, ms}`.
 `pdfPath` (`/webhook/offer-pdf?id=…`) returns a PDF only for offers with `data.origin = "n8n-lead"`.
 
 ### Setup
@@ -121,7 +119,7 @@ comparison, arguments for the board, pricing, contact.
 1. In n8n: **Import from File** → `n8n/workflows/offer-studio-lead.json`.
 2. Create the **Offer Studio API** credential (URL and token fill in by themselves) and select it in the
    Offer Studio nodes if n8n asks.
-3. Set `ANTHROPIC_API_KEY` in Offer Studio (lead analysis and argument picking). Without a key the
+3. Set `ANTHROPIC_API_KEY` in Offer Studio (lead analysis). Without a key the
    workflow still runs, always on defaults.
 4. Activate (publish) the workflow. The landing calls `${PUBLIC_N8N_URL}/webhook/offer`; in
    `docker-compose.yml`, `PUBLIC_N8N_URL` = `SERVICE_URL_N8N`. Without it the landing generator shows

@@ -121,12 +121,12 @@
         300
       ],
       "parameters": {
-        "jsCode": "// The decisions: segment, decision-maker role, base offer and copy.\n// Defaults (we know nothing): role = board, segment = in-house legal team.\nconst brief = $('Brief').first().json;\nlet ai = {};\ntry { ai = $('Analyze lead (AI)').first().json || {}; } catch (e) { ai = {}; }\nif (ai.error) ai = {};\n\nconst SEGMENT_OK = ['law-firm', 'in-house', 'public-sector'];\nconst segment = [brief.segment, ai.segment].find((s) => SEGMENT_OK.includes(s)) ?? 'in-house';\nconst role = [brief.role, ai.role].find((r) => r === 'champion' || r === 'board') ?? 'board';\n\nconst SEGMENT = {\n  'law-firm': { label: 'your law firm', tag: 'law-firm', who: 'Law firm' },\n  'in-house': { label: 'your legal team', tag: 'legal-dept', who: 'In-house legal' },\n  'public-sector': { label: 'your office', tag: 'public-sector', who: 'Public administration' },\n}[segment];\n\nconst client = brief.client || ai.client || null;\nconst concerns = Array.isArray(ai.concerns) ? ai.concerns.slice(0, 3) : [];\nreturn [{ json: {\n  known: brief.hasText && !!ai.summary,\n  segment, role, client,\n  person: ai.person || null,\n  country: ai.country || null,\n  concerns,\n  summary: ai.summary || null,\n  tag: SEGMENT.tag,\n  segmentLabel: SEGMENT.label,\n  who: [ai.person, client, SEGMENT.who].filter(Boolean).join(' · '),\n  baseOfferId: 'gaius-vault-base',\n  offerName: `Offer for the ${role} · ${client || SEGMENT.who}`,\n  brief: [ai.summary, concerns.length ? `Concerns: ${concerns.join('; ')}` : null,\n          role === 'board' ? 'Read by the board: one accountable partner, budget, rollout plan.'\n                           : 'Read by the champion: arguments for the team and for the board.'].filter(Boolean).join('\\n'),\n} }];\n"
+        "jsCode": "// The decisions n8n makes: which tiles the offer is generated from.\n// Defaults (we know nothing): role = board, segment = in-house, product = Vault,\n// pains = the two concerns every legal buyer has (confidentiality, hallucinated citations).\nconst brief = $('Brief').first().json;\nlet ai = {};\ntry { ai = $('Analyze lead (AI)').first().json || {}; } catch (e) { ai = {}; }\nif (ai.error) ai = {};\n\nconst SEGMENT_OK = ['law-firm', 'in-house', 'public-sector'];\nconst segment = [brief.segment, ai.segment].find((s) => SEGMENT_OK.includes(s)) ?? 'in-house';\nconst role = [brief.role, ai.role].find((r) => r === 'champion' || r === 'board') ?? 'board';\nconst product = (typeof ai.product === 'string' && ai.product.startsWith('product:')) ? ai.product : 'product:vault';\nconst pains = Array.isArray(ai.pains) && ai.pains.length\n  ? ai.pains.slice(0, 5)\n  : ['pain:confidentiality', 'pain:hallucinated-citations'];\n\nconst WHO = { 'law-firm': 'Law firm', 'in-house': 'In-house legal', 'public-sector': 'Public administration' }[segment];\nconst client = brief.client || ai.client || null;\nreturn [{ json: {\n  known: brief.hasText && !!ai.summary,\n  segment, role, client, product, pains,\n  person: ai.person || null,\n  concerns: Array.isArray(ai.concerns) ? ai.concerns.slice(0, 3) : [],\n  summary: ai.summary || null,\n  who: [ai.person, client, WHO].filter(Boolean).join(' · '),\n  tiles: [`role:${role}`, `segment:${segment}`, product, ...pains],\n  offerClient: client || WHO,\n} }];\n"
       }
     },
     {
-      "id": "d8376f58-0eaf-5c4d-b272-3530c10736c7",
-      "name": "Segment use cases",
+      "id": "477c8e6c-e828-5fd6-babd-8f57eff42893",
+      "name": "Generate offer",
       "type": "CUSTOM.offerStudio",
       "typeVersion": 1,
       "position": [
@@ -135,23 +135,23 @@
       ],
       "parameters": {
         "resource": "__custom",
-        "method": "GET",
-        "path": "/api/blocks",
-        "query": "={{ JSON.stringify({ type: 'use_case', tag: $json.tag }) }}",
-        "options": {
-          "splitArray": false
-        }
+        "method": "POST",
+        "path": "/api/offers/generate",
+        "query": "{}",
+        "options": {},
+        "body": "={{ JSON.stringify({ client: $json.offerClient, tiles: $json.tiles }) }}"
       },
       "credentials": {
         "offerStudioApi": {
           "id": "",
           "name": "Offer Studio API"
         }
-      }
+      },
+      "notes": "Offer Studio builds the offer from the role scenario (champion or board) and picks content by tiles."
     },
     {
-      "id": "3a9fc68d-8a85-57e2-89c7-9534f531b55c",
-      "name": "Copy base offer",
+      "id": "7f116530-e187-51b6-bfd8-5960cf1aac3b",
+      "name": "Mark as lead offer",
       "type": "CUSTOM.offerStudio",
       "typeVersion": 1,
       "position": [
@@ -160,87 +160,11 @@
       ],
       "parameters": {
         "resource": "__custom",
-        "method": "POST",
-        "path": "={{ '/api/offers/' + $('Offer plan').first().json.baseOfferId + '/duplicate' }}",
-        "query": "{}",
-        "options": {},
-        "body": "={{ JSON.stringify({ name: $('Offer plan').first().json.offerName }) }}"
-      },
-      "credentials": {
-        "offerStudioApi": {
-          "id": "",
-          "name": "Offer Studio API"
-        }
-      }
-    },
-    {
-      "id": "1fbd52ec-cf0d-52ce-ab20-85a153e8c4ef",
-      "name": "Changes for role and segment",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1760,
-        300
-      ],
-      "parameters": {
-        "jsCode": "// One item = one PATCH request to Offer Studio.\nconst plan = $('Offer plan').first().json;\nconst offer = $input.first().json;\nconst segmentUseCases = $('Segment use cases').first().json.data || [];\n\n// Which base-offer slides each reader sees.\nconst SHOW = {\n  board:    ['cover', 'why', 'rollout', 'use-case', 'pricing', 'contact'],\n  champion: ['cover', 'problems', 'what-is', 'use-case', 'comparison', 'why', 'pricing', 'contact'],\n}[plan.role];\n\nconst COVER = plan.role === 'board'\n  ? { subtitle: `**One accountable partner** for AI in ${plan.segmentLabel}`,\n      lead: 'A rollout plan with named owners, a fixed monthly cost and a safe way to start.' }\n  : { subtitle: 'A tool your team will **actually open on Monday**',\n      lead: 'A demo script for your team and the arguments you take to the board.' };\n\nconst ops = [{ path: `/api/offers/${offer.id}`, body: { data: {\n  origin: 'n8n-lead', client: plan.client, segment: plan.segment, role: plan.role,\n  concerns: plan.concerns, summary: plan.summary,\n} } }];\n\nfor (const s of offer.slides || []) {\n  const patch = { hidden: !SHOW.includes(s.frame) };\n  if (s.frame === 'cover') patch.data = COVER;\n  if (s.frame === 'problems') patch.data = { title: `Where does the time of ${plan.segmentLabel} **go**?` };\n  // Segment use cases only when the database has enough of them; otherwise all of them stay.\n  if (s.frame === 'use-case' && segmentUseCases.length >= 3) {\n    patch.block_ids = [];\n    patch.query = { type: 'use_case', tag: plan.tag, limit: 6 };\n  }\n  ops.push({ path: `/api/slides/${s.id}`, body: patch });\n}\nreturn ops.map((json) => ({ json }));\n"
-      }
-    },
-    {
-      "id": "010e0feb-6a44-51b3-8cf2-becf1a37e4fc",
-      "name": "Apply changes",
-      "type": "CUSTOM.offerStudio",
-      "typeVersion": 1,
-      "position": [
-        1980,
-        300
-      ],
-      "parameters": {
-        "resource": "__custom",
         "method": "PATCH",
-        "path": "={{ $json.path }}",
+        "path": "={{ '/api/offers/' + $json.id }}",
         "query": "{}",
         "options": {},
-        "body": "={{ JSON.stringify($json.body) }}"
-      },
-      "credentials": {
-        "offerStudioApi": {
-          "id": "",
-          "name": "Offer Studio API"
-        }
-      }
-    },
-    {
-      "id": "3b022bd5-b0f1-5aca-9481-13f3c33128da",
-      "name": "Why slide",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2200,
-        300
-      ],
-      "parameters": {
-        "jsCode": "const offer = $('Copy base offer').first().json;\nconst slide = (offer.slides || []).find((s) => s.frame === 'why');\nreturn slide ? [{ json: { slideId: slide.id, brief: $('Offer plan').first().json.brief } }] : [];\n"
-      },
-      "executeOnce": true,
-      "alwaysOutputData": true
-    },
-    {
-      "id": "7fd8483b-4e33-5dd8-8d5c-cd64637ae5e8",
-      "name": "Pick arguments (AI)",
-      "type": "CUSTOM.offerStudio",
-      "typeVersion": 1,
-      "position": [
-        2420,
-        300
-      ],
-      "parameters": {
-        "resource": "__custom",
-        "method": "POST",
-        "path": "={{ '/api/slides/' + $json.slideId + '/pick' }}",
-        "query": "{}",
-        "options": {},
-        "body": "={{ JSON.stringify({ brief: $json.brief }) }}"
+        "body": "={{ JSON.stringify({ data: { origin: 'n8n-lead', segment: $('Offer plan').first().json.segment, role: $('Offer plan').first().json.role, concerns: $('Offer plan').first().json.concerns, summary: $('Offer plan').first().json.summary } }) }}"
       },
       "credentials": {
         "offerStudioApi": {
@@ -248,8 +172,7 @@
           "name": "Offer Studio API"
         }
       },
-      "onError": "continueRegularOutput",
-      "notes": "Claude picks the Why Vault? cards for the client's concerns. Without a key the base offer's cards stay."
+      "notes": "origin = n8n-lead lets the public PDF link serve this offer and nothing else."
     },
     {
       "id": "b2c932b4-d8a4-5fd4-aa0b-f2bcb226cdc0",
@@ -257,11 +180,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2640,
+        1760,
         300
       ],
       "parameters": {
-        "jsCode": "const plan = $('Offer plan').first().json;\nconst offer = $('Copy base offer').first().json;\nconst started = new Date($('Brief').first().json.receivedAt).getTime();\nreturn [{ json: {\n  offerId: offer.id,\n  offerName: offer.name,\n  known: plan.known,\n  segment: plan.segment,\n  role: plan.role,\n  who: plan.who,\n  client: plan.client,\n  concerns: plan.concerns,\n  summary: plan.summary,\n  pdfPath: `/webhook/offer-pdf?id=${encodeURIComponent(offer.id)}`,\n  ms: Date.now() - started,\n} }];\n"
+        "jsCode": "const plan = $('Offer plan').first().json;\nconst offer = $('Generate offer').first().json;\nconst started = new Date($('Brief').first().json.receivedAt).getTime();\nreturn [{ json: {\n  offerId: offer.id,\n  offerName: offer.name,\n  known: plan.known,\n  segment: plan.segment,\n  role: plan.role,\n  who: plan.who,\n  client: plan.client,\n  concerns: plan.concerns,\n  tiles: plan.tiles,\n  coverage: offer.coverage ?? null,\n  summary: plan.summary,\n  pdfPath: `/webhook/offer-pdf?id=${encodeURIComponent(offer.id)}`,\n  ms: Date.now() - started,\n} }];\n"
       },
       "executeOnce": true
     },
@@ -271,7 +194,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2860,
+        1980,
         200
       ],
       "parameters": {
@@ -286,7 +209,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2860,
+        1980,
         420
       ],
       "parameters": {
@@ -474,69 +397,25 @@
       "main": [
         [
           {
-            "node": "Segment use cases",
+            "node": "Generate offer",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Segment use cases": {
+    "Generate offer": {
       "main": [
         [
           {
-            "node": "Copy base offer",
+            "node": "Mark as lead offer",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Copy base offer": {
-      "main": [
-        [
-          {
-            "node": "Changes for role and segment",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Changes for role and segment": {
-      "main": [
-        [
-          {
-            "node": "Apply changes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Apply changes": {
-      "main": [
-        [
-          {
-            "node": "Why slide",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Why slide": {
-      "main": [
-        [
-          {
-            "node": "Pick arguments (AI)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Pick arguments (AI)": {
+    "Mark as lead offer": {
       "main": [
         [
           {

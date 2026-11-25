@@ -469,12 +469,12 @@ export const DOCS = {
 
   'POST /api/leads/analyze': {
     tag: 'Leads', operationId: 'analyzeLead', summary: 'Analyze a lead (AI)',
-    description: 'Claude reads an email, call transcript or meeting note and returns the segment (law-firm, in-house, public-sector, other), the decision-maker role (champion, board), the client and their concerns. Fields it cannot establish are null. Needs ANTHROPIC_API_KEY (503 otherwise)',
+    description: 'Claude reads an email, call transcript or meeting note and returns the segment (law-firm, in-house, public-sector, other), the decision-maker role (champion, board), the client, their concerns, and the pain and product tiles that fit (ready for POST /api/offers/generate). Fields it cannot establish are null. Needs ANTHROPIC_API_KEY (503 otherwise)',
     requestBody: body({
       text: { type: 'string', description: 'Text from the client: email, call transcript, meeting note' },
       hints: { type: 'object', description: 'What we already know, e.g. {"segment": "law-firm"} picked on the website' },
     }, ['text']),
-    responses: { 200: json(anyObject, '{segment, role, client, person, country, concerns, summary, model}') },
+    responses: { 200: json(anyObject, '{segment, role, product, pains, client, person, country, concerns, summary, model}') },
   },
 
   // ---------------------------------------------------------------- database

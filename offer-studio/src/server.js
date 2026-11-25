@@ -768,7 +768,10 @@ api.post('/leads/analyze', async (c) => {
   const text = String(b.text || '').trim();
   if (!text) throw new HttpError(400, 'Missing "text": nothing to analyze');
   if (text.length > 60000) throw new HttpError(413, 'Text is too long (max 60,000 characters)');
-  return c.json(await analyzeLead({ text, hints: b.hints && typeof b.hints === 'object' ? b.hints : {} }));
+  const active = store.list('tiles').filter((t) => t.status !== 'soon');
+  const pick = (category) => active.filter((t) => t.category === category).map(({ id, label, description }) => ({ id, label, description }));
+  const catalog = { pains: pick('pain'), products: pick('product') };
+  return c.json(await analyzeLead({ text, hints: b.hints && typeof b.hints === 'object' ? b.hints : {}, catalog }));
 });
 
 // export / import of the whole database

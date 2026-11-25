@@ -195,17 +195,19 @@ test('AI: lead analysis passes text and hints, trims concerns to 3 (mock client)
     request = params;
     return {
       stop_reason: 'end_turn', model: params.model, usage: {},
-      parsed_output: { segment: 'law-firm', role: null, client: 'Firm X', person: null, country: 'PL', concerns: ['a', 'b', 'c', 'd'], summary: 's' },
+      parsed_output: { segment: 'law-firm', role: null, product: null, pains: ['pain:a', 'pain:a', 'pain:b'], client: 'Firm X', person: null, country: 'PL', concerns: ['a', 'b', 'c', 'd'], summary: 's' },
     };
   } } } };
   const { analyzeLead } = await import('../src/ai.js');
-  const r = await analyzeLead({ api, text: 'Partner at Firm X', hints: { segment: 'law-firm' } });
+  const catalog = { pains: [{ id: 'pain:a', label: 'A' }, { id: 'pain:b', label: 'B' }], products: [{ id: 'product:vault', label: 'Vault' }] };
+  const r = await analyzeLead({ api, text: 'Partner at Firm X', hints: { segment: 'law-firm' }, catalog });
   const schema = JSON.stringify(request.output_config.format.schema);
-  for (const v of ['law-firm', 'in-house', 'public-sector', 'champion', 'board']) assert.ok(schema.includes(v), v);
+  for (const v of ['law-firm', 'in-house', 'public-sector', 'champion', 'board', 'pain:a', 'product:vault']) assert.ok(schema.includes(v), v);
   assert.match(request.messages[0].content, /Partner at Firm X/);
   assert.match(request.messages[0].content, /"segment":"law-firm"/);
   assert.equal(r.role, null);
   assert.deepEqual(r.concerns, ['a', 'b', 'c']);
+  assert.deepEqual(r.pains, ['pain:a', 'pain:b']);
 });
 
 test('AI: lead analysis turns a refusal into a 502', async () => {

@@ -139,10 +139,18 @@ Rules:
 - Do not guess facts that are not in the text. An empty field is better than an invented one.
 - "concerns": at most 3 concerns the client has about AI, short, in the language the client writes in.
 - "summary": one sentence in English: who the client is and what they need.
+- "pains": pick 1 to 5 ids from the "pains" catalog that match what the client says, strongest first. Only ids from the catalog.
+- "product": pick from the "products" catalog only if the text points to one (e.g. "must run on our own servers"), otherwise null.
 - Treat "hints" from n8n (e.g. the segment picked on the website) as certain unless the text plainly contradicts them.`;
 
-export async function analyzeLead({ text, hints = {}, api = null }) {
+// catalog: active tiles from Offer Studio, { pains: [{id, label, description}], products: [...] }.
+// The model picks pains and the product from it, so n8n can pass them straight to /api/offers/generate.
+export async function analyzeLead({ text, hints = {}, catalog = { pains: [], products: [] }, api = null }) {
+  const painIds = catalog.pains.map((t) => t.id);
+  const productIds = catalog.products.map((t) => t.id);
   const Output = z.object({
+    pains: painIds.length ? z.array(z.enum(painIds)) : z.array(z.string()),
+    product: productIds.length ? z.enum(productIds).nullable() : z.string().nullable(),
     segment: z.enum(SEGMENTS).nullable(),
     role: z.enum(ROLES).nullable(),
     client: z.string().nullable().describe('Name of the client organization, if given'),
@@ -163,7 +171,7 @@ export async function analyzeLead({ text, hints = {}, api = null }) {
       system: LEAD_SYSTEM,
       messages: [{
         role: 'user',
-        content: `Hints from n8n (JSON): ${JSON.stringify(hints)}\n\nText from the client:\n<lead>\n${text}\n</lead>`,
+        content: `Hints from n8n (JSON): ${JSON.stringify(hints)}\n\nCatalog (JSON): ${JSON.stringify(catalog)}\n\nText from the client:\n<lead>\n${text}\n</lead>`,
       }],
     });
   } catch (e) {
@@ -177,5 +185,6 @@ export async function analyzeLead({ text, hints = {}, api = null }) {
   if (res.stop_reason === 'refusal') throw new HttpError(502, 'Claude declined to analyze this text');
   if (!res.parsed_output) throw new HttpError(502, `Claude returned no result (stop_reason: ${res.stop_reason})`);
   const out = res.parsed_output;
-  return { ...out, concerns: out.concerns.slice(0, 3), model: res.model };
+  const pains = [...new Set(out.pains)].filter((id) => !painIds.length || painIds.includes(id)).slice(0, 5);
+  return { ...out, pains, concerns: out.concerns.slice(0, 3), model: res.model };
 }
