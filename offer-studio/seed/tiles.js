@@ -532,7 +532,8 @@ export const solutionBlocks = [
     "tags": [
       "pain:shadow-ai",
       "segment:in-house",
-      "segment:public-sector"
+      "segment:public-sector",
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -574,7 +575,8 @@ export const solutionBlocks = [
       "pain:repetitive-documents",
       "segment:law-firm",
       "segment:in-house",
-      "segment:public-sector"
+      "segment:public-sector",
+      "pain:templates-at-scale"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1363,7 +1365,7 @@ export const tileTags = {
 // Content revision. A database seeded with an older revision is updated on startup (src/db.js ensureTiles):
 // new solutions are added, solution pins follow this file, missing guidance is filled in, and a tile
 // description is replaced only if it still has the previous revision's text (edits made by hand stay).
-export const tileUpgrade = { rev: 8, previousDescriptions: {
+export const tileUpgrade = { rev: 9, previousDescriptions: {
   "role:champion": "The enthusiast on the team who brings Gaius in and has to win over colleagues.",
   "role:board": "The board, managing partner or director who signs off the decision and the budget.",
   "role:cto": "Technical sign-off: architecture, security, deployment.",

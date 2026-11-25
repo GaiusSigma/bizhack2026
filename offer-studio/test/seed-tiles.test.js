@@ -123,10 +123,6 @@ const fitsSegment = (b, seg) => {
 // so content is thin on purpose (nothing is pinned just to raise the count). Changing this list is a content decision.
 const THIN = [
   'pain:group-scale x segment:law-firm',
-  'pain:shadow-ai x segment:law-firm',
-  'pain:templates-at-scale x segment:in-house',
-  'pain:templates-at-scale x segment:law-firm',
-  'pain:templates-at-scale x segment:public-sector',
 ];
 
 test('coverage: every pain has a solution in every active segment, typical pairs at least two, thin pairs listed', () => {
