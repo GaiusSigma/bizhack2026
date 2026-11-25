@@ -8,6 +8,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HttpError, openDb, slugify } from './db.js';
 import { describeTemplate, hashOf, parseTemplate, renderFigcraft, renderPdf, renderPreview } from './figcraft.js';
+import { apiRoutes, buildSpec } from './openapi.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const env = process.env;
@@ -204,6 +205,11 @@ api.get('/events', (c) =>
     listeners.delete(send);
   }),
 );
+
+// Opis API dla n8n i innych klientów: budowany z zarejestrowanych tras (zob. src/openapi.js).
+const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
+let spec;
+api.get('/openapi.json', (c) => c.json((spec ??= buildSpec(apiRoutes(app), { version: VERSION }))));
 
 api.get('/meta', (c) => c.json({ ...store.meta(), figcraftWebUrl: FIGCRAFT_WEB_URL }));
 

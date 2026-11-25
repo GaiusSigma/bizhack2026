@@ -25,10 +25,17 @@ services:
       retries: 3
 
   # ---------------------------------------------------------------- n8n
+  # Obraz = oficjalny n8nio/n8n + węzły Offer Studio (n8n/n8n-nodes-offer-studio), zob. n8n/Dockerfile.
   n8n:
-    image: n8nio/n8n:2.50.0
+    build:
+      context: ./n8n
+      args:
+        N8N_VERSION: 2.50.0
     environment:
       - SERVICE_URL_N8N_5678
+      # Domyślne poświadczenie „Offer Studio API”: n8n sam wypełnia adres i token (n8n/entrypoint.sh).
+      - OFFER_STUDIO_URL=http://offer-studio:3000
+      - OFFER_STUDIO_API_TOKEN=${SERVICE_PASSWORD_64_STUDIOAPI}
       - N8N_EDITOR_BASE_URL=${SERVICE_URL_N8N}
       - WEBHOOK_URL=${SERVICE_URL_N8N}
       - N8N_HOST=${SERVICE_URL_N8N}
@@ -68,6 +75,7 @@ services:
       retries: 10
 
   n8n-runners:
+    # Ta sama wersja co N8N_VERSION usługi n8n.
     image: n8nio/runners:2.50.0
     environment:
       - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
