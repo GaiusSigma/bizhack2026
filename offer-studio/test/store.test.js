@@ -6,6 +6,7 @@ import { openDb } from '../src/db.js';
 import { unzipSync } from 'fflate';
 import { buildLibrary, describeComponents, normalizeUpload, parseMarks, parseTemplate, renderFigcraft, renderPdf, renderThumbnails } from '../src/figcraft.js';
 import seed, { TEMPLATE, components as seedComponents, slides as seedSlides } from '../seed/seed.js';
+import { legacyPl } from '../seed/legacy-pl.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -449,4 +450,55 @@ test('tile content update: generated sources are refreshed, sources written by h
   s.ensureTiles(seed);
   assert.equal(s.get('blocks', 'sol-private-vault').data.source, seed.solutionBlocks.find((b) => b.id === 'sol-private-vault').data.source);
   assert.equal(s.get('blocks', 'sol-it-brief').data.source, 'Confirmed by Witek on the call');
+});
+
+// ------------------------------------------------------------------ legacy Polish databases
+const legacyDb = () => {
+  const s = openDb(':memory:');
+  const ts = '2026-11-25T00:00:00.000Z';
+  for (const b of legacyPl.blocks) s.upsert('blocks', { id: b.id, type: b.type, title: b.title, body: b.body, data: b.data, tags: ['vault'], created_at: ts, updated_at: ts });
+  s.upsert('component_sets', { id: 'dlaczego', title: 'Dlaczego Vault? (6 kart)', rules: 'Dokładnie 6 kart.' });
+  for (const c of legacyPl.components) s.upsert('components', { id: c.id, set_name: 'dlaczego', key: c.id.split('/')[1], title: c.title, description: c.description, use_when: c.use_when, avoid_when: c.avoid_when, created_at: ts, updated_at: ts });
+  s.upsert('offers', { id: 'gaius-vault-bazowa', name: 'Gaius Vault – oferta bazowa', data: { client: '', price: '------' } });
+  legacyPl.slides.forEach((sl, i) => s.upsert('slides', { id: sl.id, offer_id: 'gaius-vault-bazowa', position: i, frame: sl.frame, data: sl.data, block_ids: [], picks: {} }));
+  s.upsert('offers', { id: 'moja-oferta', name: 'Oferta dla ACME', data: { client: 'ACME' } });
+  s.upsert('slides', { id: 'm1', offer_id: 'moja-oferta', position: 0, frame: 'problemy', data: legacyPl.slides[1].data, block_ids: ['pr-research-od-nowa', 'pr-ai-bez-zasad'], picks: {} });
+  s.upsert('slides', { id: 'm2', offer_id: 'moja-oferta', position: 1, frame: 'dlaczego', data: { title: 'Dlaczego my, ACME?' }, picks: { dlaczego: [{ component: 'dlaczego/on-premise' }] } });
+  s.upsert('blocks', { ...s.get('blocks', 'uc-pilne-pismo'), body: 'Zmienione ręcznie przez zespół.' });
+  return s;
+};
+
+test('legacy migration: a Polish database becomes English, references follow, a backup keeps everything', () => {
+  const s = legacyDb();
+  const before = JSON.stringify(s.exportAll());
+  const report = s.migrateLegacyPolish(legacyPl, seed);
+
+  const english = Object.fromEntries(seed.blocks.map((b) => [b.id, b]));
+  for (const b of legacyPl.blocks) {
+    if (b.id !== b.en) assert.equal(s.get('blocks', b.id), undefined, `${b.id} still there`);
+    assert.equal(s.get('blocks', b.en)?.title, english[b.en].title, `${b.en} is not the English version`);
+  }
+  for (const c of legacyPl.components) assert.ok(s.get('components', c.en) && !s.get('components', c.id), c.id);
+  assert.ok(s.get('component_sets', 'why') && !s.get('component_sets', 'dlaczego'));
+  assert.equal(s.get('offers', 'gaius-vault-bazowa'), undefined);
+  assert.deepEqual(s.getOffer('gaius-vault-base').slides.map((x) => x.frame), seedSlides.map((x) => x.frame));
+
+  const mine = s.getOffer('moja-oferta').slides;
+  assert.deepEqual(mine.map((x) => x.frame), ['problems', 'why']);
+  assert.deepEqual(mine[0].block_ids, ['pr-research-from-scratch', 'pr-ai-without-rules']);
+  assert.deepEqual(mine[0].data, seedSlides.find((x) => x.frame === 'problems').data, 'default Polish slide copy becomes the English default');
+  assert.deepEqual(mine[1].picks, { why: [{ component: 'why/on-premise' }] });
+  assert.equal(mine[1].data.title, 'Dlaczego my, ACME?', 'copy written for a client stays as written');
+
+  assert.deepEqual(report.editedBlocks, ['uc-pilne-pismo']);
+  assert.deepEqual(report.keptOfferCopy, ['moja-oferta/m2']);
+  const drop = (j) => { const { exported_at: _t, ...rest } = JSON.parse(j); return rest; };
+  assert.deepEqual(drop(s.getSetting('legacy_pl_backup')), drop(before), 'the full Polish database is kept as a backup');
+  assert.equal(s.migrateLegacyPolish(legacyPl, seed), null, 'runs once');
+});
+
+test('legacy migration: an English database is left alone', () => {
+  const s = fresh();
+  assert.equal(s.migrateLegacyPolish(legacyPl, seed), null);
+  assert.equal(s.getSetting('legacy_pl_backup'), null);
 });

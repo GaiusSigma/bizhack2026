@@ -318,3 +318,14 @@ table.cov td.cov-cell { text-align: center; font-variant-numeric: tabular-nums; 
 .soon-toggle:hover { color: var(--ink); }
 .soon-toggle.list { margin: 2px 12px 8px; font-size: 12px; }
 .chip.tile-chip.general { background: #eef0f2; color: #4f565e; }
+.legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 6px; flex-wrap: wrap; }
+.legend .lg::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--line); background: #fff; }
+.legend .lg.thin::before { background: #fffaf0; border-color: #f3e1b5; }
+.legend .lg.none::before { background: #fff6f6; border-color: #f3c9cc; }
+.role-sc .hint { margin-top: 2px; }
+.list .item .sub.wrap { white-space: normal; }
+@media (max-width: 1100px) {
+  .client-col { width: 220px; flex-basis: 220px; padding: 14px; }
+  .slides-col { flex: 1 1 300px; }
+  #view > .preview { flex: 0 0 240px; }
+}

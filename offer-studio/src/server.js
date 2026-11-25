@@ -63,6 +63,18 @@ if (gaiusRow && env.STUDIO_SEED !== 'false' && !store.list('components').length
   });
   console.log('offer-studio: added components (set @why) and their descriptions');
 }
+// Legacy Polish databases (created before the English translation): swap the old template for the current
+// one and migrate Polish seed records to their English counterparts. A full backup is kept (GET /api/legacy-backup).
+if (env.STUDIO_SEED !== 'false') {
+  const { legacyPl } = await import('../seed/legacy-pl.js');
+  const gaius = store.get('templates', seedModule.TEMPLATE.id);
+  if (gaius) {
+    const frames = parseTemplate(store.templateFile(gaius.id).file).frames.map((f) => f.name);
+    if (frames.length === legacyPl.templateFrames.length && frames.every((f, i) => f === legacyPl.templateFrames[i])) seedTemplate();
+  }
+  const report = store.migrateLegacyPolish(legacyPl, seedModule.default);
+  if (report) console.log('offer-studio: migrated the Polish seed content to English (backup: GET /api/legacy-backup)', report);
+}
 // Tiles (v4): a database without tiles gets tiles, scenarios, solution blocks and content pinned to tiles.
 if (env.STUDIO_SEED !== 'false') {
   const added = store.ensureTiles(seedModule.default);
@@ -459,7 +471,13 @@ const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).ver
 let spec;
 api.get('/openapi.json', (c) => c.json((spec ??= buildSpec(apiRoutes(app), { version: VERSION }))));
 
-api.get('/meta', (c) => c.json({ ...store.meta(), figcraftWebUrl: FIGCRAFT_WEB_URL }));
+api.get('/meta', (c) => c.json({ ...store.meta(), figcraftWebUrl: FIGCRAFT_WEB_URL, legacyMigration: JSON.parse(store.getSetting('legacy_pl_report') || 'null') }));
+// Full export of the database as it was before the Polish-to-English migration (only on migrated databases).
+api.get('/legacy-backup', (c) => {
+  const backup = store.getSetting('legacy_pl_backup');
+  if (!backup) throw new HttpError(404, 'This database was never migrated from the Polish version, so there is no backup');
+  return c.body(backup, 200, { 'content-type': 'application/json', 'content-disposition': 'attachment; filename="offer-studio-before-english.json"' });
+});
 
 // knowledge blocks
 api.get('/blocks', (c) => c.json(store.listBlocks({ type: c.req.query('type'), tag: c.req.query('tag'), q: c.req.query('q') })));

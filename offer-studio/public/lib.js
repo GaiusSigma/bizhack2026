@@ -47,7 +47,7 @@ export const debounce = (fn, ms = 450) => {
 };
 
 // "1 slide", "3 slides".
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // Save status indicator ("saving…", "saved", error).
 export function saver(statusEl, fn, ms) {

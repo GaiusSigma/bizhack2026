@@ -62,6 +62,13 @@ marked in the editor.
 `PUT /api/offers/:id/tiles`, `POST /api/offers/:id/recompute`, `GET/POST/PATCH/DELETE /api/tiles`,
 `GET/PUT /api/scenarios/:id`. The n8n node shows them under the "Tiles" resource.
 
+**Databases from the Polish version.** A database created before the English translation still held the
+Polish seed content (blocks, "why" cards, the base offer and the old slide template with Polish frame names).
+On startup it is migrated once: a full export is saved first (download it with `GET /api/legacy-backup`),
+seed records are swapped for their English versions, every offer is re-pointed to the new slide, block and
+card ids, default slide copy becomes English, and copy written for a client stays. Seed records edited by
+hand before the switch are listed in Knowledge with a link to the backup. The id map is `seed/legacy-pl.js`.
+
 An existing database gets tiles, scenarios and solution blocks on the first start of this version
 (only when it has no tiles yet). Seed data: `seed/tiles.js` and `seed/scenarios.js`.
 

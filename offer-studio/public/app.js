@@ -2,7 +2,7 @@
 // that scripts and n8n can use (see /static/api.html). Slides are rendered by FigCraft.
 
 import {
-  $, CATEGORY_LABELS, UPLOAD_ACCEPT, api, autosize, debounce, download, go, h, kvEditor, loadAll, modal, saver, slugify, state, tileLabel, toast, ui,
+  $, CATEGORY_LABELS, UPLOAD_ACCEPT, api, autosize, debounce, download, go, h, kvEditor, loadAll, modal, plural, saver, slugify, state, tileLabel, toast, ui,
 } from './lib.js';
 import { viewNewOffer } from './views/new-offer.js';
 import { viewOffer, viewOfferList } from './views/offer.js';
@@ -243,8 +243,15 @@ function viewBlocks(selectedId) {
     go('blocks', b.id);
   };
 
+  // After the Polish-to-English migration: say which seed records had been edited by hand, and where their text is.
+  const mig = state.meta.legacyMigration;
+  const edited = [...(mig?.editedBlocks || []), ...(mig?.editedCards || [])];
+  const migNote = edited.length ? h('div', { class: 'legacy-note' },
+    `${edited.length} block(s) had been edited in the earlier Polish version before the switch to English: ${edited.join(', ')}. Their edited text is kept in the `,
+    h('a', { href: '/api/legacy-backup' }, 'backup file'), '.') : null;
   $('#view').replaceChildren(
     h('div', { class: 'col list' },
+      migNote,
       h('div', { class: 'tools' },
         h('div', { class: 'row' },
           h('input', { placeholder: 'Search…', value: f.q, oninput: (e) => { f.q = e.target.value; renderList(); } }),
