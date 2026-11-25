@@ -59,6 +59,10 @@ w Offer Studio.
 - **Oferta dla klienta**: Offer Studio (Oferty / Skopiuj ofertę, `id` = `gaius-vault-bazowa`) →
   Offer Studio (Oferty / Zmień ofertę, `data` = `{"client": "ACME S.A.", "price": "12 000"}`) →
   Offer Studio (Oferty / Pobierz PDF oferty) → Gmail z załącznikiem `data`.
+- **Oferta z kafelków po rozmowie**: transkrypt (np. Fireflies) → agent AI wybiera kafelki z listy
+  (Kafelki / Lista kafelków) → Offer Studio (Kafelki / Wygeneruj ofertę z kafelków: `client` = „ACME S.A.”,
+  `tiles` = `["rola:zarzad", "segment:in-house", "produkt:vault", "bol:poufnosc", "bol:shadow-ai"]`) →
+  Offer Studio (Oferty / Pobierz PDF oferty). Odpowiedź ma `coverage`: które bóle oferta rozwiązuje.
 - **Powiadomienie o zmianie**: Offer Studio Trigger (Zmiany w: Oferty) → Slack.
 
 Trigger grupuje zmiany tego samego rekordu w oknie „Grupuj zmiany (ms)” (domyślnie 3 s), bo edycja w

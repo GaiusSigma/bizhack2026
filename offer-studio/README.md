@@ -3,6 +3,8 @@
 Minimalistyczny dashboard do zbierania wiedzy o ofercie i składania z niej prezentacji.
 Wygląd slajdów, podgląd i PDF robi **FigCraft**: dashboard trzyma dane, a FigCraft je renderuje.
 
+- **Oferty z kafelków** (główna ścieżka, opis niżej): sprzedawca opisuje klienta kafelkami
+  (rola, segment, bóle, produkt), a prezentacja składa się sama według scenariusza roli.
 - **Wiedza**: bloki (use case'y, problemy, argumenty, wiersze porównań, składniki pakietów…).
   Typ i tagi to dowolne napisy, a pola specyficzne dla typu (np. `effect` w use case) dodajesz sam.
 - **Slajdy (biblioteka)**: każdy może dorzucić nowy slajd zaprojektowany w FigCraft: przeciąga plik
@@ -18,6 +20,45 @@ Wygląd slajdów, podgląd i PDF robi **FigCraft**: dashboard trzyma dane, a Fig
 
 Na start baza zawiera treść z `gaius-offer.figcraft` (40 bloków, oferta bazowa z 11 slajdami)
 i plik `seed/gaius-template.figcraft` (ten sam plik z oznaczonymi polami) jako pierwszy wpis biblioteki.
+
+## Kafelki i scenariusze
+
+**Jak sprzedawca robi ofertę.** Oferty → „+ Nowa oferta”: nazwa klienta i kafelki z czterech kategorii:
+
+| Kategoria | Wybór | Na start aktywne |
+|---|---|---|
+| Kim jest rozmówca (rola) | jedna | Champion, Zarząd (CTO, GC, budżet, DPO: wkrótce) |
+| Segment | jeden | Kancelaria, Dział prawny in-house, Administracja publiczna (reszta: wkrótce) |
+| Bóle klienta | od 1 do 5 | 11 bólów z rozmów (zakładka „Bóle (Fireflies)” arkusza sprzedaży) |
+| Produkt / skala | jeden | SaaS, Vault, On-premise |
+
+Rola wybiera **scenariusz** (kolejność slajdów i ich treść domyślną), a reszta kafelków dobiera treść:
+bloki i karty mają kafelki w tagach, wygrywa suma wag trafionych kafelków (ból 3, segment 2, rola 1,
+produkt 1), a przy remisie stała kolejność. Treść oznaczona segmentem trafia tylko do tego segmentu.
+Te same kafelki zawsze dają tę samą ofertę. Przy każdym slajdzie widać „bo: …”, czyli kafelki, które go
+wybrały, a z lewej „Rozwiązane X z Y bólów” (liczą się tylko rozwiązania i przypadki użycia).
+
+**Poprawki ręczne.** Każda zmiana slajdu (tekst, podmiana bloku, ukrycie, także przez API) oznacza go jako
+„poprawione ręcznie”. „Przelicz” i „Zmień kafelki” układają ofertę od nowa, ale takich slajdów nie ruszają;
+slajd, którego krok już nie pasuje (np. architektura po zmianie na SaaS), zostaje ukryty. „Przywróć automat”
+odrzuca poprawki slajdu. Oferty sprzed kafelków otwierają się w dotychczasowym edytorze.
+
+**Przypinanie treści.** Zakładka Kafelki: opis i cytaty kafelka oraz lista przypiętej treści („Przypnij treść”
+wyszukuje bloki i karty). Bóle bez przypiętego rozwiązania są oznaczone na liście. W Wiedzy kafelki bloku
+włącza się klikiem. Startowe przypięcia (27 rozwiązań z zakładki PRKW arkusza) to propozycja do przejrzenia.
+
+**Scenariusze.** Zakładka Scenariusze: kroki z miniaturą slajdu, regułą wypełnienia („2–3 rozwiązania
+najlepiej pasujące do kafelków”) i warunkiem („tylko gdy: Vault albo On-premise”). Zmiany wchodzą do ofert
+po „Przelicz”. Teksty kroków mają wersję Vault; wersje SaaS i On-premise (`data_by_product`) są szkicami
+oznaczonymi w edytorze.
+
+**Automat.** `POST /api/offers/generate` z `{"client": "...", "tiles": [...]}` robi to samo co ekran
+„Nowa oferta” (błąd 400 po polsku przy kafelku „wkrótce” albo złej liczbie kafelków). Dalej:
+`PUT /api/offers/:id/tiles`, `POST /api/offers/:id/recompute`, `GET/POST/PATCH/DELETE /api/tiles`,
+`GET/PUT /api/scenarios/:id`. Węzeł n8n pokazuje je w zasobie „Kafelki”.
+
+Istniejąca baza dostaje kafelki, scenariusze i bloki rozwiązań przy pierwszym starcie nowej wersji
+(tylko gdy nie ma jeszcze kafelków). Dane startowe: `seed/tiles.js` i `seed/scenarios.js`.
 
 ## Jak dodać nowy slajd
 
