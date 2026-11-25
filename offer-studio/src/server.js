@@ -6,7 +6,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pickComponents } from './ai.js';
+import { analyzeLead, pickComponents } from './ai.js';
 import { buildSlides, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import {
@@ -760,6 +760,18 @@ api.put('/scenarios/:id', async (c) => {
     : store.insert('scenarios', { id, name: b.name || role.label, steps: b.steps });
   changed('scenarios', id);
   return c.json(row);
+});
+
+// lead analysis: n8n sends text (email, transcript) and gets back the segment, decision-maker role and concerns
+api.post('/leads/analyze', async (c) => {
+  const b = await body(c);
+  const text = String(b.text || '').trim();
+  if (!text) throw new HttpError(400, 'Missing "text": nothing to analyze');
+  if (text.length > 60000) throw new HttpError(413, 'Text is too long (max 60,000 characters)');
+  const active = store.list('tiles').filter((t) => t.status !== 'soon');
+  const pick = (category) => active.filter((t) => t.category === category).map(({ id, label, description }) => ({ id, label, description }));
+  const catalog = { pains: pick('pain'), products: pick('product') };
+  return c.json(await analyzeLead({ text, hints: b.hints && typeof b.hints === 'object' ? b.hints : {}, catalog }));
 });
 
 // export / import of the whole database

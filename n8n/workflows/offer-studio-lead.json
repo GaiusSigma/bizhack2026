@@ -1,0 +1,523 @@
+{
+  "name": "Offer Studio · offer for a lead",
+  "nodes": [
+    {
+      "id": "832c9cc7-d5c2-567f-ac6d-ec17dec1f933",
+      "name": "Lead (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "offer",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "webhookId": "34bc9392-2772-5b89-8483-31b7fc4d8526",
+      "notes": "The landing generator posts JSON here. Connect Gmail, Fireflies and Gaius Meet as more triggers into the Brief node."
+    },
+    {
+      "id": "0e8d1879-9057-5d1c-a2b6-22a7e29e4cc9",
+      "name": "Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// One input format for every source: landing, Gmail, Fireflies, Gaius Meet, and later the CRM.\n// brief = { source, segment?, role?, email?, client?, text?, hasText }\nconst SEGMENTS = ['law-firm', 'in-house', 'public-sector'];\nconst ROLES = ['champion', 'board'];\nconst input = $input.first().json;\nconst raw = input.body ?? input;\nconst pick = (v, allowed) => (allowed.includes(v) ? v : null);\n\nconst email = String(raw.email || '').trim().slice(0, 200);\nconst text = String(raw.text || raw.transcript || raw.notes || '').trim().slice(0, 60000);\n\n// Without text we only guess the segment from the email domain. A weak signal: the AI overrides it when there is text.\nconst domain = email.split('@')[1]?.toLowerCase() || '';\nconst segmentFromDomain = /(^|\\.)gov\\.|\\.gov$|gmina|powiat|urzad|um\\.|ug\\.|starostwo|(^|\\.)bip\\./.test(domain)\n  ? 'public-sector'\n  : /kancelaria|legal|law|lex|adwokat|radca|prawn/.test(domain) ? 'law-firm' : null;\n\nreturn [{ json: {\n  source: String(raw.source || 'landing'),\n  segment: pick(raw.segment, SEGMENTS) ?? segmentFromDomain,\n  role: pick(raw.role, ROLES),\n  email: email || null,\n  client: raw.client ? String(raw.client).slice(0, 200) : null,\n  text,\n  hasText: text.length > 0,\n  receivedAt: new Date().toISOString(),\n} }];\n"
+      }
+    },
+    {
+      "id": "5e12c3c5-5e36-50a9-8fbf-2d56d4be612d",
+      "name": "CRM: what we already know (after the hackathon)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://crm.example/api/contacts?email={{ $json.email }}",
+        "options": {}
+      },
+      "disabled": true,
+      "notes": "Disabled for the hackathon. Later: client data from the CRM fills in the brief (segment, role, call history). A disabled node passes data through unchanged."
+    },
+    {
+      "id": "a7facc7e-692f-5e06-94ee-af0c7f5029ca",
+      "name": "Do we know anything?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "dc8699cf-3559-56aa-a399-5d448ae2e97c",
+              "leftValue": "={{ $('Brief').first().json.hasText }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "notes": "True: there is text (email, transcript, note), so the AI analyzes it. False: we know nothing, the offer uses defaults."
+    },
+    {
+      "id": "c8eb9ff5-f05f-5e74-8033-6216db397dbc",
+      "name": "Analyze lead (AI)",
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "position": [
+        880,
+        200
+      ],
+      "parameters": {
+        "resource": "__custom",
+        "method": "POST",
+        "path": "/api/leads/analyze",
+        "query": "{}",
+        "options": {},
+        "body": "={{ JSON.stringify({ text: $('Brief').first().json.text, hints: { segment: $('Brief').first().json.segment, role: $('Brief').first().json.role } }) }}"
+      },
+      "credentials": {
+        "offerStudioApi": {
+          "id": "",
+          "name": "Offer Studio API"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Offer Studio asks Claude for the segment, decision-maker role and concerns. An error (e.g. no API key) does not stop the offer: the plan falls back to defaults."
+    },
+    {
+      "id": "93f0ca7f-7ae1-5bff-9fad-c46881c48379",
+      "name": "Offer plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// The decisions n8n makes: which tiles the offer is generated from.\n// Defaults (we know nothing): role = board, segment = in-house, product = Vault,\n// pains = the two concerns every legal buyer has (confidentiality, hallucinated citations).\nconst brief = $('Brief').first().json;\nlet ai = {};\ntry { ai = $('Analyze lead (AI)').first().json || {}; } catch (e) { ai = {}; }\nif (ai.error) ai = {};\n\nconst SEGMENT_OK = ['law-firm', 'in-house', 'public-sector'];\nconst segment = [brief.segment, ai.segment].find((s) => SEGMENT_OK.includes(s)) ?? 'in-house';\nconst role = [brief.role, ai.role].find((r) => r === 'champion' || r === 'board') ?? 'board';\nconst product = (typeof ai.product === 'string' && ai.product.startsWith('product:')) ? ai.product : 'product:vault';\nconst pains = Array.isArray(ai.pains) && ai.pains.length\n  ? ai.pains.slice(0, 5)\n  : ['pain:confidentiality', 'pain:hallucinated-citations'];\n\nconst WHO = { 'law-firm': 'Law firm', 'in-house': 'In-house legal', 'public-sector': 'Public administration' }[segment];\nconst client = brief.client || ai.client || null;\nreturn [{ json: {\n  known: brief.hasText && !!ai.summary,\n  segment, role, client, product, pains,\n  person: ai.person || null,\n  concerns: Array.isArray(ai.concerns) ? ai.concerns.slice(0, 3) : [],\n  summary: ai.summary || null,\n  who: [ai.person, client, WHO].filter(Boolean).join(' · '),\n  tiles: [`role:${role}`, `segment:${segment}`, product, ...pains],\n  offerClient: client || WHO,\n} }];\n"
+      }
+    },
+    {
+      "id": "477c8e6c-e828-5fd6-babd-8f57eff42893",
+      "name": "Generate offer",
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "resource": "__custom",
+        "method": "POST",
+        "path": "/api/offers/generate",
+        "query": "{}",
+        "options": {},
+        "body": "={{ JSON.stringify({ client: $json.offerClient, tiles: $json.tiles }) }}"
+      },
+      "credentials": {
+        "offerStudioApi": {
+          "id": "",
+          "name": "Offer Studio API"
+        }
+      },
+      "notes": "Offer Studio builds the offer from the role scenario (champion or board) and picks content by tiles."
+    },
+    {
+      "id": "7f116530-e187-51b6-bfd8-5960cf1aac3b",
+      "name": "Mark as lead offer",
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        300
+      ],
+      "parameters": {
+        "resource": "__custom",
+        "method": "PATCH",
+        "path": "={{ '/api/offers/' + $json.id }}",
+        "query": "{}",
+        "options": {},
+        "body": "={{ JSON.stringify({ data: { origin: 'n8n-lead', segment: $('Offer plan').first().json.segment, role: $('Offer plan').first().json.role, concerns: $('Offer plan').first().json.concerns, summary: $('Offer plan').first().json.summary } }) }}"
+      },
+      "credentials": {
+        "offerStudioApi": {
+          "id": "",
+          "name": "Offer Studio API"
+        }
+      },
+      "notes": "origin = n8n-lead lets the public PDF link serve this offer and nothing else."
+    },
+    {
+      "id": "b2c932b4-d8a4-5fd4-aa0b-f2bcb226cdc0",
+      "name": "Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const plan = $('Offer plan').first().json;\nconst offer = $('Generate offer').first().json;\nconst started = new Date($('Brief').first().json.receivedAt).getTime();\nreturn [{ json: {\n  offerId: offer.id,\n  offerName: offer.name,\n  known: plan.known,\n  segment: plan.segment,\n  role: plan.role,\n  who: plan.who,\n  client: plan.client,\n  concerns: plan.concerns,\n  tiles: plan.tiles,\n  coverage: offer.coverage ?? null,\n  summary: plan.summary,\n  pdfPath: `/webhook/offer-pdf?id=${encodeURIComponent(offer.id)}`,\n  ms: Date.now() - started,\n} }];\n"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "3a8e5381-9e8b-5272-b167-8fed6a64ffb4",
+      "name": "Reply to source",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1980,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "84519dbd-e46e-52ff-a80c-a8a4286c9606",
+      "name": "CRM + Discord (mock)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        420
+      ],
+      "parameters": {
+        "jsCode": "// For the hackathon the CRM write and the #sales alert are mocked. Connect the real nodes here.\nconst r = $input.first().json;\nreturn [{ json: {\n  crm: { stage: 'Offer', offerId: r.offerId, who: r.who, nextActivity: 'follow-up call in 2 days' },\n  discord: { channel: '#sales', text: `New offer ready for ${r.who}. Offer Studio: ${r.offerId}` },\n} }];\n"
+      },
+      "notes": "MOCK"
+    },
+    {
+      "id": "b09b004b-8821-59e7-9db1-14a256309388",
+      "name": "Offer PDF (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        700
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "offer-pdf",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "webhookId": "99b2eceb-2de1-5431-9ca3-7dac483421d0"
+    },
+    {
+      "id": "58e7f808-7375-563a-aeda-d61827efa8b6",
+      "name": "Offer for PDF",
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "position": [
+        220,
+        700
+      ],
+      "parameters": {
+        "resource": "__custom",
+        "method": "GET",
+        "path": "={{ '/api/offers/' + encodeURIComponent($json.query.id || '') }}",
+        "query": "{}",
+        "options": {}
+      },
+      "credentials": {
+        "offerStudioApi": {
+          "id": "",
+          "name": "Offer Studio API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "a28a626d-82f5-5f2f-8109-5fc3cd418dd4",
+      "name": "Offer from a lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        700
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "05e678e2-c44a-5aba-bcb5-28d3b58403fd",
+              "leftValue": "={{ $json.data?.origin }}",
+              "rightValue": "n8n-lead",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "notes": "The public link serves only offers this workflow created, not any offer in Offer Studio."
+    },
+    {
+      "id": "6d99b4ad-d3f8-51f4-841d-f57b04c85e58",
+      "name": "Get PDF",
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "position": [
+        660,
+        620
+      ],
+      "parameters": {
+        "resource": "__custom",
+        "method": "GET",
+        "path": "={{ '/api/offers/' + $json.id + '/pdf' }}",
+        "query": "={{ JSON.stringify({ download: '0' }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "offerStudioApi": {
+          "id": "",
+          "name": "Offer Studio API"
+        }
+      }
+    },
+    {
+      "id": "bef1048e-2843-5717-b9d4-d92358d49ee9",
+      "name": "Send PDF",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        620
+      ],
+      "parameters": {
+        "respondWith": "binary",
+        "options": {}
+      }
+    },
+    {
+      "id": "1c9726f6-f760-5cf4-88a9-d7e2c189a3e0",
+      "name": "No such offer",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        800
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "No such offer.",
+        "options": {
+          "responseCode": 404
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Lead (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brief": {
+      "main": [
+        [
+          {
+            "node": "CRM: what we already know (after the hackathon)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM: what we already know (after the hackathon)": {
+      "main": [
+        [
+          {
+            "node": "Do we know anything?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze lead (AI)": {
+      "main": [
+        [
+          {
+            "node": "Offer plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Offer plan": {
+      "main": [
+        [
+          {
+            "node": "Generate offer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate offer": {
+      "main": [
+        [
+          {
+            "node": "Mark as lead offer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as lead offer": {
+      "main": [
+        [
+          {
+            "node": "Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Result": {
+      "main": [
+        [
+          {
+            "node": "Reply to source",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "CRM + Discord (mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Offer PDF (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Offer for PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Offer for PDF": {
+      "main": [
+        [
+          {
+            "node": "Offer from a lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PDF": {
+      "main": [
+        [
+          {
+            "node": "Send PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Do we know anything?": {
+      "main": [
+        [
+          {
+            "node": "Analyze lead (AI)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Offer plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Offer from a lead?": {
+      "main": [
+        [
+          {
+            "node": "Get PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No such offer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

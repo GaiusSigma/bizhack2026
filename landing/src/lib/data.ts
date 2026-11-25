@@ -36,11 +36,24 @@ export const segments: { label: string; icon: IconName; soon?: boolean }[] = [
   { label: 'Notaries', icon: 'file', soon: true },
 ];
 
+/** `segment` and `text` are sent to n8n as a sample lead (`text` triggers the AI analysis). */
 export const personas = [
-  { id: 'firm-pl', label: 'Managing partner, law firm', who: 'Managing partner · Law firm · Poland', role: 'board' },
-  { id: 'inhouse-pl', label: 'In-house lawyer, manufacturing group', who: 'In-house lawyer · Legal team · Poland', role: 'champion' },
-  { id: 'city-pl', label: 'City hall legal office', who: 'City hall · Public administration · Poland', role: 'board' },
+  {
+    id: 'firm-pl', label: 'Managing partner, law firm', who: 'Managing partner · Law firm · Poland', role: 'board', segment: 'law-firm',
+    text: 'Dzień dobry, jestem partnerem zarządzającym w kancelarii w Warszawie (40 prawników). Rozważamy AI do researchu i analizy umów, ale boimy się halucynacji w cytatach i tego, że dokumenty klientów wyjdą poza kancelarię. Decyzję podejmujemy na zarządzie w grudniu.',
+  },
+  {
+    id: 'inhouse-pl', label: 'In-house lawyer, manufacturing group', who: 'In-house lawyer · Legal team · Poland', role: 'champion', segment: 'in-house',
+    text: 'Pracuję w 6-osobowym dziale prawnym grupy produkcyjnej. Chcę wprowadzić narzędzie AI w zespole, ale muszę przekonać zarząd, a koledzy porzucili poprzednie narzędzie po miesiącu. IT wymaga, żeby wszystko działało na naszych serwerach.',
+  },
+  {
+    id: 'city-pl', label: 'City hall legal office', who: 'City hall · Public administration · Poland', role: 'board', segment: 'public-sector',
+    text: 'Urząd miasta, wydział prawny i zamówienia publiczne. Kierownictwo chce sprawdzić, czy AI przyspieszy analizę nowych przepisów i odpowiedzi na wnioski. Warunek: dane nie mogą opuścić naszej infrastruktury, a każda odpowiedź musi mieć podstawę prawną.',
+  },
 ];
+
+/** Voice note in the demo: a sample transcript (recording is simulated). */
+export const voiceSample = 'Cześć, kieruję małym działem prawnym w firmie logistycznej. Chcę, żeby zespół zaczął korzystać z AI przy umowach, ale muszę mieć coś, co pokażę zarządowi. Martwi mnie, że ludzie spróbują raz i wrócą do starych nawyków.';
 
 export const tabs: { id: 'email' | 'voice' | 'role'; label: string; icon: IconName }[] = [
   { id: 'email', label: 'Email', icon: 'mail' },
@@ -75,16 +88,16 @@ export const defaultSource = 'fireflies';
 
 /** n8n workflow nodes; the first node depends on the selected source. */
 export const flowNodes: { app: string; icon: IconName; label: string; mock?: boolean }[] = [
-  { app: 'GAIUS', icon: 'eye', label: 'Work out who they are and what they need' },
-  { app: 'GAIUS', icon: 'workflow', label: 'Match role and concerns to offer modules' },
-  { app: 'GAIUS', icon: 'spark', label: 'Write the offer, check every claim against its source' },
+  { app: 'OFFER STUDIO', icon: 'eye', label: 'Work out who they are and what they need' },
+  { app: 'OFFER STUDIO', icon: 'workflow', label: 'Match role and concerns to offer modules' },
+  { app: 'OFFER STUDIO', icon: 'spark', label: 'Write the offer, check every claim against its source' },
   { app: 'CRM', icon: 'db', label: 'Create opportunity, move to stage Offer, attach PDF', mock: true },
   { app: 'DISCORD', icon: 'chat', label: 'Post an alert to #sales', mock: true },
 ];
 
 export const heroSteps: { icon: IconName; text: string }[] = [
   { icon: 'mail', text: 'Type your work email, record a voice note, or pick your role.' },
-  { icon: 'workflow', text: 'Gaius matches your concerns to the modules that answer them.' },
+  { icon: 'workflow', text: 'Offer Studio matches your concerns to the modules that answer them.' },
   { icon: 'file', text: 'You get a ready offer, written for the team champion or for the board.' },
 ];
 

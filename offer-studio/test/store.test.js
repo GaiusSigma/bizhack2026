@@ -189,6 +189,33 @@ test('AI: schema with card ids and fields, response clean-up (mock client)', asy
   assert.ok(r.warnings.some((w) => /extras dropped/.test(w)));
 });
 
+test('AI: lead analysis passes text and hints, trims concerns to 3 (mock client)', async () => {
+  let request;
+  const api = { beta: { messages: { parse: async (params) => {
+    request = params;
+    return {
+      stop_reason: 'end_turn', model: params.model, usage: {},
+      parsed_output: { segment: 'law-firm', role: null, product: null, pains: ['pain:a', 'pain:a', 'pain:b'], client: 'Firm X', person: null, country: 'PL', concerns: ['a', 'b', 'c', 'd'], summary: 's' },
+    };
+  } } } };
+  const { analyzeLead } = await import('../src/ai.js');
+  const catalog = { pains: [{ id: 'pain:a', label: 'A' }, { id: 'pain:b', label: 'B' }], products: [{ id: 'product:vault', label: 'Vault' }] };
+  const r = await analyzeLead({ api, text: 'Partner at Firm X', hints: { segment: 'law-firm' }, catalog });
+  const schema = JSON.stringify(request.output_config.format.schema);
+  for (const v of ['law-firm', 'in-house', 'public-sector', 'champion', 'board', 'pain:a', 'product:vault']) assert.ok(schema.includes(v), v);
+  assert.match(request.messages[0].content, /Partner at Firm X/);
+  assert.match(request.messages[0].content, /"segment":"law-firm"/);
+  assert.equal(r.role, null);
+  assert.deepEqual(r.concerns, ['a', 'b', 'c']);
+  assert.deepEqual(r.pains, ['pain:a', 'pain:b']);
+});
+
+test('AI: lead analysis turns a refusal into a 502', async () => {
+  const api = { beta: { messages: { parse: async () => ({ stop_reason: 'refusal', parsed_output: null }) } } };
+  const { analyzeLead } = await import('../src/ai.js');
+  await assert.rejects(analyzeLead({ api, text: 'x' }), (e) => e.status === 502);
+});
+
 // Render with the real figcraft-cli if available (locally from the FigCraft install, in Docker from the image).
 const cli = process.env.FIGCRAFT_CLI || (process.platform === 'win32' ? 'C:\\Program Files\\ArtCraft\\FigCraft\\figcraft-cli.exe' : 'figcraft-cli');
 let hasCli = true;
