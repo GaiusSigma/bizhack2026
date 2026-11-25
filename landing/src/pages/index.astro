@@ -13,6 +13,7 @@ import {
   includes,
   personas,
   roles,
+  segments,
   sources,
   stats,
   tabs,
@@ -27,8 +28,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 ---
 
 <Layout
-  title="Gaius-Lex · Your tailored offer in under three minutes"
-  description="Private AI for legal teams. Tell Gaius who you are and get the offer our sales team would write for you, matched to your role and concerns."
+  title="Offer Studio · Gaius-Lex · Your tailored offer in under three minutes"
+  description="Private AI for law firms, in-house legal teams and public administration. Offer Studio writes the offer our sales team would write for your team champion or your board."
 >
   <header class="topbar">
     <div class="wrap topbar__inner">
@@ -39,7 +40,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       <nav class="nav" aria-label="Main">
         <a class="nav__link" href="#flow">How it runs</a>
         <a class="nav__link" href="#fears">Why it matters</a>
-        <a class="nav__link" href="#roles">For your team</a>
+        <a class="nav__link" href="#roles">Who decides</a>
         <a class="nav__link" href="#results">Results</a>
         <a class="btn btn--ink nudge" href="#generator">Get your offer<Icon name="arrow" size={16} /></a>
       </nav>
@@ -51,12 +52,19 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     <section id="generator" class="section section--white">
       <div class="wrap hero">
         <div class="hero__copy">
-          <span class="eyebrow rise">Private AI for legal teams. Offers in minutes, not days.</span>
+          <span class="eyebrow rise">Private AI for law firms, in-house legal and public administration.</span>
           <h1 class="hero__title rise" style="animation-delay: .1s">Your tailored offer in under three minutes<span class="dot">.</span></h1>
           <p class="hero__lead rise" style="animation-delay: .2s">
-            Tell Gaius who you are. It builds the offer our sales team would write for you, matched to your role and to
-            the concerns your organisation has about AI.
+            Tell Offer Studio who you are. It builds the offer our sales team would write for the person who decides: the
+            champion who brings AI to the team, or the board that signs off.
           </p>
+
+          <ul class="segments rise" style="animation-delay: .25s" aria-label="Who we prepare offers for">
+            {segments.map((sg) => (
+              <li class="segment"><Icon name={sg.icon} size={18} stroke="#9b5155" />{sg.label}</li>
+            ))}
+            <li class="segment segment--soon">Other sectors<span class="soon-tag">Coming soon</span></li>
+          </ul>
 
           <ol class="hero__steps">
             {heroSteps.map((h, i) => (
@@ -125,6 +133,9 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                       <Icon name="building" size={16} stroke="#9b5155" />{p.label}
                     </button>
                   ))}
+                  <button class="chip" type="button" disabled>
+                    <Icon name="building" size={16} />Other sectors<span class="soon-tag">Coming soon</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -139,26 +150,33 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                   <div class="voice__wave" aria-hidden="true">
                     {Array.from({ length: 12 }, (_, i) => <span class="wave" style={`animation-delay: ${delay(i, 0.08)}`}></span>)}
                   </div>
-                  <span class="voice__hint">Say who you are, what your team does and what worries you about AI. Up to 30 seconds.</span>
+                  <span class="voice__hint">Say whether you are a law firm, an in-house team or a public office, and what worries you about AI. Up to 30 seconds.</span>
                 </div>
               </div>
               <p class="fineprint fineprint--tight">Your note is transcribed and used for this offer only.</p>
             </div>
 
             <div class="gen__panel" role="tabpanel" id="panel-role" aria-labelledby="tab-role" data-panel="role" hidden>
-              <span class="field__label">Which seat do you sit in?</span>
+              <span class="field__label">Who will read the offer?</span>
               <div class="role-grid">
-                {roles.map((r, i) => (
-                  <button
-                    class="role-pick lift rise"
-                    type="button"
-                    data-role={r.id}
-                    aria-pressed={i === 0 ? 'true' : 'false'}
-                    style={`animation-delay: ${delay(i, 0.06)}`}
-                  >
-                    <Icon name={r.icon} stroke="#9b5155" />{r.label}
-                  </button>
-                ))}
+                {roles.map((r, i) =>
+                  r.soon ? (
+                    <button class="role-pick rise" type="button" disabled style={`animation-delay: ${delay(i, 0.06)}`}>
+                      <Icon name={r.icon} />
+                      <span class="role-pick__text">{r.label}<span class="soon-tag">Coming soon</span></span>
+                    </button>
+                  ) : (
+                    <button
+                      class="role-pick lift rise"
+                      type="button"
+                      data-role={r.id}
+                      aria-pressed={i === 0 ? 'true' : 'false'}
+                      style={`animation-delay: ${delay(i, 0.06)}`}
+                    >
+                      <Icon name={r.icon} stroke="#9b5155" />{r.label}
+                    </button>
+                  ),
+                )}
               </div>
             </div>
 
@@ -200,13 +218,18 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <div class="offer__head">
                   <span class="overline"><span>Offer for <span data-offer="who"></span></span></span>
                   <h2 class="offer__title" data-offer="headline"></h2>
-                  <span class="offer__meta"><Icon name="clock" size={14} />Generated in 2 min 41 s · sample data</span>
-                  <span class="offer__saved slidein" style="animation-delay: .4s"><Icon name="check" size={14} strokeWidth={2.5} />Saved to CRM · alert posted to #sales on Discord (mock)</span>
+                  <span class="offer__meta"><Icon name="clock" size={14} /><span data-offer-meta>Generated in 2 min 41 s · sample data</span></span>
+                  <span class="offer__saved slidein" style="animation-delay: .4s"><Icon name="check" size={14} strokeWidth={2.5} /><span data-offer-saved>Saved to CRM · alert posted to #sales on Discord (mock)</span></span>
                 </div>
                 <div class="offer__block">
                   <span class="offer__label">What you told us worries you</span>
-                  <div class="offer__line slidein" style="animation-delay: .15s"><Icon name="alert" size={18} stroke="#ce5e64" />Picking a tool that does not fit and leaves the team frustrated.</div>
-                  <div class="offer__line slidein" style="animation-delay: .25s"><Icon name="lock" size={18} stroke="#ce5e64" />Client documents leaking, with no one accountable.</div>
+                  <div data-offer-concerns>
+                    <div class="offer__line slidein" style="animation-delay: .15s"><Icon name="alert" size={18} stroke="#ce5e64" />Picking a tool that does not fit and leaves the team frustrated.</div>
+                    <div class="offer__line slidein" style="animation-delay: .25s"><Icon name="lock" size={18} stroke="#ce5e64" />Client documents leaking, with no one accountable.</div>
+                  </div>
+                  <template data-concern-tpl>
+                    <div class="offer__line slidein"><Icon name="alert" size={18} stroke="#ce5e64" /><span></span></div>
+                  </template>
                 </div>
                 <div class="offer__block">
                   <span class="offer__label">How Gaius answers</span>
@@ -221,7 +244,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                     <span class="offer__price">Price: [YOUR PRICE]</span>
                   </div>
                   <div class="offer__actions">
-                    <button class="btn btn--outline btn--sm" type="button"><Icon name="download" size={16} />Download PDF</button>
+                    <a class="btn btn--outline btn--sm" data-offer-pdf target="_blank" rel="noopener" aria-disabled="true"><Icon name="download" size={16} />Download PDF</a>
                     <a class="btn btn--ink btn--sm" href="#generator"><Icon name="calendar" size={16} />Book a demo</a>
                   </div>
                 </div>
@@ -239,7 +262,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
           <div class="section-head">
             <span class="overline"><Icon name="workflow" size={16} />AI-native sales, end to end</span>
             <h2 class="h2">From the first conversation to the CRM, with no one retyping anything.</h2>
-            <p class="lead">An email arrives or a meeting ends. n8n picks it up, Gaius writes the offer, the opportunity lands in our CRM and the team gets a ping on Discord.</p>
+            <p class="lead">An email arrives or a meeting ends. n8n picks it up, Offer Studio writes the offer, the opportunity lands in our CRM and the team gets a ping on Discord.</p>
           </div>
           <button class="btn btn--ink btn--lg pulse" type="button" data-run-flow>
             <Icon name="play" size={18} /><span data-run-flow-label>Run the workflow</span>
@@ -264,7 +287,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
             <span class="overline overline--muted">2 · n8n workflow runs</span>
             <div class="workflow reveal">
               <div class="workflow__head">
-                <span class="workflow__name"><Icon name="workflow" size={18} stroke="#9b5155" />n8n · gaius-offer-generator</span>
+                <span class="workflow__name"><Icon name="workflow" size={18} stroke="#9b5155" />n8n · offer-studio</span>
                 <span class="workflow__status" data-flow-status data-state="waiting"><span class="workflow__dot"></span><span data-flow-status-text>Waiting for a trigger</span></span>
               </div>
               <ol class="workflow__nodes" aria-live="polite">
@@ -297,7 +320,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
               <div class="discord slidein">
                 <span class="discord__avatar"><Icon name="spark" /></span>
                 <div class="discord__body">
-                  <span class="discord__meta"><b>Gaius Offers</b> <span class="discord__bot">BOT</span> <span class="discord__time">#sales · today 09:41</span></span>
+                  <span class="discord__meta"><b>Offer Studio</b> <span class="discord__bot">BOT</span> <span class="discord__time">#sales · today 09:41</span></span>
                   <span class="discord__strong">New offer ready for <b data-flow-who>{startSource.who}</b></span>
                   <span>Source: <span data-flow-source>{startSource.short}</span>. Opportunity moved to <b class="discord__hl">Oferta</b>. Offer PDF attached.</span>
                   <span class="discord__link">Open in CRM<Icon name="arrow" size={14} /></span>
@@ -365,14 +388,17 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     <section id="roles" class="section section--sand">
       <div class="wrap stack-48">
         <div class="section-head reveal">
-          <span class="overline">One deal, many signatures</span>
-          <h2 class="h2">Every person who signs off gets the document they need.</h2>
-          <p class="lead">IT does not need a sales offer. It needs a deployment brief. The generator knows the difference.</p>
+          <span class="overline">Two people decide</span>
+          <h2 class="h2">The offer is written for your champion or your board.</h2>
+          <p class="lead">The champion needs arguments to bring the team along. The board needs one accountable partner and a plan. Documents for IT, DPO and budget owners are coming soon.</p>
         </div>
         <div class="role-cards">
           {roles.map((r) => (
-            <div class="role-card reveal">
-              <span class="tile tile--soft tile--48"><Icon name={r.icon} size={24} /></span>
+            <div class:list={['role-card reveal', { 'role-card--soon': r.soon }]}>
+              <div class="role-card__top">
+                <span class="tile tile--soft tile--48"><Icon name={r.icon} size={24} /></span>
+                {r.soon && <span class="soon-tag">Coming soon</span>}
+              </div>
               <h3 class="role-card__title">{r.label}</h3>
               <span class="role-card__label">Cares about</span>
               <span class="role-card__text">{r.cares}</span>
@@ -423,7 +449,10 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
 <script>
   import { icons } from '../lib/icons';
-  import { personas, roles, sources, buildSteps, flowNodes } from '../lib/data';
+  import { personas, roles, sources, buildSteps, flowNodes, voiceSample } from '../lib/data';
+
+  // Adres n8n (PUBLIC_N8N_URL przy buildzie). Bez niego generator działa jak demo na danych przykładowych.
+  const N8N_URL = String(import.meta.env.PUBLIC_N8N_URL || '').replace(/\/$/, '');
 
   const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel as string) as T | null;
   const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => Array.from(root.querySelectorAll<T>(sel as string)) as T[];
@@ -431,11 +460,13 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   /* ---------- Generator ofert ---------- */
   const state = { mode: 'email', persona: personas[0].id, role: roles[0].id, rec: false };
   let genTimers: number[] = [];
+  let genRun = 0;
 
   const showPhase = (phase: 'idle' | 'working' | 'done') => {
     $$('[data-phase]').forEach((el) => (el.hidden = el.dataset.phase !== phase));
   };
   const resetGen = () => {
+    genRun++;
     genTimers.forEach(clearTimeout);
     genTimers = [];
     showPhase('idle');
@@ -483,20 +514,71 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     $('[data-rec-title]')!.textContent = state.rec ? 'Recording… 0:12 / 0:30' : 'Tap to record a voice note';
   });
 
-  const fillOffer = () => {
-    let roleId = state.role;
-    let who = (roles.find((r) => r.id === state.role) ?? roles[0]).label;
-    if (state.mode === 'email') {
+  type LeadResult = {
+    offerId: string;
+    role: 'champion' | 'zarzad';
+    who: string;
+    concerns: string[];
+    pdfPath: string;
+    known: boolean;
+    ms: number;
+  };
+
+  const ROLE_FROM_N8N: Record<string, string> = { zarzad: 'board', champion: 'champion' };
+  const ROLE_TO_N8N: Record<string, string> = { board: 'zarzad', champion: 'champion' };
+
+  // Co wysyłamy do n8n. Bez tekstu (sam mail albo sama rola) workflow idzie ścieżką „nic nie wiemy”.
+  const typedEmail = () => $<HTMLInputElement>('#email')?.value.trim() || '';
+  const leadPayload = () => {
+    if (state.mode === 'voice') return { source: 'landing-voice', text: voiceSample };
+    if (state.mode === 'role') return { source: 'landing-role', role: ROLE_TO_N8N[state.role] };
+    if (typedEmail()) return { source: 'landing-email', email: typedEmail() };
+    const p = personas.find((x) => x.id === state.persona) ?? personas[0];
+    return { source: 'landing-sample', segment: p.segment, role: ROLE_TO_N8N[p.role], text: p.text };
+  };
+
+  // Oferta przykładowa, gdy n8n nie jest skonfigurowane albo nie odpowiada.
+  const sampleResult = () => {
+    if (state.mode === 'voice') return { roleId: 'champion', who: 'In-house legal team · from your voice note' };
+    if (state.mode === 'email' && !typedEmail()) {
       const p = personas.find((x) => x.id === state.persona) ?? personas[0];
-      roleId = p.role;
-      who = p.who;
-    } else if (state.mode === 'voice') {
-      roleId = 'legal';
-      who = 'In-house legal team · from your voice note';
+      return { roleId: p.role, who: p.who };
     }
+    const r = roles.find((x) => x.id === state.role) ?? roles[0];
+    return { roleId: r.id, who: state.mode === 'email' ? typedEmail() : r.label };
+  };
+
+  const fillOffer = (live: LeadResult | null) => {
+    const fallback = sampleResult();
+    const roleId = live ? (ROLE_FROM_N8N[live.role] ?? 'board') : fallback.roleId;
     const r = roles.find((x) => x.id === roleId) ?? roles[0];
-    const values: Record<string, string> = { who, headline: r.headline, answer: r.answer, attach: r.attach };
+    const values: Record<string, string> = { who: live?.who || fallback.who, headline: r.headline, answer: r.answer, attach: r.attach };
     $$('[data-offer]').forEach((el) => (el.textContent = values[el.dataset.offer!] ?? ''));
+
+    const concernsBox = $('[data-offer-concerns]');
+    const tpl = $<HTMLTemplateElement>('[data-concern-tpl]');
+    if (live?.concerns?.length && concernsBox && tpl) {
+      const lines = live.concerns.map((c, i) => {
+        const line = tpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        line.style.animationDelay = `${0.15 + i * 0.1}s`;
+        line.querySelector('span')!.textContent = c;
+        return line;
+      });
+      concernsBox.replaceChildren(...lines);
+    }
+
+    const pdf = $<HTMLAnchorElement>('[data-offer-pdf]');
+    if (pdf) {
+      if (live) pdf.href = `${N8N_URL}${live.pdfPath}`;
+      else pdf.removeAttribute('href');
+      pdf.setAttribute('aria-disabled', String(!live));
+    }
+    $('[data-offer-meta]')!.textContent = live
+      ? `Generated in ${Math.max(1, Math.round(live.ms / 1000))} s · Offer Studio via n8n${live.known ? '' : ' · default offer, nothing known yet'}`
+      : 'Generated in 2 min 41 s · sample data';
+    $('[data-offer-saved]')!.textContent = live
+      ? `Saved in Offer Studio as ${live.offerId} · CRM and #sales alert (mock)`
+      : 'Saved to CRM · alert posted to #sales on Discord (mock)';
   };
 
   const setBuildStep = (step: number) => {
@@ -506,13 +588,37 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     });
   };
 
-  $('[data-generate]')?.addEventListener('click', () => {
+  const requestOffer = async (): Promise<LeadResult | null> => {
+    if (!N8N_URL) return null;
+    try {
+      const res = await fetch(`${N8N_URL}/webhook/offer`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(leadPayload()),
+        signal: AbortSignal.timeout(120_000),
+      });
+      if (!res.ok) throw new Error(`n8n ${res.status}`);
+      const data = (await res.json()) as LeadResult;
+      return data?.offerId ? data : null;
+    } catch (e) {
+      console.warn('Offer Studio via n8n unavailable, showing the sample offer.', e);
+      return null;
+    }
+  };
+
+  $('[data-generate]')?.addEventListener('click', async () => {
     resetGen();
-    fillOffer();
+    const run = genRun;
     setBuildStep(0);
     showPhase('working');
-    for (let n = 1; n <= buildSteps.length; n++) genTimers.push(window.setTimeout(() => setBuildStep(n), n * 750));
-    genTimers.push(window.setTimeout(() => showPhase('done'), 3400));
+    // Kroki postępu idą w rytmie demo; ostatni czeka na odpowiedź z n8n.
+    for (let n = 1; n < buildSteps.length; n++) genTimers.push(window.setTimeout(() => setBuildStep(n), n * 750));
+    const minWait = new Promise((ok) => genTimers.push(window.setTimeout(ok, 3400)));
+    const [live] = await Promise.all([requestOffer(), minWait]);
+    if (run !== genRun) return; // wybór zmienił się w trakcie: wynik jest nieaktualny
+    setBuildStep(buildSteps.length);
+    fillOffer(live);
+    showPhase('done');
   });
 
   /* ---------- Workflow n8n ---------- */

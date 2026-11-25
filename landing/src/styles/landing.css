@@ -326,3 +326,22 @@
   .voice { flex-direction: column; align-items: flex-start; }
   .fear, .role-card, .stat { padding: 24px; }
 }
+
+/* ---------- Segments + coming soon ---------- */
+.segments { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.segment {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line);
+  font-size: 14px; font-weight: 600; color: var(--ink); background: #fff;
+}
+.segment--soon { color: var(--muted); font-weight: 500; border-style: dashed; }
+.soon-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--line); padding: 2px 6px; margin-left: 4px; white-space: nowrap; background: var(--sand);
+}
+.chip:disabled, .role-pick:disabled { cursor: not-allowed; color: var(--muted); border-style: dashed; background: #fff; }
+.role-pick__text { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.role-pick__text .soon-tag { margin-left: 0; }
+.role-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.role-card--soon { background: var(--sand); }
+.role-card--soon .tile, .role-card--soon .role-card__title, .role-card--soon .role-card__text, .role-card--soon .role-card__gets { opacity: .55; }
+.btn[aria-disabled='true'] { opacity: .45; pointer-events: none; }

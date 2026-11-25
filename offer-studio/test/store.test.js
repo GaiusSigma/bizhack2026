@@ -184,6 +184,31 @@ test('AI: schemat z id kart i polami, porządki w odpowiedzi (atrapa klienta)', 
   assert.ok(r.warnings.some((w) => /nadmiar/.test(w)));
 });
 
+test('AI: analiza leada przekazuje tekst i podpowiedzi, przycina obawy do 3 (atrapa klienta)', async () => {
+  let request;
+  const api = { beta: { messages: { parse: async (params) => {
+    request = params;
+    return {
+      stop_reason: 'end_turn', model: params.model, usage: {},
+      parsed_output: { segment: 'kancelaria', role: null, client: 'Kancelaria X', person: null, country: 'PL', concerns: ['a', 'b', 'c', 'd'], summary: 's' },
+    };
+  } } } };
+  const { analyzeLead } = await import('../src/ai.js');
+  const r = await analyzeLead({ api, text: 'Partner w kancelarii X', hints: { segment: 'kancelaria' } });
+  const schema = JSON.stringify(request.output_config.format.schema);
+  for (const v of ['kancelaria', 'in-house', 'administracja', 'champion', 'zarzad']) assert.ok(schema.includes(v), v);
+  assert.match(request.messages[0].content, /Partner w kancelarii X/);
+  assert.match(request.messages[0].content, /"segment":"kancelaria"/);
+  assert.equal(r.role, null);
+  assert.deepEqual(r.concerns, ['a', 'b', 'c']);
+});
+
+test('AI: analiza leada zamienia odmowę na błąd 502', async () => {
+  const api = { beta: { messages: { parse: async () => ({ stop_reason: 'refusal', parsed_output: null }) } } };
+  const { analyzeLead } = await import('../src/ai.js');
+  await assert.rejects(analyzeLead({ api, text: 'x' }), (e) => e.status === 502);
+});
+
 // Render przez prawdziwy figcraft-cli, jeśli jest dostępny (lokalnie z instalacji FigCraft, w Dockerze z obrazu).
 const cli = process.env.FIGCRAFT_CLI || (process.platform === 'win32' ? 'C:\\Program Files\\ArtCraft\\FigCraft\\figcraft-cli.exe' : 'figcraft-cli');
 let hasCli = true;

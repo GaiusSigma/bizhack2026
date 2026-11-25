@@ -8,6 +8,9 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 ARG SITE_URL=http://localhost:8080
 ENV SITE_URL=${SITE_URL}
+# Adres n8n, pod którym generator woła webhook /webhook/offer. Pusty = demo na danych przykładowych.
+ARG PUBLIC_N8N_URL=
+ENV PUBLIC_N8N_URL=${PUBLIC_N8N_URL}
 RUN npm run build
 
 # --- runtime: nginx serwuje dist ---

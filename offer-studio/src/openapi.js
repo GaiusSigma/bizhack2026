@@ -42,6 +42,7 @@ const TAGS = [
   { name: 'Bloki wiedzy', description: 'Use case\'y, problemy, argumenty i inne bloki' },
   { name: 'Szablony', description: 'Biblioteka slajdów: pliki FigCraft, każda ramka najwyższego poziomu = slajd' },
   { name: 'Komponenty', description: 'Wymienne karty z zestawów @… (sloty #pick:…), ich opisy dla AI i dobór kart przez Claude' },
+  { name: 'Leady', description: 'Analiza leada przez AI na potrzeby workflow ofertowego w n8n' },
   { name: 'Baza', description: 'Eksport i import całej bazy' },
   { name: 'System', description: 'Opis API, metadane, zdarzenia' },
 ];
@@ -377,6 +378,16 @@ export const DOCS = {
       } } } },
     },
     responses: { 200: json(anyObject, '{applied, picks, note, warnings, slide}') },
+  },
+
+  'POST /api/leads/analyze': {
+    tag: 'Leady', operationId: 'analyzeLead', summary: 'Przeanalizuj leada (AI)',
+    description: 'Claude czyta mail, transkrypt albo notatkę i zwraca segment (kancelaria, in-house, administracja, inny), rolę decydenta (champion, zarzad), klienta i obawy. Pola, których nie da się ustalić, są null. Wymaga ANTHROPIC_API_KEY (inaczej 503)',
+    requestBody: body({
+      text: { type: 'string', description: 'Tekst od klienta: mail, transkrypt rozmowy, notatka ze spotkania' },
+      hints: { type: 'object', description: 'Co już wiemy, np. {"segment": "kancelaria"} wybrane na stronie' },
+    }, ['text']),
+    responses: { 200: json(anyObject, '{segment, role, client, person, country, concerns, summary, model}') },
   },
 
   // ---------------------------------------------------------------- baza

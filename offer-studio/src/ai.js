@@ -115,3 +115,67 @@ export async function pickComponents({ offer, slide, brief, sets, api = null }) 
   }
   return { picks, note: res.parsed_output.note, warnings, model: res.model, usage: res.usage };
 }
+
+// ------------------------------------------------------------------ analiza leada (dla workflow n8n)
+// n8n prowadzi cały proces ofertowy. Gdy o leadzie coś wiemy (mail, transkrypt, notatka ze spotkania),
+// woła ten endpoint, żeby z tekstu wyciągnąć segment, rolę decydenta i obawy. Gdy nic nie wiemy,
+// n8n w ogóle go nie woła i używa wartości domyślnych.
+export const SEGMENTS = ['kancelaria', 'in-house', 'administracja', 'inny'];
+export const ROLES = ['champion', 'zarzad'];
+
+const LEAD_SYSTEM = `Analizujesz wiadomość od potencjalnego klienta Gaius-Lex (prywatne Legal AI, produkt Gaius Vault).
+Oferty przygotowujemy tylko dla trzech segmentów:
+- "kancelaria": kancelaria prawna,
+- "in-house": dział prawny w firmie,
+- "administracja": administracja publiczna (urząd, samorząd, instytucja publiczna).
+Inny podmiot oznacz jako "inny". Jeśli tekst nie pozwala ustalić segmentu, zwróć null.
+
+Ofertę piszemy pod jedną z dwóch osób:
+- "champion": osoba, która chce wprowadzić AI w zespole i musi przekonać kolegów oraz zarząd,
+- "zarzad": zarząd, partnerzy zarządzający, kierownictwo urzędu, czyli ten, kto podpisuje decyzję.
+Jeśli nie da się tego ustalić, zwróć null.
+
+Zasady:
+- Nie zgaduj faktów, których nie ma w tekście. Puste pole jest lepsze niż wymyślone.
+- "concerns": najwyżej 3 obawy klienta wobec AI, krótko, w języku, w którym pisze klient.
+- "summary": jedno zdanie po polsku: kim jest klient i czego potrzebuje.
+- "hints" od n8n (np. segment wybrany na stronie) traktuj jako pewne, chyba że tekst wprost im przeczy.`;
+
+export async function analyzeLead({ text, hints = {}, api = null }) {
+  const Output = z.object({
+    segment: z.enum(SEGMENTS).nullable(),
+    role: z.enum(ROLES).nullable(),
+    client: z.string().nullable().describe('Nazwa organizacji klienta, jeśli padła'),
+    person: z.string().nullable().describe('Imię i nazwisko lub stanowisko osoby piszącej, jeśli padło'),
+    country: z.string().nullable(),
+    concerns: z.array(z.string()),
+    summary: z.string(),
+  });
+
+  let res;
+  try {
+    res = await (api || getClient()).beta.messages.parse({
+      model: MODEL,
+      max_tokens: 4000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'low', format: betaZodOutputFormat(Output) },
+      system: LEAD_SYSTEM,
+      messages: [{
+        role: 'user',
+        content: `Podpowiedzi z n8n (JSON): ${JSON.stringify(hints)}\n\nTekst od klienta:\n<lead>\n${text}\n</lead>`,
+      }],
+    });
+  } catch (e) {
+    if (e instanceof Anthropic.AuthenticationError || /api.?key|credentials/i.test(e.message)) {
+      throw new HttpError(503, 'Brak klucza do Claude API: ustaw ANTHROPIC_API_KEY w środowisku offer-studio');
+    }
+    if (e instanceof Anthropic.RateLimitError) throw new HttpError(429, 'Claude API: limit zapytań, spróbuj za chwilę');
+    if (e instanceof Anthropic.APIError) throw new HttpError(502, `Claude API ${e.status ?? ''}: ${e.message}`.trim());
+    throw e;
+  }
+  if (res.stop_reason === 'refusal') throw new HttpError(502, 'Claude odmówił analizy tego tekstu');
+  if (!res.parsed_output) throw new HttpError(502, `Claude nie zwrócił wyniku (stop_reason: ${res.stop_reason})`);
+  const out = res.parsed_output;
+  return { ...out, concerns: out.concerns.slice(0, 3), model: res.model };
+}

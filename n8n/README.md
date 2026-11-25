@@ -66,6 +66,70 @@ dashboardzie zapisuje się na bieżąco. Z opcją „Pobierz aktualny rekord” 
 szablon w obecnym stanie. Przy zmianie slajdu dołącza całą ofertę, a po usunięciu rekordu ustawia
 `deleted: true`.
 
+## Workflow „Offer Studio · oferta dla leada”
+
+Plik: [`workflows/offer-studio-lead.json`](workflows/offer-studio-lead.json). n8n prowadzi cały proces
+ofertowy, a Offer Studio jest narzędziem: trzyma wiedzę, kopiuje ofertę bazową i renderuje PDF.
+
+```
+Lead (webhook POST /webhook/offer)
+  → Brief                        jeden format wejścia dla każdego źródła
+  → CRM: co już wiemy            WYŁĄCZONY (po hackathonie: dane klienta z CRM)
+  → Coś wiemy?                   jest tekst (mail, transkrypt, notatka)?
+      tak → Analiza leada (AI)   POST /api/leads/analyze: segment, rola, obawy
+      nie → (wartości domyślne)
+  → Plan oferty                  segment, rola decydenta, treść
+  → Use case'y segmentu          GET /api/blocks?type=use_case&tag=…
+  → Kopia oferty bazowej         POST /api/offers/gaius-vault-bazowa/duplicate
+  → Zmiany pod rolę i segment    lista PATCH-y: slajdy widoczne/ukryte, okładka, use case'y
+  → Zastosuj zmiany
+  → Slajd „dlaczego” → Dobór argumentów (AI)   POST /api/slides/:id/pick z briefem
+  → Wynik → Odpowiedź dla źródła (JSON) + CRM + Discord (mock)
+
+PDF oferty (webhook GET /webhook/offer-pdf?id=…)
+  → Oferta do PDF → Oferta z leada? → Pobierz PDF → Wyślij PDF   (inaczej 404)
+```
+
+**Wejście** (`POST /webhook/offer`, JSON). Każde pole jest opcjonalne:
+
+| Pole | Znaczenie |
+|---|---|
+| `source` | skąd lead: `landing-email`, `gmail`, `fireflies`, `gaius-meet`… |
+| `segment` | `kancelaria`, `in-house` albo `administracja` |
+| `role` | `champion` albo `zarzad` (kto czyta ofertę) |
+| `email`, `client` | kontakt i nazwa organizacji |
+| `text` | mail, transkrypt albo notatka. Gdy jest, AI ustala brakujące pola |
+
+**Nic nie wiemy** (brak `text`): segment z pola `segment` albo z domeny maila, inaczej `in-house`;
+rola z pola `role`, inaczej `zarzad`. **Coś wiemy**: to, co przyszło w polach, jest pewne, a AI
+uzupełnia resztę i wyciąga obawy. Błąd AI (np. brak `ANTHROPIC_API_KEY`) nie zatrzymuje oferty.
+
+**Rola decyduje o ofercie.** Zarząd dostaje krótką ofertę: okładka, dlaczego Vault, plan wdrożenia,
+use case'y, cennik, kontakt. Champion dostaje dłuższą: problemy zespołu, czym jest Vault, use case'y,
+porównanie, argumenty dla zarządu, cennik, kontakt.
+
+**Odpowiedź**: `{offerId, offerName, known, segment, role, who, client, concerns, summary, pdfPath, ms}`.
+`pdfPath` (`/webhook/offer-pdf?id=…`) zwraca PDF tylko dla ofert z `data.origin = "n8n-lead"`.
+
+### Uruchomienie
+
+1. W n8n: **Import from File** → `n8n/workflows/offer-studio-lead.json`.
+2. Utwórz poświadczenie **Offer Studio API** (adres i token wypełniają się same) i wskaż je w węzłach
+   Offer Studio, jeśli n8n o to poprosi.
+3. W Offer Studio ustaw `ANTHROPIC_API_KEY` (analiza leada i dobór argumentów). Bez klucza workflow
+   działa, tylko zawsze idzie wartościami domyślnymi.
+4. Włącz workflow (**Active**). Landing woła `${PUBLIC_N8N_URL}/webhook/offer`; w `docker-compose.yml`
+   `PUBLIC_N8N_URL` = `SERVICE_URL_N8N`. Bez tej zmiennej generator na landingu pokazuje ofertę przykładową.
+
+Test z terminala:
+
+```bash
+curl -s -X POST http://localhost:5678/webhook/offer -H 'content-type: application/json' -d '{"segment":"kancelaria","text":"Jestem partnerem w kancelarii, boimy się halucynacji w cytatach."}'
+```
+
+Kolejne źródła (Gmail, Fireflies, Gaius Meet) dodajesz jako triggery podpięte do węzła **Brief**:
+wystarczy, że podadzą `text` (treść maila, transkrypt) i `source`.
+
 ## Budowa obrazu
 
 `n8n/Dockerfile`: etap `node:22-alpine` kompiluje paczkę `n8n-nodes-offer-studio` (TypeScript) i

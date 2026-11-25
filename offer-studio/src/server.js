@@ -6,7 +6,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pickComponents } from './ai.js';
+import { analyzeLead, pickComponents } from './ai.js';
 import { COMPONENT_EDITABLE, HttpError, openDb, slugify } from './db.js';
 import {
   buildLibrary, describeComponents, describeTemplate, hashOf, normalizeUpload, parseTemplate, renderFigcraft, renderPdf, renderPreview, renderThumbnails, UPLOAD_EXT,
@@ -580,6 +580,15 @@ api.post('/slides/:id/pick', async (c) => {
     changed('slides', slide.id, { offer_id: slide.offer_id });
   }
   return c.json({ applied: b.apply !== false, ...result, slide });
+});
+
+// analiza leada: n8n wysyła tekst (mail, transkrypt), dostaje segment, rolę decydenta i obawy
+api.post('/leads/analyze', async (c) => {
+  const b = await body(c);
+  const text = String(b.text || '').trim();
+  if (!text) throw new HttpError(400, 'Brak "text": nie ma czego analizować');
+  if (text.length > 60000) throw new HttpError(413, 'Tekst jest za długi (max 60 000 znaków)');
+  return c.json(await analyzeLead({ text, hints: b.hints && typeof b.hints === 'object' ? b.hints : {} }));
 });
 
 // eksport / import całej bazy
