@@ -1,7 +1,7 @@
 import type { IAuthenticateGeneric, ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 
-// W stacku docker-compose n8n wypełnia oba pola sam (CREDENTIALS_OVERWRITE_DATA z n8n/entrypoint.sh),
-// więc wystarczy utworzyć poświadczenie i zapisać je bez wpisywania czegokolwiek.
+// In the docker-compose stack n8n fills in both fields itself (CREDENTIALS_OVERWRITE_DATA from n8n/entrypoint.sh),
+// so you only need to create the credential and save it without typing anything.
 export class OfferStudioApi implements ICredentialType {
 	name = 'offerStudioApi';
 
@@ -13,20 +13,20 @@ export class OfferStudioApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Adres Offer Studio',
+			displayName: 'Offer Studio URL',
 			name: 'baseUrl',
 			type: 'string',
 			default: '',
 			placeholder: 'http://offer-studio:3000',
-			description: 'Puste = http://offer-studio:3000 (usługa w tym samym docker-compose)',
+			description: 'Empty = http://offer-studio:3000 (the service in the same docker-compose stack)',
 		},
 		{
-			displayName: 'Token API',
+			displayName: 'API Token',
 			name: 'token',
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-			description: 'STUDIO_API_TOKEN z Offer Studio (w Coolify: SERVICE_PASSWORD_64_STUDIOAPI)',
+			description: 'STUDIO_API_TOKEN from Offer Studio (in Coolify: SERVICE_PASSWORD_64_STUDIOAPI)',
 		},
 	];
 

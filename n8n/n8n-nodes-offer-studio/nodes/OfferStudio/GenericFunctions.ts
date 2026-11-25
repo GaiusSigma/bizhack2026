@@ -28,7 +28,7 @@ export interface RawResponse {
 	body: Buffer;
 }
 
-/** Żądanie z poświadczeniem Offer Studio. Zawsze zwraca surowe bajty i status (błędy HTTP obsługuje wołający). */
+/** Request with the Offer Studio credential. Always returns the raw bytes and status (the caller handles HTTP errors). */
 export async function studioRequest(
 	ctx: Ctx,
 	opts: {
@@ -92,7 +92,7 @@ export function parseJsonBody(res: RawResponse): unknown {
 	}
 }
 
-/** Rzuca NodeApiError z komunikatem Offer Studio ({"error": "..."}) dla statusów >= 400. */
+/** Throws a NodeApiError with Offer Studio's message ({"error": "..."}) for statuses >= 400. */
 export function assertOk(ctx: Ctx, res: RawResponse, itemIndex?: number): void {
 	if (res.statusCode < 400) return;
 	const parsed = parseJsonBody(res);
@@ -103,8 +103,8 @@ export function assertOk(ctx: Ctx, res: RawResponse, itemIndex?: number): void {
 				? parsed.slice(0, 500)
 				: '') || `HTTP ${res.statusCode}`;
 	const hints: Record<number, string> = {
-		401: 'Sprawdź token API w poświadczeniu Offer Studio (STUDIO_API_TOKEN).',
-		404: 'Nie ma takiego rekordu albo endpointu w tej wersji Offer Studio.',
+		401: 'Check the API token in the Offer Studio credential (STUDIO_API_TOKEN).',
+		404: 'This record or endpoint does not exist in this version of Offer Studio.',
 	};
 	throw new NodeApiError(
 		ctx.getNode(),
@@ -113,8 +113,8 @@ export function assertOk(ctx: Ctx, res: RawResponse, itemIndex?: number): void {
 	);
 }
 
-// Opis API trzymamy w pamięci krótko: w edytorze to jedno pobranie na kilka list, a w wykonaniu
-// jedno na uruchomienie. Nowe endpointy są widoczne najpóźniej po SPEC_TTL_MS.
+// The API description is cached briefly: in the editor that means one fetch for several lists, and during
+// execution one fetch per run. New endpoints become visible after SPEC_TTL_MS at the latest.
 const SPEC_TTL_MS = 30_000;
 const specCache = new Map<string, { at: number; spec: ParsedSpec }>();
 
@@ -129,13 +129,13 @@ export async function loadSpec(ctx: Ctx, { fresh = false } = {}): Promise<Parsed
 	} catch (error) {
 		throw new NodeOperationError(
 			ctx.getNode(),
-			`Nie udało się połączyć z Offer Studio (${baseUrlOf(credentials)}): ${(error as Error).message}`,
+			`Could not connect to Offer Studio (${baseUrlOf(credentials)}): ${(error as Error).message}`,
 		);
 	}
 	if (res.statusCode === 404) {
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Ta wersja Offer Studio nie udostępnia /api/openapi.json. Zaktualizuj Offer Studio albo użyj „Dowolne żądanie”.',
+			'This version of Offer Studio does not serve /api/openapi.json. Update Offer Studio or use "Custom API Call".',
 		);
 	}
 	assertOk(ctx, res);

@@ -1,6 +1,6 @@
-# FigCraft (wersja webowa, WebAssembly) serwowana przez nginx.
-# Pobiera oficjalny build z releasu github.com/storytold/figcraft i sprawdza jego SHA-256
-# (z SHA256SUMS.txt danego releasu). Przy podbiciu wersji zmień oba argumenty.
+# FigCraft (web version, WebAssembly) served by nginx.
+# Downloads the official build from the github.com/storytold/figcraft release and checks its SHA-256
+# (from that release's SHA256SUMS.txt). When bumping the version, change both arguments.
 FROM alpine:3.22 AS fetch
 ARG FIGCRAFT_VERSION=0.18.1
 ARG FIGCRAFT_WEB_SHA256=2fbeb93f5022b0a7cc9d8528f1ed7e2b54c94d213ef79e65128aa898c399f02b

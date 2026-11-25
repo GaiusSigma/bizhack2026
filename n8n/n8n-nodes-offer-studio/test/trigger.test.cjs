@@ -1,4 +1,4 @@
-// Trigger na żywym Offer Studio: zmiana oferty przez API -> jedno uruchomienie z aktualnym rekordem.
+// Trigger against a live Offer Studio: an offer change via the API -> one run with the current record.
 const { test, before } = require('node:test');
 const assert = require('node:assert/strict');
 const { ctx, STUDIO_URL, STUDIO_TOKEN } = require('./helpers.cjs');
@@ -16,8 +16,8 @@ const api = (method, path, body) =>
     body: body && JSON.stringify(body),
   }).then((r) => (r.status === 204 ? null : r.json()));
 
-test('trigger: zmiany oferty grupowane w jedno uruchomienie z rekordem', async (t) => {
-  if (!up) return t.skip(`brak Offer Studio pod ${STUDIO_URL}`);
+test('trigger: offer changes debounced into one run with the record', async (t) => {
+  if (!up) return t.skip(`no Offer Studio at ${STUDIO_URL}`);
   const offer = await api('POST', '/api/offers', { name: 'Trigger test' });
   const emitted = [];
   const base = ctx({ params: { tables: ['offers', 'slides'], offerId: offer.id, fetchRecord: true, debounceMs: 300 } });
@@ -31,12 +31,12 @@ test('trigger: zmiany oferty grupowane w jedno uruchomienie z rekordem', async (
   const node = new OfferStudioTrigger();
   const { closeFunction } = await node.trigger.call(triggerCtx);
   try {
-    await new Promise((r) => setTimeout(r, 300)); // połączenie SSE
+    await new Promise((r) => setTimeout(r, 300)); // SSE connection
     await api('PATCH', `/api/offers/${offer.id}`, { data: { client: 'A' } });
     await api('PATCH', `/api/offers/${offer.id}`, { data: { client: 'B' } });
-    await api('POST', '/api/blocks', { type: 'inne' }).then((b) => api('DELETE', `/api/blocks/${b.id}`)); // inna tabela: pomijana
+    await api('POST', '/api/blocks', { type: 'other' }).then((b) => api('DELETE', `/api/blocks/${b.id}`)); // another table: ignored
     await new Promise((r) => setTimeout(r, 900));
-    assert.equal(emitted.length, 1, 'jedno uruchomienie');
+    assert.equal(emitted.length, 1, 'one run');
     const items = emitted[0][0];
     assert.equal(items.length, 1);
     assert.equal(items[0].json.table, 'offers');

@@ -29,7 +29,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
 <Layout
   title="Offer Studio · Gaius-Lex · Your tailored offer in under three minutes"
-  description="Private AI for law firms, in-house legal teams and public administration. Offer Studio writes the offer our sales team would write for your team champion or your board."
+  description="Private AI for law firms, in-house legal teams and public administration. Tell Offer Studio who you are and get the offer our sales team would write for you, matched to your role and concerns."
 >
   <header class="topbar">
     <div class="wrap topbar__inner">
@@ -40,7 +40,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       <nav class="nav" aria-label="Main">
         <a class="nav__link" href="#flow">How it runs</a>
         <a class="nav__link" href="#fears">Why it matters</a>
-        <a class="nav__link" href="#roles">Who decides</a>
+        <a class="nav__link" href="#roles">For your team</a>
         <a class="nav__link" href="#results">Results</a>
         <a class="btn btn--ink nudge" href="#generator">Get your offer<Icon name="arrow" size={16} /></a>
       </nav>
@@ -55,16 +55,21 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
           <span class="eyebrow rise">Private AI for law firms, in-house legal and public administration.</span>
           <h1 class="hero__title rise" style="animation-delay: .1s">Your tailored offer in under three minutes<span class="dot">.</span></h1>
           <p class="hero__lead rise" style="animation-delay: .2s">
-            Tell Offer Studio who you are. It builds the offer our sales team would write for the person who decides: the
-            champion who brings AI to the team, or the board that signs off.
+            Tell Offer Studio who you are. It builds the offer our sales team would write for you, matched to your role and to
+            the concerns your organisation has about AI.
           </p>
 
-          <ul class="segments rise" style="animation-delay: .25s" aria-label="Who we prepare offers for">
-            {segments.map((sg) => (
-              <li class="segment"><Icon name={sg.icon} size={18} stroke="#9b5155" />{sg.label}</li>
-            ))}
-            <li class="segment segment--soon">Other sectors<span class="soon-tag">Coming soon</span></li>
-          </ul>
+          <div class="segments rise" style="animation-delay: .25s">
+            <span class="overline overline--muted">We write offers for</span>
+            <ul class="segments__list">
+              {segments.map((sg) => (
+                <li class:list={['segment', { 'segment--soon': sg.soon }]}>
+                  <Icon name={sg.icon} size={16} stroke={sg.soon ? 'currentColor' : '#9b5155'} />{sg.label}
+                  {sg.soon && <span class="soon">Coming soon</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
 
           <ol class="hero__steps">
             {heroSteps.map((h, i) => (
@@ -122,7 +127,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <label for="email" class="field__label">Work email</label>
                 <div class="field__control">
                   <Icon name="mail" size={18} />
-                  <input id="email" type="email" autocomplete="email" placeholder="anna.kovacs@yourcompany.hu" />
+                  <input id="email" type="email" autocomplete="email" placeholder="anna.nowak@yourfirm.pl" />
                 </div>
               </div>
               <div class="field rise" style="animation-delay: .1s">
@@ -133,9 +138,6 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                       <Icon name="building" size={16} stroke="#9b5155" />{p.label}
                     </button>
                   ))}
-                  <button class="chip" type="button" disabled>
-                    <Icon name="building" size={16} />Other sectors<span class="soon-tag">Coming soon</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -150,33 +152,28 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                   <div class="voice__wave" aria-hidden="true">
                     {Array.from({ length: 12 }, (_, i) => <span class="wave" style={`animation-delay: ${delay(i, 0.08)}`}></span>)}
                   </div>
-                  <span class="voice__hint">Say whether you are a law firm, an in-house team or a public office, and what worries you about AI. Up to 30 seconds.</span>
+                  <span class="voice__hint">Say who you are, what your team does and what worries you about AI. Up to 30 seconds.</span>
                 </div>
               </div>
               <p class="fineprint fineprint--tight">Your note is transcribed and used for this offer only.</p>
             </div>
 
             <div class="gen__panel" role="tabpanel" id="panel-role" aria-labelledby="tab-role" data-panel="role" hidden>
-              <span class="field__label">Who will read the offer?</span>
+              <span class="field__label">Which seat do you sit in?</span>
               <div class="role-grid">
-                {roles.map((r, i) =>
-                  r.soon ? (
-                    <button class="role-pick rise" type="button" disabled style={`animation-delay: ${delay(i, 0.06)}`}>
-                      <Icon name={r.icon} />
-                      <span class="role-pick__text">{r.label}<span class="soon-tag">Coming soon</span></span>
-                    </button>
-                  ) : (
-                    <button
-                      class="role-pick lift rise"
-                      type="button"
-                      data-role={r.id}
-                      aria-pressed={i === 0 ? 'true' : 'false'}
-                      style={`animation-delay: ${delay(i, 0.06)}`}
-                    >
-                      <Icon name={r.icon} stroke="#9b5155" />{r.label}
-                    </button>
-                  ),
-                )}
+                {roles.map((r, i) => (
+                  <button
+                    class:list={['role-pick rise', { lift: !r.soon }]}
+                    type="button"
+                    data-role={r.id}
+                    aria-pressed={i === 0 ? 'true' : 'false'}
+                    disabled={r.soon}
+                    style={`animation-delay: ${delay(i, 0.06)}`}
+                  >
+                    <Icon name={r.icon} stroke={r.soon ? 'currentColor' : '#9b5155'} />{r.label}
+                    {r.soon && <span class="soon">Coming soon</span>}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -322,7 +319,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <div class="discord__body">
                   <span class="discord__meta"><b>Offer Studio</b> <span class="discord__bot">BOT</span> <span class="discord__time">#sales · today 09:41</span></span>
                   <span class="discord__strong">New offer ready for <b data-flow-who>{startSource.who}</b></span>
-                  <span>Source: <span data-flow-source>{startSource.short}</span>. Opportunity moved to <b class="discord__hl">Oferta</b>. Offer PDF attached.</span>
+                  <span>Source: <span data-flow-source>{startSource.short}</span>. Opportunity moved to <b class="discord__hl">Offer</b>. Offer PDF attached.</span>
                   <span class="discord__link">Open in CRM<Icon name="arrow" size={14} /></span>
                 </div>
               </div>
@@ -330,7 +327,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <span class="crm__kicker"><Icon name="db" size={14} />CRM · OPPORTUNITY</span>
                 <span class="crm__who" data-flow-who>{startSource.who}</span>
                 <div class="crm__stages">
-                  <span>Nowe</span><span>Trial</span><span class="is-current pulse">Oferta</span><span>Sukces</span>
+                  <span>New</span><span>Trial</span><span class="is-current pulse">Offer</span><span>Won</span>
                 </div>
                 <span class="crm__next"><Icon name="calendar" size={16} stroke="#9b5155" />Offer attached · next activity: follow-up call in 2 days · owner [SALESPERSON]</span>
               </div>
@@ -388,17 +385,17 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     <section id="roles" class="section section--sand">
       <div class="wrap stack-48">
         <div class="section-head reveal">
-          <span class="overline">Two people decide</span>
-          <h2 class="h2">The offer is written for your champion or your board.</h2>
-          <p class="lead">The champion needs arguments to bring the team along. The board needs one accountable partner and a plan. Documents for IT, DPO and budget owners are coming soon.</p>
+          <span class="overline">Two narratives today</span>
+          <h2 class="h2">Written for the person who brings Gaius in, or the board that signs.</h2>
+          <p class="lead">A champion needs something to show the team on Monday. A board needs one accountable partner and a plan. The other seats get their own documents soon.</p>
         </div>
         <div class="role-cards">
           {roles.map((r) => (
             <div class:list={['role-card reveal', { 'role-card--soon': r.soon }]}>
-              <div class="role-card__top">
+              <span class="role-card__top">
                 <span class="tile tile--soft tile--48"><Icon name={r.icon} size={24} /></span>
-                {r.soon && <span class="soon-tag">Coming soon</span>}
-              </div>
+                {r.soon && <span class="soon">Coming soon</span>}
+              </span>
               <h3 class="role-card__title">{r.label}</h3>
               <span class="role-card__label">Cares about</span>
               <span class="role-card__text">{r.cares}</span>
@@ -451,13 +448,13 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   import { icons } from '../lib/icons';
   import { personas, roles, sources, buildSteps, flowNodes, voiceSample } from '../lib/data';
 
-  // Adres n8n (PUBLIC_N8N_URL przy buildzie). Bez niego generator działa jak demo na danych przykładowych.
+  // n8n base URL (PUBLIC_N8N_URL at build time). Without it the generator shows the sample offer.
   const N8N_URL = String(import.meta.env.PUBLIC_N8N_URL || '').replace(/\/$/, '');
 
   const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel as string) as T | null;
   const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => Array.from(root.querySelectorAll<T>(sel as string)) as T[];
 
-  /* ---------- Generator ofert ---------- */
+  /* ---------- Offer generator ---------- */
   const state = { mode: 'email', persona: personas[0].id, role: roles[0].id, rec: false };
   let genTimers: number[] = [];
   let genRun = 0;
@@ -516,7 +513,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
   type LeadResult = {
     offerId: string;
-    role: 'champion' | 'zarzad';
+    role: 'champion' | 'board';
     who: string;
     concerns: string[];
     pdfPath: string;
@@ -524,20 +521,17 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     ms: number;
   };
 
-  const ROLE_FROM_N8N: Record<string, string> = { zarzad: 'board', champion: 'champion' };
-  const ROLE_TO_N8N: Record<string, string> = { board: 'zarzad', champion: 'champion' };
-
-  // Co wysyłamy do n8n. Bez tekstu (sam mail albo sama rola) workflow idzie ścieżką „nic nie wiemy”.
+  // What we send to n8n. Without text (email or role only) the workflow takes the "nothing known" path.
   const typedEmail = () => $<HTMLInputElement>('#email')?.value.trim() || '';
   const leadPayload = () => {
     if (state.mode === 'voice') return { source: 'landing-voice', text: voiceSample };
-    if (state.mode === 'role') return { source: 'landing-role', role: ROLE_TO_N8N[state.role] };
+    if (state.mode === 'role') return { source: 'landing-role', role: state.role };
     if (typedEmail()) return { source: 'landing-email', email: typedEmail() };
     const p = personas.find((x) => x.id === state.persona) ?? personas[0];
-    return { source: 'landing-sample', segment: p.segment, role: ROLE_TO_N8N[p.role], text: p.text };
+    return { source: 'landing-sample', segment: p.segment, role: p.role, text: p.text };
   };
 
-  // Oferta przykładowa, gdy n8n nie jest skonfigurowane albo nie odpowiada.
+  // Sample offer when n8n is not configured or does not answer.
   const sampleResult = () => {
     if (state.mode === 'voice') return { roleId: 'champion', who: 'In-house legal team · from your voice note' };
     if (state.mode === 'email' && !typedEmail()) {
@@ -550,7 +544,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
   const fillOffer = (live: LeadResult | null) => {
     const fallback = sampleResult();
-    const roleId = live ? (ROLE_FROM_N8N[live.role] ?? 'board') : fallback.roleId;
+    const roleId = live ? live.role : fallback.roleId;
     const r = roles.find((x) => x.id === roleId) ?? roles[0];
     const values: Record<string, string> = { who: live?.who || fallback.who, headline: r.headline, answer: r.answer, attach: r.attach };
     $$('[data-offer]').forEach((el) => (el.textContent = values[el.dataset.offer!] ?? ''));
@@ -611,11 +605,11 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     const run = genRun;
     setBuildStep(0);
     showPhase('working');
-    // Kroki postępu idą w rytmie demo; ostatni czeka na odpowiedź z n8n.
+    // Progress steps follow the demo rhythm; the last one waits for n8n.
     for (let n = 1; n < buildSteps.length; n++) genTimers.push(window.setTimeout(() => setBuildStep(n), n * 750));
     const minWait = new Promise((ok) => genTimers.push(window.setTimeout(ok, 3400)));
     const [live] = await Promise.all([requestOffer(), minWait]);
-    if (run !== genRun) return; // wybór zmienił się w trakcie: wynik jest nieaktualny
+    if (run !== genRun) return; // the selection changed meanwhile: the result is stale
     setBuildStep(buildSteps.length);
     fillOffer(live);
     showPhase('done');

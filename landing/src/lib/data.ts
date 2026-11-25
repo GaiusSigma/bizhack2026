@@ -1,4 +1,4 @@
-// Treści landingu (Offer Studio – generator ofert Gaius-Lex), wspólne dla HTML i skryptu w przeglądarce.
+// Landing page content (Gaius-Lex offer generator), shared by the HTML and the browser script.
 import type { IconName } from './icons';
 
 export interface Role {
@@ -10,44 +10,49 @@ export interface Role {
   headline: string;
   answer: string;
   attach: string;
-  /** Rola jeszcze nieobsługiwana przez generator (pokazywana jako „Coming soon”). */
+  /** Rola, dla której generator jeszcze nie pisze ofert (pokazywana jako „Coming soon”). */
   soon?: boolean;
 }
 
-/** Oferty piszemy dziś tylko pod dwie osoby: championa i zarząd. Reszta: coming soon. */
+// Oferty piszemy dziś tylko w dwóch narracjach: pod championa i pod zarząd. Reszta ról: coming soon.
 export const roles: Role[] = [
-  { id: 'board', icon: 'briefcase', label: 'Board or management', cares: 'One accountable partner, a clear budget and a rollout that sticks.', gets: 'Short offer with the rollout plan and named owners', headline: 'One accountable partner for AI.', answer: 'A rollout plan for the whole organisation, with named owners and a fixed budget.', attach: 'Rollout plan for the board' },
-  { id: 'champion', icon: 'star', label: 'Team champion', cares: 'A tool colleagues will actually open on Monday, and arguments to win the board.', gets: 'Offer with a team demo script and a one-page case for the board', headline: 'A tool your team will actually use.', answer: 'A demo script for your colleagues and a one-page case you can take to the board.', attach: 'Team demo script + board one-pager' },
+  { id: 'champion', icon: 'star', label: 'Team champion', cares: 'A tool colleagues will actually open on Monday.', gets: 'Offer with a demo script for the team', headline: 'A tool your team will actually use.', answer: 'A demo script to show your colleagues on day one, built on your own documents.', attach: 'Team demo script' },
+  { id: 'board', icon: 'briefcase', label: 'Board or managing partner', cares: 'One accountable partner and a rollout that sticks.', gets: 'Short offer with the rollout plan', headline: 'One accountable partner for AI.', answer: 'A rollout plan for the whole organisation, with named owners.', attach: 'Rollout plan' },
   { id: 'legal', icon: 'scale', label: 'Head of Legal', cares: 'Answers the team can cite and defend.', gets: 'Offer with a source-linked research demo', headline: 'Answers your lawyers can cite.', answer: 'Contract analysis on your own templates, inside Word.', attach: 'Research demo on your case', soon: true },
   { id: 'budget', icon: 'wallet', label: 'Budget owner', cares: 'Return on the spend, in hours saved on research and contract review.', gets: 'Offer with a return-on-investment sheet', headline: 'Hours back on research and contract review.', answer: 'A return sheet built on your team size and caseload.', attach: 'ROI sheet [YOUR NUMBERS]', soon: true },
   { id: 'it', icon: 'server', label: 'IT or CTO', cares: 'Where it runs, how it is secured and what it needs.', gets: 'Technical deployment brief for Gaius Vault', headline: 'Runs on your servers, built to be checked.', answer: 'A deployment brief your IT team can review line by line.', attach: 'Gaius Vault deployment brief', soon: true },
   { id: 'dpo', icon: 'shield', label: 'DPO or compliance', cares: 'Where personal data goes and who processes it.', gets: 'Data-processing brief', headline: 'Your data stays where you keep it.', answer: 'A data-processing brief ready for your DPO.', attach: 'Data-processing brief', soon: true },
 ];
 
-/** Segmenty, dla których dziś przygotowujemy oferty. */
-export const segments: { id: string; icon: IconName; label: string; text: string }[] = [
-  { id: 'firm', icon: 'scale', label: 'Law firms', text: 'Partners and teams who bill for answers they must be able to defend.' },
-  { id: 'inhouse', icon: 'building', label: 'In-house legal teams', text: 'Legal departments that review contracts for the whole company.' },
-  { id: 'public', icon: 'book', label: 'Public administration', text: 'Offices that apply regulations and must document every decision.' },
+export const activeRoles = roles.filter((r) => !r.soon);
+
+/** Dla kogo piszemy oferty. Aktywne: kancelarie, działy prawne in-house, administracja publiczna. */
+export const segments: { label: string; icon: IconName; soon?: boolean }[] = [
+  { label: 'Law firms', icon: 'scale' },
+  { label: 'In-house legal teams', icon: 'building' },
+  { label: 'Public administration', icon: 'shield' },
+  { label: 'Banks and financial institutions', icon: 'wallet', soon: true },
+  { label: 'Tax advisors', icon: 'book', soon: true },
+  { label: 'Notaries', icon: 'file', soon: true },
 ];
 
-/** `segment` i `text` idą do n8n jako przykładowy lead (pole `text` uruchamia analizę AI). */
+/** `segment` and `text` are sent to n8n as a sample lead (`text` triggers the AI analysis). */
 export const personas = [
   {
-    id: 'firm-pl', label: 'Managing partner, Polish law firm', who: 'Managing partner · Law firm · Poland', role: 'board', segment: 'kancelaria',
+    id: 'firm-pl', label: 'Managing partner, law firm', who: 'Managing partner · Law firm · Poland', role: 'board', segment: 'law-firm',
     text: 'Dzień dobry, jestem partnerem zarządzającym w kancelarii w Warszawie (40 prawników). Rozważamy AI do researchu i analizy umów, ale boimy się halucynacji w cytatach i tego, że dokumenty klientów wyjdą poza kancelarię. Decyzję podejmujemy na zarządzie w grudniu.',
   },
   {
-    id: 'inhouse-hu', label: 'Legal team lead, Hungarian manufacturer', who: 'Legal team lead · In-house legal · Hungary', role: 'champion', segment: 'in-house',
-    text: 'Hi, I lead a 6-person legal team at a manufacturer in Győr. I want to bring an AI tool to my team, but I need to convince our board, and my colleagues gave up on the last tool after a month. Our IT insists everything runs on our own servers.',
+    id: 'inhouse-pl', label: 'In-house lawyer, manufacturing group', who: 'In-house lawyer · Legal team · Poland', role: 'champion', segment: 'in-house',
+    text: 'Pracuję w 6-osobowym dziale prawnym grupy produkcyjnej. Chcę wprowadzić narzędzie AI w zespole, ale muszę przekonać zarząd, a koledzy porzucili poprzednie narzędzie po miesiącu. IT wymaga, żeby wszystko działało na naszych serwerach.',
   },
   {
-    id: 'city-pl', label: 'City hall, Poland', who: 'Mayor’s office · Public administration · Poland', role: 'board', segment: 'administracja',
+    id: 'city-pl', label: 'City hall legal office', who: 'City hall · Public administration · Poland', role: 'board', segment: 'public-sector',
     text: 'Urząd miasta, wydział prawny i zamówienia publiczne. Kierownictwo chce sprawdzić, czy AI przyspieszy analizę nowych przepisów i odpowiedzi na wnioski. Warunek: dane nie mogą opuścić naszej infrastruktury, a każda odpowiedź musi mieć podstawę prawną.',
   },
 ];
 
-/** Notatka głosowa w demie: przykładowy transkrypt (nagrywanie jest symulowane). */
+/** Voice note in the demo: a sample transcript (recording is simulated). */
 export const voiceSample = 'Cześć, kieruję małym działem prawnym w firmie logistycznej. Chcę, żeby zespół zaczął korzystać z AI przy umowach, ale muszę mieć coś, co pokażę zarządowi. Martwi mnie, że ludzie spróbują raz i wrócą do starych nawyków.';
 
 export const tabs: { id: 'email' | 'voice' | 'role'; label: string; icon: IconName }[] = [
@@ -75,25 +80,25 @@ export interface Source {
 
 export const sources: Source[] = [
   { id: 'email', icon: 'mail', label: 'Email', desc: 'A lead writes to sales@. Gmail trigger.', short: 'email to sales@', trigger: 'New email in sales@', who: 'Managing partner · Law firm · Poland' },
-  { id: 'fireflies', icon: 'file', label: 'Fireflies transcript', desc: 'A discovery call ends and the transcript is ready.', short: 'Fireflies call transcript', trigger: 'Transcript ready after the call', who: 'Legal team lead · In-house legal · Hungary' },
-  { id: 'meet', icon: 'video', label: 'Gaius Meet', desc: 'Our own meeting plugin saves the notes.', short: 'Gaius Meet notes', trigger: 'Meeting notes saved', who: 'Mayor’s office · Public administration · Poland' },
+  { id: 'fireflies', icon: 'file', label: 'Fireflies transcript', desc: 'A discovery call ends and the transcript is ready.', short: 'Fireflies call transcript', trigger: 'Transcript ready after the call', who: 'In-house lawyer · Legal team · Poland' },
+  { id: 'meet', icon: 'video', label: 'Gaius Meet', desc: 'Our own meeting plugin saves the notes.', short: 'Gaius Meet notes', trigger: 'Meeting notes saved', who: 'City hall · Public administration · Poland' },
 ];
 
 export const defaultSource = 'fireflies';
 
-/** Węzły workflow n8n; pierwszy węzeł zależy od wybranego źródła. */
+/** n8n workflow nodes; the first node depends on the selected source. */
 export const flowNodes: { app: string; icon: IconName; label: string; mock?: boolean }[] = [
   { app: 'OFFER STUDIO', icon: 'eye', label: 'Work out who they are and what they need' },
   { app: 'OFFER STUDIO', icon: 'workflow', label: 'Match role and concerns to offer modules' },
   { app: 'OFFER STUDIO', icon: 'spark', label: 'Write the offer, check every claim against its source' },
-  { app: 'CRM', icon: 'db', label: 'Create opportunity, move to stage Oferta, attach PDF', mock: true },
+  { app: 'CRM', icon: 'db', label: 'Create opportunity, move to stage Offer, attach PDF', mock: true },
   { app: 'DISCORD', icon: 'chat', label: 'Post an alert to #sales', mock: true },
 ];
 
 export const heroSteps: { icon: IconName; text: string }[] = [
-  { icon: 'mail', text: 'Tell us if you are a law firm, an in-house legal team or a public office.' },
-  { icon: 'workflow', text: 'Offer Studio writes the offer for the person who decides: your team champion or your board.' },
-  { icon: 'file', text: 'You get a ready offer. Briefs for IT, DPO and budget owners are coming soon.' },
+  { icon: 'mail', text: 'Type your work email, record a voice note, or pick your role.' },
+  { icon: 'workflow', text: 'Offer Studio matches your concerns to the modules that answer them.' },
+  { icon: 'file', text: 'You get a ready offer, written for the team champion or for the board.' },
 ];
 
 export const apps: { label: string; icon: IconName }[] = [
@@ -109,7 +114,7 @@ export const includes: { icon: IconName; text: string }[] = [
   { icon: 'user', text: 'Your situation, in your words' },
   { icon: 'alert', text: 'The concerns we heard' },
   { icon: 'shield', text: 'How Gaius answers each one' },
-  { icon: 'briefcase', text: 'A case your board can sign off' },
+  { icon: 'file', text: 'Next steps your team can act on' },
 ];
 
 export const concerns: { icon: IconName; title: string; text: string }[] = [

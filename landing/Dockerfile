@@ -1,4 +1,4 @@
-# --- build: Astro -> statyczne pliki w /app/dist ---
+# --- build: Astro -> static files in /app/dist ---
 FROM node:24-alpine AS build
 WORKDIR /app
 
@@ -8,12 +8,12 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 ARG SITE_URL=http://localhost:8080
 ENV SITE_URL=${SITE_URL}
-# Adres n8n, pod którym generator woła webhook /webhook/offer. Pusty = demo na danych przykładowych.
+# n8n base URL the generator calls (/webhook/offer). Empty = demo on sample data.
 ARG PUBLIC_N8N_URL=
 ENV PUBLIC_N8N_URL=${PUBLIC_N8N_URL}
 RUN npm run build
 
-# --- runtime: nginx serwuje dist ---
+# --- runtime: nginx serves dist ---
 FROM nginx:1.30-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html

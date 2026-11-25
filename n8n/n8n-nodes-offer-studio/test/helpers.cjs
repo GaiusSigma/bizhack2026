@@ -1,4 +1,4 @@
-// Atrapa kontekstu n8n: prawdziwe HTTP (fetch) do Offer Studio, reszta minimalna.
+// Fake n8n context: real HTTP (fetch) to Offer Studio, everything else minimal.
 const STUDIO_URL = process.env.STUDIO_URL || 'http://127.0.0.1:3917';
 const STUDIO_TOKEN = process.env.STUDIO_TOKEN || 'tok';
 
@@ -32,7 +32,7 @@ function ctx({ params = {}, items = [{ json: {} }], binary = {} } = {}) {
       httpRequestWithAuthentication: async (_cred, opts) => httpRequest(opts),
       prepareBinaryData: async (buf, fileName, mimeType) => ({ data: buf.toString('base64'), fileName, mimeType }),
       assertBinaryData: (_i, prop) => {
-        if (!binary[prop]) throw new Error(`brak binary ${prop}`);
+        if (!binary[prop]) throw new Error(`no binary ${prop}`);
         return binary[prop];
       },
       getBinaryDataBuffer: async (_i, prop) => binary[prop].buffer,

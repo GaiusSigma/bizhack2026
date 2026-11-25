@@ -103,7 +103,7 @@ code { font-family: var(--mono); font-size: 12px; background: #f3f3f3; padding: 
 #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 8px; z-index: 200; max-width: 80vw; }
 #toast.err { background: var(--danger); }
 
-/* biblioteka slajdów */
+/* slide library */
 .library { max-width: 1400px; }
 .dropzone { border: 2px dashed #d5d5d5; border-radius: 10px; padding: 22px; text-align: center; background: #fff; margin: 6px 0 12px; }
 .dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
@@ -125,7 +125,7 @@ button.lib-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(-
 .frame-pick { display: grid; grid-template-columns: 180px 1fr; gap: 12px; align-items: start; }
 .frame-pick img, .frame-pick .shot-error { width: 180px; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 6px; }
 
-/* komponenty: karty z zestawów @… (opisy dla AI) i wybór kart na slajd */
+/* components: cards from @… sets (descriptions for the AI) and card picking for a slide */
 .comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .comp-card { margin: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; text-align: left; font: inherit; padding: 0; }
 button.comp-card { cursor: pointer; }

@@ -1,5 +1,5 @@
 {
-  "name": "Offer Studio · oferta dla leada",
+  "name": "Offer Studio · offer for a lead",
   "nodes": [
     {
       "id": "832c9cc7-d5c2-567f-ac6d-ec17dec1f933",
@@ -19,7 +19,7 @@
         }
       },
       "webhookId": "34bc9392-2772-5b89-8483-31b7fc4d8526",
-      "notes": "Landing (generator) wysyła tu JSON. Gmail, Fireflies i Gaius Meet podłączasz jako kolejne triggery do węzła „Brief”."
+      "notes": "The landing generator posts JSON here. Connect Gmail, Fireflies and Gaius Meet as more triggers into the Brief node."
     },
     {
       "id": "0e8d1879-9057-5d1c-a2b6-22a7e29e4cc9",
@@ -31,12 +31,12 @@
         300
       ],
       "parameters": {
-        "jsCode": "// Jeden format wejścia dla każdego źródła: landing, Gmail, Fireflies, Gaius Meet, a później CRM.\n// brief = { source, segment?, role?, email?, client?, text?, hasText }\nconst SEGMENTS = ['kancelaria', 'in-house', 'administracja'];\nconst ROLES = ['champion', 'zarzad'];\nconst input = $input.first().json;\nconst raw = input.body ?? input;\nconst pick = (v, allowed) => (allowed.includes(v) ? v : null);\n\nconst email = String(raw.email || '').trim().slice(0, 200);\nconst text = String(raw.text || raw.transcript || raw.notes || '').trim().slice(0, 60000);\n\n// Bez tekstu zgadujemy segment tylko z domeny maila. To słaby sygnał, AI go nadpisze, gdy jest tekst.\nconst domain = email.split('@')[1]?.toLowerCase() || '';\nconst segmentFromDomain = /(^|\\.)gov\\.|\\.gov$|gmina|powiat|urzad|um\\.|ug\\.|starostwo|(^|\\.)bip\\./.test(domain)\n  ? 'administracja'\n  : /kancelaria|legal|law|lex|adwokat|radca|prawn/.test(domain) ? 'kancelaria' : null;\n\nreturn [{ json: {\n  source: String(raw.source || 'landing'),\n  segment: pick(raw.segment, SEGMENTS) ?? segmentFromDomain,\n  role: pick(raw.role, ROLES),\n  email: email || null,\n  client: raw.client ? String(raw.client).slice(0, 200) : null,\n  text,\n  hasText: text.length > 0,\n  receivedAt: new Date().toISOString(),\n} }];\n"
+        "jsCode": "// One input format for every source: landing, Gmail, Fireflies, Gaius Meet, and later the CRM.\n// brief = { source, segment?, role?, email?, client?, text?, hasText }\nconst SEGMENTS = ['law-firm', 'in-house', 'public-sector'];\nconst ROLES = ['champion', 'board'];\nconst input = $input.first().json;\nconst raw = input.body ?? input;\nconst pick = (v, allowed) => (allowed.includes(v) ? v : null);\n\nconst email = String(raw.email || '').trim().slice(0, 200);\nconst text = String(raw.text || raw.transcript || raw.notes || '').trim().slice(0, 60000);\n\n// Without text we only guess the segment from the email domain. A weak signal: the AI overrides it when there is text.\nconst domain = email.split('@')[1]?.toLowerCase() || '';\nconst segmentFromDomain = /(^|\\.)gov\\.|\\.gov$|gmina|powiat|urzad|um\\.|ug\\.|starostwo|(^|\\.)bip\\./.test(domain)\n  ? 'public-sector'\n  : /kancelaria|legal|law|lex|adwokat|radca|prawn/.test(domain) ? 'law-firm' : null;\n\nreturn [{ json: {\n  source: String(raw.source || 'landing'),\n  segment: pick(raw.segment, SEGMENTS) ?? segmentFromDomain,\n  role: pick(raw.role, ROLES),\n  email: email || null,\n  client: raw.client ? String(raw.client).slice(0, 200) : null,\n  text,\n  hasText: text.length > 0,\n  receivedAt: new Date().toISOString(),\n} }];\n"
       }
     },
     {
-      "id": "e8e81e27-5d92-5b89-ada9-ead18523bb3b",
-      "name": "CRM: co już wiemy (po hackathonie)",
+      "id": "5e12c3c5-5e36-50a9-8fbf-2d56d4be612d",
+      "name": "CRM: what we already know (after the hackathon)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -49,11 +49,11 @@
         "options": {}
       },
       "disabled": true,
-      "notes": "Wyłączony na hackathonie. Później: dane klienta z CRM uzupełniają brief (segment, rola, historia rozmów). Wyłączony węzeł przepuszcza dane bez zmian."
+      "notes": "Disabled for the hackathon. Later: client data from the CRM fills in the brief (segment, role, call history). A disabled node passes data through unchanged."
     },
     {
-      "id": "e122ad7f-5412-503e-a79c-972b39fbfe7e",
-      "name": "Coś wiemy?",
+      "id": "a7facc7e-692f-5e06-94ee-af0c7f5029ca",
+      "name": "Do we know anything?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -83,11 +83,11 @@
         },
         "options": {}
       },
-      "notes": "Tak: jest tekst (mail, transkrypt, notatka), więc AI go analizuje. Nie: nic nie wiemy, oferta z wartości domyślnych."
+      "notes": "True: there is text (email, transcript, note), so the AI analyzes it. False: we know nothing, the offer uses defaults."
     },
     {
-      "id": "1884e7fa-6838-52a5-af5a-6cc75591adf8",
-      "name": "Analiza leada (AI)",
+      "id": "c8eb9ff5-f05f-5e74-8033-6216db397dbc",
+      "name": "Analyze lead (AI)",
       "type": "CUSTOM.offerStudio",
       "typeVersion": 1,
       "position": [
@@ -109,11 +109,11 @@
         }
       },
       "onError": "continueRegularOutput",
-      "notes": "Offer Studio pyta Claude'a o segment, rolę decydenta i obawy. Błąd (np. brak klucza) nie zatrzymuje oferty: plan użyje wartości domyślnych."
+      "notes": "Offer Studio asks Claude for the segment, decision-maker role and concerns. An error (e.g. no API key) does not stop the offer: the plan falls back to defaults."
     },
     {
-      "id": "45849b99-eb3d-5b53-a3e4-a0b34171a5b3",
-      "name": "Plan oferty",
+      "id": "93f0ca7f-7ae1-5bff-9fad-c46881c48379",
+      "name": "Offer plan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -121,12 +121,12 @@
         300
       ],
       "parameters": {
-        "jsCode": "// Tu zapadają decyzje: segment, rola decydenta, oferta bazowa i treść.\n// Domyślnie (nic nie wiemy): rola = zarząd, segment = dział prawny in-house.\nconst brief = $('Brief').first().json;\nlet ai = {};\ntry { ai = $('Analiza leada (AI)').first().json || {}; } catch (e) { ai = {}; }\nif (ai.error) ai = {};\n\nconst SEGMENT_OK = ['kancelaria', 'in-house', 'administracja'];\nconst segment = [brief.segment, ai.segment].find((s) => SEGMENT_OK.includes(s)) ?? 'in-house';\nconst role = [brief.role, ai.role].find((r) => r === 'champion' || r === 'zarzad') ?? 'zarzad';\n\nconst SEGMENT = {\n  kancelaria: { label: 'kancelarii', tag: 'kancelaria', who: 'Law firm' },\n  'in-house': { label: 'działu prawnego', tag: 'dzial-prawny', who: 'In-house legal' },\n  administracja: { label: 'urzędu', tag: 'administracja', who: 'Public administration' },\n}[segment];\n\nconst client = brief.client || ai.client || null;\nconst concerns = Array.isArray(ai.concerns) ? ai.concerns.slice(0, 3) : [];\nreturn [{ json: {\n  known: brief.hasText && !!ai.summary,\n  segment, role, client,\n  person: ai.person || null,\n  country: ai.country || null,\n  concerns,\n  summary: ai.summary || null,\n  tag: SEGMENT.tag,\n  segmentLabel: SEGMENT.label,\n  who: [ai.person, client, SEGMENT.who].filter(Boolean).join(' · '),\n  baseOfferId: 'gaius-vault-bazowa',\n  offerName: `Oferta ${role === 'zarzad' ? 'dla zarządu' : 'dla championa'} · ${client || SEGMENT.who}`,\n  brief: [ai.summary, concerns.length ? `Obawy: ${concerns.join('; ')}` : null,\n          role === 'zarzad' ? 'Czyta zarząd: jeden odpowiedzialny partner, budżet, plan wdrożenia.'\n                            : 'Czyta champion: argumenty dla zespołu i dla zarządu.'].filter(Boolean).join('\\n'),\n} }];\n"
+        "jsCode": "// The decisions: segment, decision-maker role, base offer and copy.\n// Defaults (we know nothing): role = board, segment = in-house legal team.\nconst brief = $('Brief').first().json;\nlet ai = {};\ntry { ai = $('Analyze lead (AI)').first().json || {}; } catch (e) { ai = {}; }\nif (ai.error) ai = {};\n\nconst SEGMENT_OK = ['law-firm', 'in-house', 'public-sector'];\nconst segment = [brief.segment, ai.segment].find((s) => SEGMENT_OK.includes(s)) ?? 'in-house';\nconst role = [brief.role, ai.role].find((r) => r === 'champion' || r === 'board') ?? 'board';\n\nconst SEGMENT = {\n  'law-firm': { label: 'your law firm', tag: 'law-firm', who: 'Law firm' },\n  'in-house': { label: 'your legal team', tag: 'legal-dept', who: 'In-house legal' },\n  'public-sector': { label: 'your office', tag: 'public-sector', who: 'Public administration' },\n}[segment];\n\nconst client = brief.client || ai.client || null;\nconst concerns = Array.isArray(ai.concerns) ? ai.concerns.slice(0, 3) : [];\nreturn [{ json: {\n  known: brief.hasText && !!ai.summary,\n  segment, role, client,\n  person: ai.person || null,\n  country: ai.country || null,\n  concerns,\n  summary: ai.summary || null,\n  tag: SEGMENT.tag,\n  segmentLabel: SEGMENT.label,\n  who: [ai.person, client, SEGMENT.who].filter(Boolean).join(' · '),\n  baseOfferId: 'gaius-vault-base',\n  offerName: `Offer for the ${role} · ${client || SEGMENT.who}`,\n  brief: [ai.summary, concerns.length ? `Concerns: ${concerns.join('; ')}` : null,\n          role === 'board' ? 'Read by the board: one accountable partner, budget, rollout plan.'\n                           : 'Read by the champion: arguments for the team and for the board.'].filter(Boolean).join('\\n'),\n} }];\n"
       }
     },
     {
-      "id": "7ff29cb5-45c7-547b-a389-beb0f072ef9b",
-      "name": "Use case'y segmentu",
+      "id": "d8376f58-0eaf-5c4d-b272-3530c10736c7",
+      "name": "Segment use cases",
       "type": "CUSTOM.offerStudio",
       "typeVersion": 1,
       "position": [
@@ -150,8 +150,8 @@
       }
     },
     {
-      "id": "96f53591-de79-5ca3-bf58-ce182ca52db6",
-      "name": "Kopia oferty bazowej",
+      "id": "3a9fc68d-8a85-57e2-89c7-9534f531b55c",
+      "name": "Copy base offer",
       "type": "CUSTOM.offerStudio",
       "typeVersion": 1,
       "position": [
@@ -161,10 +161,10 @@
       "parameters": {
         "resource": "__custom",
         "method": "POST",
-        "path": "={{ '/api/offers/' + $('Plan oferty').first().json.baseOfferId + '/duplicate' }}",
+        "path": "={{ '/api/offers/' + $('Offer plan').first().json.baseOfferId + '/duplicate' }}",
         "query": "{}",
         "options": {},
-        "body": "={{ JSON.stringify({ name: $('Plan oferty').first().json.offerName }) }}"
+        "body": "={{ JSON.stringify({ name: $('Offer plan').first().json.offerName }) }}"
       },
       "credentials": {
         "offerStudioApi": {
@@ -174,8 +174,8 @@
       }
     },
     {
-      "id": "32fd0e30-1351-5437-b797-9c714338cf5c",
-      "name": "Zmiany pod rolę i segment",
+      "id": "1fbd52ec-cf0d-52ce-ab20-85a153e8c4ef",
+      "name": "Changes for role and segment",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -183,12 +183,12 @@
         300
       ],
       "parameters": {
-        "jsCode": "// Jedna pozycja = jedno żądanie PATCH do Offer Studio.\nconst plan = $('Plan oferty').first().json;\nconst offer = $input.first().json;\nconst segmentUseCases = $('Use case\\'y segmentu').first().json.data || [];\n\n// Które slajdy oferty bazowej pokazujemy komu.\nconst SHOW = {\n  zarzad:   ['okladka', 'dlaczego', 'wdrozenie', 'use-case', 'cennik', 'kontakt'],\n  champion: ['okladka', 'problemy', 'czym-jest', 'use-case', 'porownanie', 'dlaczego', 'cennik', 'kontakt'],\n}[plan.role];\n\nconst COVER = plan.role === 'zarzad'\n  ? { subtitle: `Jeden **odpowiedzialny partner** dla AI w Twojej ${plan.segmentLabel === 'urzędu' ? 'instytucji' : 'organizacji'}`,\n      lead: 'Plan wdrożenia z przypisanymi właścicielami, stały koszt miesięczny i bezpieczny model startu.' }\n  : { subtitle: 'Narzędzie, które Twój zespół **naprawdę otworzy w poniedziałek**',\n      lead: 'Scenariusz pokazu dla zespołu i argumenty, z którymi pójdziesz do zarządu.' };\n\nconst ops = [{ path: `/api/offers/${offer.id}`, body: { data: {\n  origin: 'n8n-lead', client: plan.client, segment: plan.segment, role: plan.role,\n  concerns: plan.concerns, summary: plan.summary,\n} } }];\n\nfor (const s of offer.slides || []) {\n  const patch = { hidden: !SHOW.includes(s.frame) };\n  if (s.frame === 'okladka') patch.data = COVER;\n  if (s.frame === 'problemy') patch.data = { title: `Gdzie **ucieka** czas ${plan.segmentLabel}?` };\n  // Use case'y segmentu tylko wtedy, gdy baza ma ich dość; inaczej zostają wszystkie.\n  if (s.frame === 'use-case' && segmentUseCases.length >= 3) {\n    patch.block_ids = [];\n    patch.query = { type: 'use_case', tag: plan.tag, limit: 6 };\n  }\n  ops.push({ path: `/api/slides/${s.id}`, body: patch });\n}\nreturn ops.map((json) => ({ json }));\n"
+        "jsCode": "// One item = one PATCH request to Offer Studio.\nconst plan = $('Offer plan').first().json;\nconst offer = $input.first().json;\nconst segmentUseCases = $('Segment use cases').first().json.data || [];\n\n// Which base-offer slides each reader sees.\nconst SHOW = {\n  board:    ['cover', 'why', 'rollout', 'use-case', 'pricing', 'contact'],\n  champion: ['cover', 'problems', 'what-is', 'use-case', 'comparison', 'why', 'pricing', 'contact'],\n}[plan.role];\n\nconst COVER = plan.role === 'board'\n  ? { subtitle: `**One accountable partner** for AI in ${plan.segmentLabel}`,\n      lead: 'A rollout plan with named owners, a fixed monthly cost and a safe way to start.' }\n  : { subtitle: 'A tool your team will **actually open on Monday**',\n      lead: 'A demo script for your team and the arguments you take to the board.' };\n\nconst ops = [{ path: `/api/offers/${offer.id}`, body: { data: {\n  origin: 'n8n-lead', client: plan.client, segment: plan.segment, role: plan.role,\n  concerns: plan.concerns, summary: plan.summary,\n} } }];\n\nfor (const s of offer.slides || []) {\n  const patch = { hidden: !SHOW.includes(s.frame) };\n  if (s.frame === 'cover') patch.data = COVER;\n  if (s.frame === 'problems') patch.data = { title: `Where does the time of ${plan.segmentLabel} **go**?` };\n  // Segment use cases only when the database has enough of them; otherwise all of them stay.\n  if (s.frame === 'use-case' && segmentUseCases.length >= 3) {\n    patch.block_ids = [];\n    patch.query = { type: 'use_case', tag: plan.tag, limit: 6 };\n  }\n  ops.push({ path: `/api/slides/${s.id}`, body: patch });\n}\nreturn ops.map((json) => ({ json }));\n"
       }
     },
     {
-      "id": "dfa3ff03-5733-55fb-b3f8-f5c3a5ed6f0f",
-      "name": "Zastosuj zmiany",
+      "id": "010e0feb-6a44-51b3-8cf2-becf1a37e4fc",
+      "name": "Apply changes",
       "type": "CUSTOM.offerStudio",
       "typeVersion": 1,
       "position": [
@@ -211,8 +211,8 @@
       }
     },
     {
-      "id": "03b31e09-2a87-5419-a658-1e08ee2d0b8d",
-      "name": "Slajd „dlaczego”",
+      "id": "3b022bd5-b0f1-5aca-9481-13f3c33128da",
+      "name": "Why slide",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -220,14 +220,14 @@
         300
       ],
       "parameters": {
-        "jsCode": "const offer = $('Kopia oferty bazowej').first().json;\nconst slide = (offer.slides || []).find((s) => s.frame === 'dlaczego');\nreturn slide ? [{ json: { slideId: slide.id, brief: $('Plan oferty').first().json.brief } }] : [];\n"
+        "jsCode": "const offer = $('Copy base offer').first().json;\nconst slide = (offer.slides || []).find((s) => s.frame === 'why');\nreturn slide ? [{ json: { slideId: slide.id, brief: $('Offer plan').first().json.brief } }] : [];\n"
       },
       "executeOnce": true,
       "alwaysOutputData": true
     },
     {
-      "id": "15ebbb9c-ba9f-5bce-95c2-84911e92104a",
-      "name": "Dobór argumentów (AI)",
+      "id": "7fd8483b-4e33-5dd8-8d5c-cd64637ae5e8",
+      "name": "Pick arguments (AI)",
       "type": "CUSTOM.offerStudio",
       "typeVersion": 1,
       "position": [
@@ -249,11 +249,11 @@
         }
       },
       "onError": "continueRegularOutput",
-      "notes": "Claude wybiera karty „Dlaczego Vault?” pod obawy klienta. Bez klucza zostają karty z oferty bazowej."
+      "notes": "Claude picks the Why Vault? cards for the client's concerns. Without a key the base offer's cards stay."
     },
     {
-      "id": "3920c51c-43ad-5c86-8cba-9e221eabd4e7",
-      "name": "Wynik",
+      "id": "b2c932b4-d8a4-5fd4-aa0b-f2bcb226cdc0",
+      "name": "Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -261,13 +261,13 @@
         300
       ],
       "parameters": {
-        "jsCode": "const plan = $('Plan oferty').first().json;\nconst offer = $('Kopia oferty bazowej').first().json;\nconst started = new Date($('Brief').first().json.receivedAt).getTime();\nreturn [{ json: {\n  offerId: offer.id,\n  offerName: offer.name,\n  known: plan.known,\n  segment: plan.segment,\n  role: plan.role,\n  who: plan.who,\n  client: plan.client,\n  concerns: plan.concerns,\n  summary: plan.summary,\n  pdfPath: `/webhook/offer-pdf?id=${encodeURIComponent(offer.id)}`,\n  ms: Date.now() - started,\n} }];\n"
+        "jsCode": "const plan = $('Offer plan').first().json;\nconst offer = $('Copy base offer').first().json;\nconst started = new Date($('Brief').first().json.receivedAt).getTime();\nreturn [{ json: {\n  offerId: offer.id,\n  offerName: offer.name,\n  known: plan.known,\n  segment: plan.segment,\n  role: plan.role,\n  who: plan.who,\n  client: plan.client,\n  concerns: plan.concerns,\n  summary: plan.summary,\n  pdfPath: `/webhook/offer-pdf?id=${encodeURIComponent(offer.id)}`,\n  ms: Date.now() - started,\n} }];\n"
       },
       "executeOnce": true
     },
     {
-      "id": "7e175d1b-f8aa-593f-86de-d95a224fa88c",
-      "name": "Odpowiedź dla źródła",
+      "id": "3a8e5381-9e8b-5272-b167-8fed6a64ffb4",
+      "name": "Reply to source",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
@@ -290,13 +290,13 @@
         420
       ],
       "parameters": {
-        "jsCode": "// Na hackathonie zapis do CRM i alert na #sales są zamockowane. Tu podłączysz prawdziwe węzły.\nconst r = $input.first().json;\nreturn [{ json: {\n  crm: { stage: 'Oferta', offerId: r.offerId, who: r.who, nextActivity: 'follow-up call in 2 days' },\n  discord: { channel: '#sales', text: `New offer ready for ${r.who}. Offer Studio: ${r.offerId}` },\n} }];\n"
+        "jsCode": "// For the hackathon the CRM write and the #sales alert are mocked. Connect the real nodes here.\nconst r = $input.first().json;\nreturn [{ json: {\n  crm: { stage: 'Offer', offerId: r.offerId, who: r.who, nextActivity: 'follow-up call in 2 days' },\n  discord: { channel: '#sales', text: `New offer ready for ${r.who}. Offer Studio: ${r.offerId}` },\n} }];\n"
       },
       "notes": "MOCK"
     },
     {
-      "id": "7134f4ff-897a-51c9-aebb-b8b347c25c06",
-      "name": "PDF oferty (webhook)",
+      "id": "b09b004b-8821-59e7-9db1-14a256309388",
+      "name": "Offer PDF (webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
@@ -314,8 +314,8 @@
       "webhookId": "99b2eceb-2de1-5431-9ca3-7dac483421d0"
     },
     {
-      "id": "b01e1c28-367c-5243-b8f0-86365f62c6ba",
-      "name": "Oferta do PDF",
+      "id": "58e7f808-7375-563a-aeda-d61827efa8b6",
+      "name": "Offer for PDF",
       "type": "CUSTOM.offerStudio",
       "typeVersion": 1,
       "position": [
@@ -338,8 +338,8 @@
       "onError": "continueRegularOutput"
     },
     {
-      "id": "36376ee7-613a-5b72-a993-4f0105b3a81f",
-      "name": "Oferta z leada?",
+      "id": "a28a626d-82f5-5f2f-8109-5fc3cd418dd4",
+      "name": "Offer from a lead?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -368,11 +368,11 @@
         },
         "options": {}
       },
-      "notes": "Publiczny link pobiera tylko oferty utworzone przez ten workflow, nie dowolną ofertę z Offer Studio."
+      "notes": "The public link serves only offers this workflow created, not any offer in Offer Studio."
     },
     {
-      "id": "9c53e2aa-3a97-58cd-9638-a6487c6c3060",
-      "name": "Pobierz PDF",
+      "id": "6d99b4ad-d3f8-51f4-841d-f57b04c85e58",
+      "name": "Get PDF",
       "type": "CUSTOM.offerStudio",
       "typeVersion": 1,
       "position": [
@@ -394,8 +394,8 @@
       }
     },
     {
-      "id": "d6773134-1a2c-5d7d-976c-dc88ef30c991",
-      "name": "Wyślij PDF",
+      "id": "bef1048e-2843-5717-b9d4-d92358d49ee9",
+      "name": "Send PDF",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
@@ -408,8 +408,8 @@
       }
     },
     {
-      "id": "ee5533f5-1b2f-5baf-beec-0e11b6ec1cb7",
-      "name": "Brak oferty",
+      "id": "1c9726f6-f760-5cf4-88a9-d7e2c189a3e0",
+      "name": "No such offer",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
@@ -418,7 +418,7 @@
       ],
       "parameters": {
         "respondWith": "text",
-        "responseBody": "Nie ma takiej oferty.",
+        "responseBody": "No such offer.",
         "options": {
           "responseCode": 404
         }
@@ -441,117 +441,117 @@
       "main": [
         [
           {
-            "node": "CRM: co już wiemy (po hackathonie)",
+            "node": "CRM: what we already know (after the hackathon)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "CRM: co już wiemy (po hackathonie)": {
+    "CRM: what we already know (after the hackathon)": {
       "main": [
         [
           {
-            "node": "Coś wiemy?",
+            "node": "Do we know anything?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Analiza leada (AI)": {
+    "Analyze lead (AI)": {
       "main": [
         [
           {
-            "node": "Plan oferty",
+            "node": "Offer plan",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Plan oferty": {
+    "Offer plan": {
       "main": [
         [
           {
-            "node": "Use case'y segmentu",
+            "node": "Segment use cases",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Use case'y segmentu": {
+    "Segment use cases": {
       "main": [
         [
           {
-            "node": "Kopia oferty bazowej",
+            "node": "Copy base offer",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Kopia oferty bazowej": {
+    "Copy base offer": {
       "main": [
         [
           {
-            "node": "Zmiany pod rolę i segment",
+            "node": "Changes for role and segment",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Zmiany pod rolę i segment": {
+    "Changes for role and segment": {
       "main": [
         [
           {
-            "node": "Zastosuj zmiany",
+            "node": "Apply changes",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Zastosuj zmiany": {
+    "Apply changes": {
       "main": [
         [
           {
-            "node": "Slajd „dlaczego”",
+            "node": "Why slide",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Slajd „dlaczego”": {
+    "Why slide": {
       "main": [
         [
           {
-            "node": "Dobór argumentów (AI)",
+            "node": "Pick arguments (AI)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Dobór argumentów (AI)": {
+    "Pick arguments (AI)": {
       "main": [
         [
           {
-            "node": "Wynik",
+            "node": "Result",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wynik": {
+    "Result": {
       "main": [
         [
           {
-            "node": "Odpowiedź dla źródła",
+            "node": "Reply to source",
             "type": "main",
             "index": 0
           },
@@ -563,69 +563,69 @@
         ]
       ]
     },
-    "PDF oferty (webhook)": {
+    "Offer PDF (webhook)": {
       "main": [
         [
           {
-            "node": "Oferta do PDF",
+            "node": "Offer for PDF",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Oferta do PDF": {
+    "Offer for PDF": {
       "main": [
         [
           {
-            "node": "Oferta z leada?",
+            "node": "Offer from a lead?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Pobierz PDF": {
+    "Get PDF": {
       "main": [
         [
           {
-            "node": "Wyślij PDF",
+            "node": "Send PDF",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Coś wiemy?": {
+    "Do we know anything?": {
       "main": [
         [
           {
-            "node": "Analiza leada (AI)",
+            "node": "Analyze lead (AI)",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Plan oferty",
+            "node": "Offer plan",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Oferta z leada?": {
+    "Offer from a lead?": {
       "main": [
         [
           {
-            "node": "Pobierz PDF",
+            "node": "Get PDF",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Brak oferty",
+            "node": "No such offer",
             "type": "main",
             "index": 0
           }
