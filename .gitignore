@@ -4,3 +4,5 @@ landing/dist/
 landing/.astro/
 .DS_Store
 offer-studio/data/
+
+n8n/n8n-nodes-offer-studio/dist/

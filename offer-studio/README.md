@@ -78,7 +78,12 @@ Podbicie FigCraft: w `Dockerfile` zmień `FIGCRAFT_VERSION` i obie sumy z `SHA25
 
 ### n8n
 
-n8n jest w tej samej sieci, więc węzeł HTTP Request woła `http://offer-studio:3000/api/...`
-z nagłówkiem `Authorization: Bearer <STUDIO_API_TOKEN>`. Przykłady: dopisanie use case'u z formularza,
-podmiana klienta i ceny w ofercie (`PATCH /api/offers/<id>`), pobranie PDF (`GET /api/offers/<id>/pdf`)
-i wysłanie go mailem.
+n8n ze stacku ma wbudowane węzły **Offer Studio** i **Offer Studio Trigger** ([opis](../n8n/README.md)),
+z poświadczeniem wypełnionym automatycznie. Listę operacji i pól węzeł czyta na żywo z
+`GET /api/openapi.json`, który powstaje z tras serwera i opisów w `src/openapi.js`.
+
+**Nowa trasa API = opis w `DOCS` w `src/openapi.js`.** Wtedy n8n pokaże ją z nazwą, polami i typami.
+Bez opisu też się pojawi, ale tylko z polem „Treść (JSON)”, a `npm test` zgłosi brak.
+
+Przykłady: dopisanie use case'u z formularza, podmiana klienta i ceny w ofercie
+(`PATCH /api/offers/<id>`), pobranie PDF (`GET /api/offers/<id>/pdf`) i wysłanie go mailem.

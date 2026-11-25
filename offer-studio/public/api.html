@@ -80,6 +80,9 @@ curl -o oferta.pdf $URL/api/offers/gaius-vault-bazowa/pdf -H "Authorization: Bea
 <tr><td>POST /api/import?mode=replace</td><td>Zastąpienie całej bazy zawartością pliku</td></tr>
 </table>
 
+<h2>Opis maszynowy</h2>
+<p><code>GET /api/openapi.json</code> to opis API w formacie OpenAPI 3.1, budowany z tras serwera. Z niego korzysta węzeł n8n „Offer Studio”: nowe endpointy widzi bez przebudowy n8n.</p>
+
 <h2>Na żywo</h2>
 <p><code>GET /api/events</code> to strumień Server-Sent Events z informacją o każdej zmianie (<code>{table, id, offer_id}</code>).</p>
 </body>
