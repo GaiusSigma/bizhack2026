@@ -6,6 +6,7 @@ import { openDb } from '../src/db.js';
 import { unzipSync } from 'fflate';
 import { buildLibrary, describeComponents, normalizeUpload, parseMarks, parseTemplate, renderFigcraft, renderPdf, renderThumbnails } from '../src/figcraft.js';
 import seed, { TEMPLATE, components as seedComponents, slides as seedSlides } from '../seed/seed.js';
+import { legacyPl } from '../seed/legacy-pl.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -189,6 +190,33 @@ test('AI: schema with card ids and fields, response clean-up (mock client)', asy
   assert.ok(r.warnings.some((w) => /extras dropped/.test(w)));
 });
 
+test('AI: lead analysis passes text and hints, trims concerns to 3 (mock client)', async () => {
+  let request;
+  const api = { beta: { messages: { parse: async (params) => {
+    request = params;
+    return {
+      stop_reason: 'end_turn', model: params.model, usage: {},
+      parsed_output: { segment: 'law-firm', role: null, product: null, pains: ['pain:a', 'pain:a', 'pain:b'], client: 'Firm X', person: null, country: 'PL', concerns: ['a', 'b', 'c', 'd'], summary: 's' },
+    };
+  } } } };
+  const { analyzeLead } = await import('../src/ai.js');
+  const catalog = { pains: [{ id: 'pain:a', label: 'A' }, { id: 'pain:b', label: 'B' }], products: [{ id: 'product:vault', label: 'Vault' }] };
+  const r = await analyzeLead({ api, text: 'Partner at Firm X', hints: { segment: 'law-firm' }, catalog });
+  const schema = JSON.stringify(request.output_config.format.schema);
+  for (const v of ['law-firm', 'in-house', 'public-sector', 'champion', 'board', 'pain:a', 'product:vault']) assert.ok(schema.includes(v), v);
+  assert.match(request.messages[0].content, /Partner at Firm X/);
+  assert.match(request.messages[0].content, /"segment":"law-firm"/);
+  assert.equal(r.role, null);
+  assert.deepEqual(r.concerns, ['a', 'b', 'c']);
+  assert.deepEqual(r.pains, ['pain:a', 'pain:b']);
+});
+
+test('AI: lead analysis turns a refusal into a 502', async () => {
+  const api = { beta: { messages: { parse: async () => ({ stop_reason: 'refusal', parsed_output: null }) } } };
+  const { analyzeLead } = await import('../src/ai.js');
+  await assert.rejects(analyzeLead({ api, text: 'x' }), (e) => e.status === 502);
+});
+
 // Render with the real figcraft-cli if available (locally from the FigCraft install, in Docker from the image).
 const cli = process.env.FIGCRAFT_CLI || (process.platform === 'win32' ? 'C:\\Program Files\\ArtCraft\\FigCraft\\figcraft-cli.exe' : 'figcraft-cli');
 let hasCli = true;
@@ -277,4 +305,200 @@ test('render: picked components replace #pick slots in order, with overridden te
 
 test('an unsupported file format is rejected', async () => {
   await assert.rejects(normalizeUpload(Buffer.from('x'), 'notes.txt'), /Unsupported file/);
+});
+
+// ------------------------------------------------------------------ v4: kafelki i scenariusze
+const tileFree = () => ({
+  ...seed,
+  tiles: undefined,
+  scenarios: undefined,
+  blocks: seed.blocks.filter((b) => b.type !== 'solution').map((b) => {
+    const { order: _o, ...data } = b.data;
+    return { ...b, data, tags: b.tags.filter((t) => !t.includes(':')) };
+  }),
+  components: seed.components.map((c) => ({ ...c, tags: c.tags.filter((t) => !t.includes(':')) })),
+});
+
+test('v4: a v3 database from the volume gets tiles and the base offer survives', () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'studio-')), 'v3.db');
+  const a = openDb(path);
+  a.importAll(tileFree(), 'merge');
+  a.db.exec('DROP TABLE tiles; DROP TABLE scenarios; ALTER TABLE slides DROP COLUMN origin; ALTER TABLE slides DROP COLUMN locked; PRAGMA user_version = 3');
+  a.db.close();
+
+  const b = openDb(path);
+  assert.equal(b.db.prepare('PRAGMA user_version').get().user_version, 5);
+  const cols = b.db.prepare('PRAGMA table_info(slides)').all().map((c) => c.name);
+  assert.ok(cols.includes('origin') && cols.includes('locked'));
+  assert.equal(b.getOffer('gaius-vault-base').slides.length, 11);
+  assert.equal(b.getOffer('gaius-vault-base').slides[0].locked, false);
+
+  const first = b.ensureTiles(seed);
+  assert.equal(first.tiles, seed.tiles.length);
+  assert.equal(first.blocks, seed.solutionBlocks.length);
+  assert.ok(first.tagged > 0);
+  assert.deepEqual(b.ensureTiles(seed), { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 });
+
+  const tags = b.get('blocks', 'uc-urgent-letter').tags;
+  assert.deepEqual(tags, [...new Set(tags)], 'powtórzone tagi');
+  assert.ok(tags.includes('legal-dept'), 'stary tag zniknął');
+  for (const t of seed.tileTags['uc-urgent-letter']) assert.ok(tags.includes(t), t);
+  assert.ok(b.get('components', 'why/on-premise').tags.includes('product:on-prem'));
+  // rollout steps get their order from the seed (the generator picks them in this order)
+  assert.deepEqual(['st-processes', 'st-real-matters', 'st-routines', 'st-verification', 'st-adoption'].map((id) => b.get('blocks', id).data.order), [0, 1, 2, 3, 4]);
+});
+
+test('tiles: invalid ids rejected (400)', () => {
+  const s = openDb(':memory:');
+  for (const id of ['color:green', 'pain:Bad', 'poufnosc']) {
+    assert.throws(() => s.insert('tiles', { id, category: 'pain', label: 'x', status: 'active' }), (e) => e.status === 400, id);
+  }
+  assert.throws(() => s.insert('scenarios', { id: 'pain:confidentiality', name: 'x', steps: [] }), (e) => e.status === 400);
+  const t = s.insert('tiles', { id: 'pain:test', category: 'pain', label: 'Test', status: 'active', quotes: ['a'] });
+  assert.deepEqual(t.quotes, ['a']);
+});
+
+test('export v4 -> import replace restores tiles and scenarios', () => {
+  const a = fresh();
+  a.update('scenarios', 'base', { steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
+  const dump = JSON.parse(JSON.stringify(a.exportAll()));
+  assert.equal(dump.version, 4);
+  assert.equal(dump.tiles.length, seed.tiles.length);
+  const b = openDb(':memory:');
+  const counts = b.importAll(dump, 'replace');
+  assert.equal(counts.tiles, seed.tiles.length);
+  assert.equal(counts.scenarios, seed.scenarios.length);
+  assert.deepEqual(b.list('tiles'), a.list('tiles'));
+  assert.deepEqual(b.get('scenarios', 'base').steps[0].fill, { kind: 'none' });
+});
+
+test('applyRecompute: creates, hides and orders slides in one transaction, leaves locked alone', () => {
+  const s = openDb(':memory:');
+  s.insert('offers', { id: 'o1', name: 'O1', data: {} });
+  const locked = s.addSlide('o1', { frame: 'architektura', data: { a: 1 }, origin: { step: 'architektura', matched: {} }, locked: true });
+  const auto = s.addSlide('o1', { frame: 'okladka', data: {}, origin: { step: 'okladka', matched: {} } });
+  const created = { frame: 'okladka', data: { title: 'Nowa' }, block_ids: [], picks: {}, hidden: false, locked: false, origin: { step: 'okladka', label: 'Okładka', matched: {} } };
+  const o = s.applyRecompute('o1', { keep: [locked], create: [created], remove: [auto.id], hide: [locked.id], order: [{ create: 0 }, locked.id] });
+  assert.equal(o.slides.length, 2);
+  assert.equal(o.slides[0].data.title, 'Nowa');
+  assert.deepEqual(o.slides[0].origin, created.origin);
+  assert.equal(o.slides[0].locked, false);
+  assert.equal(o.slides[1].id, locked.id);
+  assert.equal(o.slides[1].hidden, true);
+  assert.equal(o.slides[1].locked, true);
+  assert.deepEqual(o.slides[1].data, { a: 1 });
+  assert.equal(s.get('slides', auto.id), undefined);
+});
+
+test('applyRecompute: hide sets origin.auto_hidden, unhide shows the slide and clears the marker', () => {
+  const s = openDb(':memory:');
+  s.insert('offers', { id: 'o2', name: 'O2', data: {} });
+  const a = s.addSlide('o2', { frame: 'architektura', data: {}, origin: { step: 'architektura', matched: {} }, locked: true });
+  let o = s.applyRecompute('o2', { hide: [a.id], order: [a.id] });
+  assert.equal(o.slides[0].hidden, true);
+  assert.equal(o.slides[0].origin.auto_hidden, true);
+  o = s.applyRecompute('o2', { unhide: [a.id], order: [a.id] });
+  assert.equal(o.slides[0].hidden, false);
+  assert.equal(o.slides[0].origin.auto_hidden, undefined);
+  assert.equal(o.slides[0].locked, true);
+});
+
+test('tx: a nested transaction works, and an error inside rolls everything back', () => {
+  const s = openDb(':memory:');
+  s.insert('offers', { id: 'o3', name: 'przed', data: {} });
+  s.tx(() => s.tx(() => s.update('offers', 'o3', { name: 'w środku' })));
+  assert.equal(s.get('offers', 'o3').name, 'w środku');
+  assert.throws(() => s.tx(() => {
+    s.update('offers', 'o3', { name: 'zewnętrzna' });
+    s.tx(() => { throw new Error('boom'); });
+  }), /boom/);
+  assert.equal(s.get('offers', 'o3').name, 'w środku');
+});
+
+test('tile content update: a database seeded with revision 1 gets the new solutions, pins and guidance once', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  // simulate revision 1: no new solutions, old pins, no guidance, old description, a description edited by hand
+  for (const id of ['sol-private-vault', 'sol-word-review']) s.remove('blocks', id);
+  s.update('blocks', 'sol-nda-review', { tags: ['pain:repetitive-documents', 'custom-tag'] });
+  s.update('tiles', 'pain:shadow-ai', { data: { pick_when: null, avoid_when: null } });
+  s.update('tiles', 'segment:law-firm', { description: seed.tileUpgrade.previousDescriptions['segment:law-firm'] });
+  s.update('tiles', 'role:board', { description: 'Our own wording' });
+  s.setSetting('tile_content_rev', '1');
+
+  const counts = s.ensureTiles(seed);
+  assert.equal(counts.blocks, 2);
+  assert.ok(s.get('blocks', 'sol-private-vault'));
+  const nda = s.get('blocks', 'sol-nda-review').tags;
+  assert.ok(nda.includes('custom-tag'), 'plain tags are kept');
+  assert.deepEqual(nda.filter((t) => t.includes(':')).sort(), seed.solutionBlocks.find((b) => b.id === 'sol-nda-review').tags.slice().sort());
+  assert.ok(s.get('tiles', 'pain:shadow-ai').data.pick_when.length > 20);
+  assert.equal(s.get('tiles', 'segment:law-firm').description, seed.tiles.find((t) => t.id === 'segment:law-firm').description);
+  assert.equal(s.get('tiles', 'role:board').description, 'Our own wording', 'a description edited by hand stays');
+  assert.equal(s.getSetting('tile_content_rev'), String(seed.tileUpgrade.rev));
+  assert.deepEqual(s.ensureTiles(seed), { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 }, 'second run changes nothing');
+});
+
+test('tile content update: generated sources are refreshed, sources written by hand stay', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  s.update('blocks', 'sol-private-vault', { data: { source: 'Sales sheet: "Gaius Vault to wewnętrzne AI…"' } });
+  s.update('blocks', 'sol-it-brief', { data: { source: 'Confirmed by Witek on the call' } });
+  s.setSetting('tile_content_rev', String(seed.tileUpgrade.rev - 1));
+  s.ensureTiles(seed);
+  assert.equal(s.get('blocks', 'sol-private-vault').data.source, seed.solutionBlocks.find((b) => b.id === 'sol-private-vault').data.source);
+  assert.equal(s.get('blocks', 'sol-it-brief').data.source, 'Confirmed by Witek on the call');
+});
+
+// ------------------------------------------------------------------ legacy Polish databases
+const legacyDb = () => {
+  const s = openDb(':memory:');
+  const ts = '2026-11-25T00:00:00.000Z';
+  for (const b of legacyPl.blocks) s.upsert('blocks', { id: b.id, type: b.type, title: b.title, body: b.body, data: b.data, tags: ['vault'], created_at: ts, updated_at: ts });
+  s.upsert('component_sets', { id: 'dlaczego', title: 'Dlaczego Vault? (6 kart)', rules: 'Dokładnie 6 kart.' });
+  for (const c of legacyPl.components) s.upsert('components', { id: c.id, set_name: 'dlaczego', key: c.id.split('/')[1], title: c.title, description: c.description, use_when: c.use_when, avoid_when: c.avoid_when, created_at: ts, updated_at: ts });
+  s.upsert('offers', { id: 'gaius-vault-bazowa', name: 'Gaius Vault – oferta bazowa', data: { client: '', price: '------' } });
+  legacyPl.slides.forEach((sl, i) => s.upsert('slides', { id: sl.id, offer_id: 'gaius-vault-bazowa', position: i, frame: sl.frame, data: sl.data, block_ids: [], picks: {} }));
+  s.upsert('offers', { id: 'moja-oferta', name: 'Oferta dla ACME', data: { client: 'ACME' } });
+  s.upsert('slides', { id: 'm1', offer_id: 'moja-oferta', position: 0, frame: 'problemy', data: legacyPl.slides[1].data, block_ids: ['pr-research-od-nowa', 'pr-ai-bez-zasad'], picks: {} });
+  s.upsert('slides', { id: 'm2', offer_id: 'moja-oferta', position: 1, frame: 'dlaczego', data: { title: 'Dlaczego my, ACME?' }, picks: { dlaczego: [{ component: 'dlaczego/on-premise' }] } });
+  s.upsert('blocks', { ...s.get('blocks', 'uc-pilne-pismo'), body: 'Zmienione ręcznie przez zespół.' });
+  return s;
+};
+
+test('legacy migration: a Polish database becomes English, references follow, a backup keeps everything', () => {
+  const s = legacyDb();
+  const before = JSON.stringify(s.exportAll());
+  const report = s.migrateLegacyPolish(legacyPl, seed);
+
+  const english = Object.fromEntries(seed.blocks.map((b) => [b.id, b]));
+  for (const b of legacyPl.blocks) {
+    if (b.id !== b.en) assert.equal(s.get('blocks', b.id), undefined, `${b.id} still there`);
+    assert.equal(s.get('blocks', b.en)?.title, english[b.en].title, `${b.en} is not the English version`);
+  }
+  for (const c of legacyPl.components) assert.ok(s.get('components', c.en) && !s.get('components', c.id), c.id);
+  assert.ok(s.get('component_sets', 'why') && !s.get('component_sets', 'dlaczego'));
+  assert.equal(s.get('offers', 'gaius-vault-bazowa'), undefined);
+  assert.deepEqual(s.getOffer('gaius-vault-base').slides.map((x) => x.frame), seedSlides.map((x) => x.frame));
+
+  const mine = s.getOffer('moja-oferta').slides;
+  assert.deepEqual(mine.map((x) => x.frame), ['problems', 'why']);
+  assert.deepEqual(mine[0].block_ids, ['pr-research-from-scratch', 'pr-ai-without-rules']);
+  assert.deepEqual(mine[0].data, seedSlides.find((x) => x.frame === 'problems').data, 'default Polish slide copy becomes the English default');
+  assert.deepEqual(mine[1].picks, { why: [{ component: 'why/on-premise' }] });
+  assert.equal(mine[1].data.title, 'Dlaczego my, ACME?', 'copy written for a client stays as written');
+
+  assert.deepEqual(report.editedBlocks, ['uc-pilne-pismo']);
+  assert.deepEqual(report.keptOfferCopy, ['moja-oferta/m2']);
+  const drop = (j) => { const { exported_at: _t, ...rest } = JSON.parse(j); return rest; };
+  assert.deepEqual(drop(s.getSetting('legacy_pl_backup')), drop(before), 'the full Polish database is kept as a backup');
+  assert.equal(s.migrateLegacyPolish(legacyPl, seed), null, 'runs once');
+});
+
+test('legacy migration: an English database is left alone', () => {
+  const s = fresh();
+  assert.equal(s.migrateLegacyPolish(legacyPl, seed), null);
+  assert.equal(s.getSetting('legacy_pl_backup'), null);
 });

@@ -14,7 +14,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes } from 'node:crypto';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 5;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS blocks (
@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS slides (
   query TEXT,
   picks TEXT NOT NULL DEFAULT '{}',
   hidden INTEGER NOT NULL DEFAULT 0,
+  origin TEXT,                             -- JSON {step, label, matched}: where a tile-generated slide came from
+  locked INTEGER NOT NULL DEFAULT 0,       -- 1: edited by hand, recompute leaves it alone
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -81,6 +83,32 @@ CREATE TABLE IF NOT EXISTS components (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS components_set ON components(set_name);
+
+CREATE TABLE IF NOT EXISTS tiles (
+  id TEXT PRIMARY KEY,                     -- "<category>:<slug>", e.g. pain:confidentiality
+  category TEXT NOT NULL,                  -- role | segment | pain | product
+  label TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  quotes TEXT NOT NULL DEFAULT '[]',       -- client quotes
+  status TEXT NOT NULL DEFAULT 'active',   -- active | soon
+  position INTEGER NOT NULL DEFAULT 0,
+  data TEXT NOT NULL DEFAULT '{}',         -- e.g. {price} for a product
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,                    -- e.g. tile_content_rev: which seed content revision the data has
+  value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scenarios (
+  id TEXT PRIMARY KEY,                     -- role tile id, e.g. role:board
+  name TEXT NOT NULL DEFAULT '',
+  steps TEXT NOT NULL DEFAULT '[]',        -- steps: [{key, label, frame, data, data_by_product, fill, when}]
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS component_sets (
   id TEXT PRIMARY KEY,                     -- set name without @
@@ -110,9 +138,9 @@ export const TABLES = {
     order: 'updated_at DESC',
   },
   slides: {
-    fields: ['offer_id', 'position', 'frame', 'data', 'block_ids', 'query', 'picks', 'hidden'],
-    json: { data: {}, block_ids: [], query: null, picks: {} },
-    bool: ['hidden'],
+    fields: ['offer_id', 'position', 'frame', 'data', 'block_ids', 'query', 'picks', 'hidden', 'origin', 'locked'],
+    json: { data: {}, block_ids: [], query: null, picks: {}, origin: null },
+    bool: ['hidden', 'locked'],
     order: 'offer_id, position',
   },
   components: {
@@ -126,7 +154,22 @@ export const TABLES = {
     json: {},
     order: 'id',
   },
+  tiles: {
+    fields: ['category', 'label', 'description', 'quotes', 'status', 'position', 'data'],
+    json: { quotes: [], data: {} },
+    order: 'category, position, label',
+  },
+  scenarios: {
+    fields: ['name', 'steps'],
+    json: { steps: [] },
+    order: 'id',
+  },
 };
+
+export const TILE_CATEGORIES = ['role', 'segment', 'pain', 'product'];
+export const TILE_ID_RE = /^(role|segment|pain|product):[a-z0-9][a-z0-9-]{0,59}$/;
+// `base` is the one base deck; a role tile id is a role-specific scenario (earlier versions).
+const SCENARIO_ID_RE = /^(base|role:[a-z0-9][a-z0-9-]{0,59})$/;
 
 // Component fields described by a human (the rest comes from the library sync).
 export const COMPONENT_EDITABLE = ['title', 'description', 'use_when', 'avoid_when', 'topic', 'variant', 'tags', 'data'];
@@ -139,6 +182,11 @@ export class HttpError extends Error {
 }
 
 const now = () => new Date().toISOString();
+
+// JSON with sorted keys: compares records regardless of key order.
+const stableJson = (v) => (Array.isArray(v) ? `[${v.map(stableJson).join(',')}]`
+  : v && typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stableJson(v[k])}`).join(',')}}`
+    : JSON.stringify(v ?? null));
 
 export function newId(prefix = '') {
   const rnd = randomBytes(5).toString('hex');
@@ -158,7 +206,8 @@ export function slugify(s) {
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
 // Components have the id "<set>/<card>" (both parts slugified).
 const COMPONENT_ID_RE = /^[a-z0-9][a-z0-9-]{0,59}\/[a-z0-9][a-z0-9-]{0,79}$/;
-const idOk = (table, id) => (table === 'components' ? COMPONENT_ID_RE : ID_RE).test(id);
+const ID_RES = { components: COMPONENT_ID_RE, tiles: TILE_ID_RE, scenarios: SCENARIO_ID_RE };
+const idOk = (table, id) => (ID_RES[table] || ID_RE).test(id);
 export const componentId = (set, key) => `${slugify(set)}/${slugify(key)}`;
 
 export function openDb(path) {
@@ -189,6 +238,9 @@ function migrate(db) {
       for (const t of ['layouts', 'assets', 'settings']) if (has(t)) db.exec(`DROP TABLE ${t}`);
     }
     if (!cols('slides').includes('picks')) db.exec("ALTER TABLE slides ADD COLUMN picks TEXT NOT NULL DEFAULT '{}'");
+    // v3 -> v4: slides get origin and lock; SCHEMA creates the tiles and scenarios tables.
+    if (!cols('slides').includes('origin')) db.exec('ALTER TABLE slides ADD COLUMN origin TEXT');
+    if (!cols('slides').includes('locked')) db.exec('ALTER TABLE slides ADD COLUMN locked INTEGER NOT NULL DEFAULT 0');
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
@@ -286,17 +338,24 @@ export class Store {
     if (!r.changes) throw new HttpError(404, `${table}/${id}: no such record`);
   }
 
+  // Transaction; a nested one runs as a SAVEPOINT (an error inside rolls it back and is rethrown).
   tx(fn) {
-    this.db.exec('BEGIN');
+    const depth = (this.txDepth ||= 0);
+    const sp = `sp${depth}`;
+    this.db.exec(depth ? `SAVEPOINT ${sp}` : 'BEGIN');
+    this.txDepth = depth + 1;
     try {
       const r = fn();
-      this.db.exec('COMMIT');
+      this.db.exec(depth ? `RELEASE ${sp}` : 'COMMIT');
       return r;
     } catch (e) {
-      this.db.exec('ROLLBACK');
+      this.db.exec(depth ? `ROLLBACK TO ${sp}; RELEASE ${sp}` : 'ROLLBACK');
       throw e;
+    } finally {
+      this.txDepth = depth;
     }
   }
+
 
   // ------------------------------------------------------------ knowledge blocks
   listBlocks({ type, tag, q } = {}) {
@@ -380,6 +439,30 @@ export class Store {
     return offer;
   }
 
+  // Runs a mergeRecompute plan (src/generate.js) in one transaction. Never sets `locked`:
+  // recompute is the only slide change that does not mark slides as edited by hand.
+  applyRecompute(offerId, { create = [], remove = [], hide = [], unhide = [], order = [] }) {
+    this.mustGet('offers', offerId);
+    const setHidden = (id, hidden) => {
+      const cur = this.get('slides', id);
+      if (!cur || cur.offer_id !== offerId) return;
+      const { auto_hidden: _a, ...origin } = cur.origin || {};
+      // origin.auto_hidden tells a recompute hide apart from a manual one
+      this.db.prepare('UPDATE slides SET hidden = ?, origin = ? WHERE id = ?')
+        .run(hidden ? 1 : 0, JSON.stringify(hidden ? { ...origin, auto_hidden: true } : origin), id);
+    };
+    this.tx(() => {
+      for (const id of remove) this.db.prepare('DELETE FROM slides WHERE id = ? AND offer_id = ?').run(id, offerId);
+      for (const id of hide) setHidden(id, true);
+      for (const id of unhide) setHidden(id, false);
+      const createdIds = create.map((s) => this.insert('slides', { ...s, offer_id: offerId, position: 0, locked: false }, 'slide').id);
+      const setPos = this.db.prepare('UPDATE slides SET position = ? WHERE id = ? AND offer_id = ?');
+      order.forEach((x, i) => setPos.run(i, typeof x === 'string' ? x : createdIds[x.create], offerId));
+      this.touch('offers', offerId);
+    });
+    return this.getOffer(offerId);
+  }
+
   addSlide(offerId, slide) {
     this.mustGet('offers', offerId);
     const max = this.db.prepare('SELECT MAX(position) AS m FROM slides WHERE offer_id = ?').get(offerId).m;
@@ -423,6 +506,171 @@ export class Store {
     this.db.prepare(`UPDATE ${table} SET updated_at = ? WHERE id = ?`).run(now(), id);
   }
 
+  // Tiles (v4) for databases that have none yet: tiles, scenarios, solution blocks, and tiles pinned
+  // to existing content (appended to tags, nothing is removed). Runs only while the tiles table is empty,
+  // so later starts change nothing.
+  getSetting(key) {
+    return this.db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key)?.value ?? null;
+  }
+
+  setSetting(key, value) {
+    this.db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));
+  }
+
+  ensureTiles(seed) {
+    const counts = { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 };
+    const rev = seed.tileUpgrade?.rev ?? 1;
+    if (this.db.prepare('SELECT 1 FROM tiles LIMIT 1').get()) {
+      const have = Number(this.getSetting('tile_content_rev') || 1);
+      if (have < rev) this.tx(() => { this.upgradeTileContent(seed, counts); this.setSetting('tile_content_rev', rev); });
+      return counts;
+    }
+    this.setSetting('tile_content_rev', rev);
+    this.tx(() => {
+      for (const t of seed.tiles || []) { this.upsert('tiles', t); counts.tiles++; }
+      for (const sc of seed.scenarios || []) if (!this.get('scenarios', sc.id)) { this.upsert('scenarios', sc); counts.scenarios++; }
+      for (const b of seed.solutionBlocks || []) if (!this.get('blocks', b.id)) { this.upsert('blocks', b); counts.blocks++; }
+      // Order from the seed (e.g. rollout steps): the generator breaks ties with it.
+      for (const b of seed.blocks || []) {
+        const cur = b.data?.order != null && this.get('blocks', b.id);
+        if (cur && cur.data?.order == null) this.update('blocks', b.id, { data: { order: b.data.order } });
+      }
+      for (const [id, add] of Object.entries(seed.tileTags || {})) {
+        const table = id.includes('/') ? 'components' : 'blocks';
+        const cur = this.get(table, id);
+        if (!cur) continue;
+        const tags = [...new Set([...cur.tags, ...add])];
+        if (tags.length === cur.tags.length) continue;
+        this.update(table, id, { tags });
+        counts.tagged++;
+      }
+    });
+    return counts;
+  }
+
+  // Databases created by the first, Polish version keep Polish seed records under Polish ids after the
+  // English translation (seed data only loads into an empty database). This replaces them with their
+  // English counterparts (seed/legacy-pl.js maps the ids) and re-points every offer to them:
+  // - a full export of the database is saved first (setting legacy_pl_backup), so nothing is lost;
+  // - seed blocks, cards, the card set and the base offer are swapped for the English versions;
+  // - slides in every offer get the new frame names, block and card ids; slide copy that is still the
+  //   Polish default becomes the English default, copy written for a client stays as it is;
+  // - the report (setting legacy_pl_report) lists seed records edited by hand before the switch,
+  //   whose edited text lives only in the backup.
+  // Returns null when there is nothing Polish to migrate. The template file is swapped in src/server.js.
+  migrateLegacyPolish(legacy, seed) {
+    const renamedFrames = Object.entries(legacy.frames).filter(([pl, en]) => pl !== en).map(([pl]) => pl);
+    if (this.getSetting('legacy_pl_report')) return null;
+    const hasLegacy = legacy.blocks.some((b) => b.id !== b.en && this.get('blocks', b.id))
+      || legacy.components.some((c) => c.id !== c.en && this.get('components', c.id))
+      || Object.keys(legacy.componentSets).some((id) => this.get('component_sets', id))
+      || Object.keys(legacy.offers).some((id) => this.get('offers', id))
+      || !!this.db.prepare(`SELECT 1 FROM slides WHERE frame IN (${renamedFrames.map(() => '?').join(', ')}) LIMIT 1`).get(...renamedFrames);
+    if (!hasLegacy) return null;
+
+    const same = (a, b) => stableJson(a) === stableJson(b);
+    const withoutOrder = ({ order: _o, ...rest } = {}) => rest;
+    const blockMap = Object.fromEntries(legacy.blocks.map((b) => [b.id, b.en]));
+    const compMap = Object.fromEntries(legacy.components.map((c) => [c.id, c.en]));
+    const seedBlocks = Object.fromEntries((seed.blocks || []).map((b) => [b.id, b]));
+    const seedComps = Object.fromEntries((seed.components || []).map((c) => [c.id, c]));
+    const seedSets = Object.fromEntries((seed.component_sets || []).map((c) => [c.id, c]));
+    const plDefault = Object.fromEntries(legacy.slides.map((s) => [s.frame, s.data]));
+    const enDefault = Object.fromEntries((seed.slides || []).map((s) => [s.frame, s.data]));
+    const report = { migratedAt: now(), editedBlocks: [], editedCards: [], keptOfferCopy: [] };
+    const backup = JSON.stringify(this.exportAll());
+
+    this.tx(() => {
+      this.setSetting('legacy_pl_backup', backup);
+      for (const b of legacy.blocks) {
+        const cur = this.get('blocks', b.id);
+        if (!cur) continue;
+        if (cur.title !== b.title || cur.body !== b.body || !same(withoutOrder(cur.data), withoutOrder(b.data))) report.editedBlocks.push(b.id);
+        // same id in both versions (e.g. cmp-word): the record stays and gets the English content
+        if (b.id === b.en) { if (seedBlocks[b.en]) this.upsert('blocks', { ...seedBlocks[b.en], tags: [...new Set([...cur.tags, ...seedBlocks[b.en].tags])] }); continue; }
+        if (!this.get('blocks', b.en) && seedBlocks[b.en]) this.upsert('blocks', seedBlocks[b.en]);
+        this.db.prepare('DELETE FROM blocks WHERE id = ?').run(b.id);
+      }
+      for (const c of legacy.components) {
+        const cur = this.get('components', c.id);
+        if (!cur) continue;
+        if (['title', 'description', 'use_when', 'avoid_when'].some((k) => (cur[k] || '') !== (c[k] || ''))) report.editedCards.push(c.id);
+        if (c.id === c.en) { if (seedComps[c.en]) this.upsert('components', seedComps[c.en]); continue; }
+        if (!this.get('components', c.en) && seedComps[c.en]) this.upsert('components', seedComps[c.en]);
+        this.db.prepare('DELETE FROM components WHERE id = ?').run(c.id);
+      }
+      for (const [pl, en] of Object.entries(legacy.componentSets)) {
+        if (!this.get('component_sets', pl)) continue;
+        if (!this.get('component_sets', en) && seedSets[en]) this.upsert('component_sets', seedSets[en]);
+        this.db.prepare('DELETE FROM component_sets WHERE id = ?').run(pl);
+      }
+      for (const [pl, en] of Object.entries(legacy.offers)) {
+        if (!this.get('offers', pl)) continue;
+        if (!this.get('offers', en)) {
+          const offer = (seed.offers || []).find((o) => o.id === en);
+          if (offer) {
+            this.upsert('offers', offer);
+            for (const s of seed.slides || []) this.upsert('slides', { ...s, offer_id: en });
+          }
+        }
+        this.db.prepare('DELETE FROM slides WHERE offer_id = ?').run(pl);
+        this.db.prepare('DELETE FROM offers WHERE id = ?').run(pl);
+      }
+      for (const s of this.list('slides')) {
+        const frame = legacy.frames[s.frame] || s.frame;
+        const block_ids = (s.block_ids || []).map((id) => blockMap[id] || id);
+        const picks = Object.fromEntries(Object.entries(s.picks || {}).map(([set, list]) => [
+          legacy.componentSets[set] || set,
+          (list || []).map((p) => ({ ...p, component: compMap[p.component] || p.component })),
+        ]));
+        let data = s.data || {};
+        if (plDefault[s.frame] && same(data, plDefault[s.frame])) data = enDefault[frame] || {};
+        else if (frame !== s.frame && Object.keys(data).length) report.keptOfferCopy.push(`${s.offer_id}/${s.id}`);
+        const changed = frame !== s.frame || !same(block_ids, s.block_ids) || !same(picks, s.picks) || data !== s.data;
+        if (changed) this.update('slides', s.id, { frame, block_ids, picks, data }, { replaceData: true });
+      }
+      this.setSetting('legacy_pl_report', JSON.stringify(report));
+    });
+    return report;
+  }
+
+  // Brings tile content from an older seed revision up to date (see seed/tiles.js tileUpgrade).
+  upgradeTileContent(seed, counts) {
+    const prev = seed.tileUpgrade?.previousDescriptions || {};
+    // The base deck replaces the per-role scenarios of earlier versions.
+    for (const sc of seed.scenarios || []) if (!this.get('scenarios', sc.id)) { this.upsert('scenarios', sc); counts.scenarios++; }
+    for (const id of seed.retiredScenarios || []) if (this.get('scenarios', id)) this.db.prepare('DELETE FROM scenarios WHERE id = ?').run(id);
+    for (const b of seed.solutionBlocks || []) {
+      const cur = this.get('blocks', b.id);
+      if (!cur) { this.upsert('blocks', b); counts.blocks++; continue; }
+      const tiles = b.tags.filter((t) => t.includes(':'));
+      const tags = [...cur.tags.filter((t) => !t.includes(':')), ...tiles];
+      // Sources written by this seed start with "Sales sheet"; those follow the seed, anything else was written by hand.
+      const generated = !cur.data?.source || String(cur.data.source).startsWith('Sales sheet');
+      const data = generated && cur.data?.source !== b.data.source ? { source: b.data.source } : {};
+      if (JSON.stringify(tags) === JSON.stringify(cur.tags) && !Object.keys(data).length) continue;
+      this.update('blocks', b.id, { tags, ...(Object.keys(data).length ? { data } : {}) });
+      counts.tagged++;
+    }
+    for (const [id, add] of Object.entries(seed.tileTags || {})) {
+      const table = id.includes('/') ? 'components' : 'blocks';
+      const cur = this.get(table, id);
+      if (!cur) continue;
+      const tags = [...new Set([...cur.tags, ...add])];
+      if (tags.length !== cur.tags.length) { this.update(table, id, { tags }); counts.tagged++; }
+    }
+    for (const t of seed.tiles || []) {
+      const cur = this.get('tiles', t.id);
+      if (!cur) { this.upsert('tiles', t); counts.tiles++; continue; }
+      const patch = {};
+      const data = {};
+      for (const k of ['pick_when', 'avoid_when']) if (!cur.data?.[k] && t.data?.[k]) data[k] = t.data[k];
+      if (Object.keys(data).length) patch.data = data;
+      if (prev[t.id] != null && cur.description === prev[t.id] && t.description !== cur.description) patch.description = t.description;
+      if (Object.keys(patch).length) this.update('tiles', t.id, patch);
+    }
+  }
+
   isEmpty() {
     return !this.db.prepare('SELECT 1 FROM templates LIMIT 1').get() && !this.db.prepare('SELECT 1 FROM blocks LIMIT 1').get();
   }
@@ -435,7 +683,7 @@ export class Store {
       .map((t) => ({ id: t.id, name: t.name, created_at: t.created_at, updated_at: t.updated_at, file_base64: Buffer.from(t.file).toString('base64') }));
     return {
       format: 'offer-studio',
-      version: 3,
+      version: 4,
       exported_at: now(),
       blocks: this.list('blocks'),
       templates,
@@ -443,6 +691,8 @@ export class Store {
       slides: this.list('slides'),
       components: this.list('components'),
       component_sets: this.list('component_sets'),
+      tiles: this.list('tiles'),
+      scenarios: this.list('scenarios'),
     };
   }
 
@@ -452,13 +702,13 @@ export class Store {
   // A v2 export has no components: the library sync adds them after the import.
   importAll(dump, mode = 'merge') {
     if (!dump || dump.format !== 'offer-studio') throw new HttpError(400, 'This is not an offer-studio export (missing format: "offer-studio")');
-    if (![1, 2, 3].includes(dump.version)) throw new HttpError(400, `Unsupported export version: ${dump.version}`);
+    if (![1, 2, 3, 4].includes(dump.version)) throw new HttpError(400, `Unsupported export version: ${dump.version}`);
     if (!['merge', 'replace'].includes(mode)) throw new HttpError(400, 'mode: merge or replace');
     const slides = (dump.slides || []).map((s) => (dump.version === 1 ? { ...s, frame: s.layout_id } : s));
     const counts = {};
     this.tx(() => {
       if (mode === 'replace') {
-        for (const t of ['slides', 'offers', 'blocks', 'templates', 'components', 'component_sets']) this.db.exec(`DELETE FROM ${t}`);
+        for (const t of ['slides', 'offers', 'blocks', 'templates', 'components', 'component_sets', 'tiles', 'scenarios']) this.db.exec(`DELETE FROM ${t}`);
       }
       counts.templates = 0;
       for (const t of dump.templates || []) {
@@ -466,7 +716,7 @@ export class Store {
         counts.templates++;
       }
       // Order matters: slides point to offers.
-      for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides], ['components', dump.components], ['component_sets', dump.component_sets]]) {
+      for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides], ['components', dump.components], ['component_sets', dump.component_sets], ['tiles', dump.tiles], ['scenarios', dump.scenarios]]) {
         counts[table] = 0;
         for (const item of items || []) {
           this.upsert(table, item);

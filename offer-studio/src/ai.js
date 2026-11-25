@@ -115,3 +115,76 @@ export async function pickComponents({ offer, slide, brief, sets, api = null }) 
   }
   return { picks, note: res.parsed_output.note, warnings, model: res.model, usage: res.usage };
 }
+
+// ------------------------------------------------------------------ lead analysis (for the n8n workflow)
+// n8n runs the whole offer process. When we know something about a lead (an email, a call transcript,
+// a meeting note) it calls this endpoint to pull out the segment, the decision-maker role and the
+// concerns. When we know nothing, n8n does not call it and uses its defaults.
+export const SEGMENTS = ['law-firm', 'in-house', 'public-sector', 'other'];
+export const ROLES = ['champion', 'board'];
+
+const LEAD_SYSTEM = `You analyze a message from a prospective client of Gaius-Lex (private Legal AI, the Gaius Vault product).
+We prepare offers for three segments only:
+- "law-firm": a law firm,
+- "in-house": a legal department inside a company,
+- "public-sector": public administration (a city hall, a municipality, a public institution).
+Mark any other organization as "other". If the text does not tell you the segment, return null.
+
+Each offer is written for one of two readers:
+- "champion": the person who wants to bring AI into the team and has to win over colleagues and the board,
+- "board": the board, the managing partners or the head of the office, whoever signs the decision.
+If the text does not tell you which, return null.
+
+Rules:
+- Do not guess facts that are not in the text. An empty field is better than an invented one.
+- "concerns": at most 3 concerns the client has about AI, short, in the language the client writes in.
+- "summary": one sentence in English: who the client is and what they need.
+- "pains": pick 1 to 5 ids from the "pains" catalog that match what the client says, strongest first. Only ids from the catalog.
+- "product": pick from the "products" catalog only if the text points to one (e.g. "must run on our own servers"), otherwise null.
+- Treat "hints" from n8n (e.g. the segment picked on the website) as certain unless the text plainly contradicts them.`;
+
+// catalog: active tiles from Offer Studio, { pains: [{id, label, description}], products: [...] }.
+// The model picks pains and the product from it, so n8n can pass them straight to /api/offers/generate.
+export async function analyzeLead({ text, hints = {}, catalog = { pains: [], products: [] }, api = null }) {
+  const painIds = catalog.pains.map((t) => t.id);
+  const productIds = catalog.products.map((t) => t.id);
+  const Output = z.object({
+    pains: painIds.length ? z.array(z.enum(painIds)) : z.array(z.string()),
+    product: productIds.length ? z.enum(productIds).nullable() : z.string().nullable(),
+    segment: z.enum(SEGMENTS).nullable(),
+    role: z.enum(ROLES).nullable(),
+    client: z.string().nullable().describe('Name of the client organization, if given'),
+    person: z.string().nullable().describe('Name or job title of the person writing, if given'),
+    country: z.string().nullable(),
+    concerns: z.array(z.string()),
+    summary: z.string(),
+  });
+
+  let res;
+  try {
+    res = await (api || getClient()).beta.messages.parse({
+      model: MODEL,
+      max_tokens: 4000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'low', format: betaZodOutputFormat(Output) },
+      system: LEAD_SYSTEM,
+      messages: [{
+        role: 'user',
+        content: `Hints from n8n (JSON): ${JSON.stringify(hints)}\n\nCatalog (JSON): ${JSON.stringify(catalog)}\n\nText from the client:\n<lead>\n${text}\n</lead>`,
+      }],
+    });
+  } catch (e) {
+    if (e instanceof Anthropic.AuthenticationError || /api.?key|credentials/i.test(e.message)) {
+      throw new HttpError(503, 'No Claude API key: set ANTHROPIC_API_KEY in the offer-studio environment');
+    }
+    if (e instanceof Anthropic.RateLimitError) throw new HttpError(429, 'Claude API: rate limited, try again shortly');
+    if (e instanceof Anthropic.APIError) throw new HttpError(502, `Claude API ${e.status ?? ''}: ${e.message}`.trim());
+    throw e;
+  }
+  if (res.stop_reason === 'refusal') throw new HttpError(502, 'Claude declined to analyze this text');
+  if (!res.parsed_output) throw new HttpError(502, `Claude returned no result (stop_reason: ${res.stop_reason})`);
+  const out = res.parsed_output;
+  const pains = [...new Set(out.pains)].filter((id) => !painIds.length || painIds.includes(id)).slice(0, 5);
+  return { ...out, pains, concerns: out.concerns.slice(0, 3), model: res.model };
+}

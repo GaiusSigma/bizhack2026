@@ -6,8 +6,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pickComponents } from './ai.js';
-import { COMPONENT_EDITABLE, HttpError, openDb, slugify } from './db.js';
+import { analyzeLead, pickComponents } from './ai.js';
+import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
+import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import {
   buildLibrary, describeComponents, describeTemplate, hashOf, normalizeUpload, parseTemplate, renderFigcraft, renderPdf, renderPreview, renderThumbnails, UPLOAD_EXT,
 } from './figcraft.js';
@@ -67,6 +68,23 @@ if (gaiusRow && env.STUDIO_SEED !== 'false' && !store.list('components').length
     if (cur && !Object.keys(cur.picks || {}).length) store.update('slides', cur.id, { picks: seedSlide.picks, block_ids: [] });
   });
   console.log('offer-studio: added components (set @why) and their descriptions');
+}
+// Legacy Polish databases (created before the English translation): swap the old template for the current
+// one and migrate Polish seed records to their English counterparts. A full backup is kept (GET /api/legacy-backup).
+if (env.STUDIO_SEED !== 'false') {
+  const { legacyPl } = await import('../seed/legacy-pl.js');
+  const gaius = store.get('templates', seedModule.TEMPLATE.id);
+  if (gaius) {
+    const frames = parseTemplate(store.templateFile(gaius.id).file).frames.map((f) => f.name);
+    if (frames.length === legacyPl.templateFrames.length && frames.every((f, i) => f === legacyPl.templateFrames[i])) seedTemplate();
+  }
+  const report = store.migrateLegacyPolish(legacyPl, seedModule.default);
+  if (report) console.log('offer-studio: migrated the Polish seed content to English (backup: GET /api/legacy-backup)', report);
+}
+// Tiles (v4): a database without tiles gets tiles, scenarios, solution blocks and content pinned to tiles.
+if (env.STUDIO_SEED !== 'false') {
+  const added = store.ensureTiles(seedModule.default);
+  if (Object.values(added).some(Boolean)) console.log('offer-studio: added tiles and scenarios', added);
 }
 
 // ------------------------------------------------------------------ live: Server-Sent Events
@@ -181,18 +199,34 @@ async function uploadSource({ buf, filename, id, name, base }) {
 }
 
 // Slide blocks: an explicit `block_ids` list (in that order) or a `query` {type, tag, limit}.
-function resolveBlocks(slide) {
+// An id with a colon is a tile (e.g. a pain on the "Client pains" slide): label as title, description as body.
+// ctx = {role, product}: block copy for the role (data.by_role) and product (data.by_product) overrides the default.
+function resolveBlocks(slide, ctx = {}) {
   let blocks = [];
   if (slide.block_ids?.length) {
-    blocks = slide.block_ids.map((id) => store.get('blocks', id)).filter(Boolean);
+    blocks = slide.block_ids.map((id) => {
+      if (!id.includes(':')) return store.get('blocks', id);
+      const t = store.get('tiles', id);
+      return t && { id: t.id, type: 'tile', title: t.label, body: t.description, data: { quote: t.quotes[0] || '' } };
+    }).filter(Boolean);
   } else if (slide.query && (slide.query.type || slide.query.tag)) {
     blocks = store.listBlocks({ type: slide.query.type, tag: slide.query.tag });
     blocks.sort((a, b) => (a.data?.order ?? 1e9) - (b.data?.order ?? 1e9) || a.title.localeCompare(b.title, 'en'));
     if (slide.query.limit) blocks = blocks.slice(0, Number(slide.query.limit));
   }
   // fields from `data` are available directly: {{effect}} instead of {{data.effect}}
-  return blocks.map((b) => ({ ...b.data, id: b.id, type: b.type, title: b.title, body: b.body }));
+  return blocks.map((b) => {
+    const { by_role: byRole, by_product: byProduct, ...data } = b.data || {};
+    const base = { ...data, id: b.id, type: b.type, title: b.title, body: b.body };
+    return { ...base, ...(byRole?.[ctx.role] || {}), ...(byProduct?.[ctx.product] || {}) };
+  });
 }
+
+// The offer's role and product from its tiles (for role- and product-specific copy).
+const offerCtx = (offer) => {
+  const tiles = offer.data?.tiles || [];
+  return { role: tiles.find((t) => t.startsWith('role:')), product: tiles.find((t) => t.startsWith('product:')) };
+};
 
 // "label | value" on each line -> [{title, value, value2…}]
 const lines = (text) =>
@@ -209,6 +243,7 @@ async function renderInput(offerId, { includeHidden }) {
   const comps = Object.fromEntries(lib.parsed.components.map((c) => [c.id, c]));
   const report = [];
   const slides = [];
+  const ctx = offerCtx(offer);
   for (const s of offer.slides) {
     const f = frames[s.frame];
     const entry = { id: s.id, frame: s.frame, hidden: s.hidden };
@@ -216,7 +251,7 @@ async function renderInput(offerId, { includeHidden }) {
     if (!f) { entry.error = `No slide "${s.frame}" in the library`; continue; }
     if (s.hidden && !includeHidden) { entry.skipped = true; continue; }
     const items = {};
-    for (const source of f.fields.sources) items[source] = source === 'blocks' ? resolveBlocks(s) : lines(s.data?.[source]);
+    for (const source of f.fields.sources) items[source] = source === 'blocks' ? resolveBlocks(s, ctx) : lines(s.data?.[source]);
     const picks = {};
     for (const [set, chosen] of Object.entries(s.picks || {})) {
       if (!f.fields.picks[set] || !Array.isArray(chosen)) continue;
@@ -301,6 +336,73 @@ try {
   syncComponents();
 } catch (e) {
   console.error('offer-studio: component sync failed:', e.message);
+}
+
+// ------------------------------------------------------------------ offers from tiles
+// Content to pick from: blocks in a fixed order (data.order, then title), cards and slot counts from the library.
+function generationData() {
+  const blocks = store.list('blocks').sort((a, b) => (a.data?.order ?? 1e9) - (b.data?.order ?? 1e9) || a.title.localeCompare(b.title, 'en') || a.id.localeCompare(b.id));
+  const slots = {};
+  for (const f of librarySlides()) for (const [set, n] of Object.entries(f.fields.picks || {})) slots[set] ??= n;
+  return { blocks, components: store.listComponents(), slots };
+}
+
+const blocksById = () => Object.fromEntries(store.list('blocks').map((b) => [b.id, b]));
+
+// Offer + full tiles (deleted ones as {id, missing}) + pain coverage.
+function offerView(id) {
+  const offer = store.getOffer(id);
+  const ids = offer.data?.tiles;
+  if (!Array.isArray(ids)) return offer;
+  offer.tiles = ids.map((t) => store.get('tiles', t) || { id: t, missing: true });
+  offer.coverage = coverage(offer.slides, ids.filter((t) => t.startsWith('pain:')), blocksById(), Object.fromEntries(store.listComponents().map((c) => [c.id, c])));
+  return offer;
+}
+
+// The base deck when there is one (every client gets the same slides); otherwise the role's scenario.
+function scenarioFor(sel) {
+  const sc = store.get('scenarios', 'base') || store.get('scenarios', sel.role);
+  if (!sc) throw new HttpError(400, `No scenario for the role "${store.get('tiles', sel.role)?.label || sel.role}"`);
+  return sc;
+}
+
+// Rebuilds an offer from its tiles: slides edited by hand stay (see mergeRecompute).
+function recompute(offerId) {
+  const offer = store.getOffer(offerId);
+  if (!offer.data?.scenario_id) throw new HttpError(400, 'This offer was not created from tiles');
+  const sel = parseSelection(offer.data.tiles, store.list('tiles'));
+  const fresh = buildSlides(scenarioFor(sel), sel, generationData());
+  store.applyRecompute(offerId, mergeRecompute(offer.slides, fresh));
+  store.update('offers', offerId, { data: { scenario_id: sel.role } });
+  return offerView(offerId);
+}
+
+const FILL_KINDS = ['none', 'pains', 'blocks', 'picks'];
+function validateSteps(steps) {
+  if (!Array.isArray(steps) || !steps.length) throw new HttpError(400, 'A scenario needs a list of "steps"');
+  const frames = new Set(librarySlides().map((f) => f.frame));
+  const keys = new Set();
+  steps.forEach((st, i) => {
+    const at = `Step ${i + 1}${st?.label ? ` ("${st.label}")` : ''}`;
+    if (!st || typeof st !== 'object') throw new HttpError(400, `${at}: expected an object`);
+    if (!st.key || typeof st.key !== 'string') throw new HttpError(400, `${at}: missing "key"`);
+    if (keys.has(st.key)) throw new HttpError(400, `${at}: the key "${st.key}" is repeated`);
+    keys.add(st.key);
+    if (!frames.has(st.frame)) throw new HttpError(400, `${at}: the library has no slide "${st.frame}"`);
+    const fill = st.fill || { kind: 'none' };
+    if (!FILL_KINDS.includes(fill.kind)) throw new HttpError(400, `${at}: unknown fill "${fill.kind}"`);
+    if (fill.kind === 'blocks') {
+      if (!fill.type) throw new HttpError(400, `${at}: set the block type`);
+      if (!(Number.isInteger(fill.min) && Number.isInteger(fill.max) && fill.min >= 0 && fill.min <= fill.max)) {
+        throw new HttpError(400, `${at}: the block count "from" must be less than or equal to "to"`);
+      }
+    }
+    if (fill.kind === 'picks' && !fill.set) throw new HttpError(400, `${at}: set the card set`);
+    if (st.when && !Array.isArray(st.when.any)) throw new HttpError(400, `${at}: "when.any" must be a list of tiles`);
+    if (st.answers && !(Array.isArray(st.answers) && st.answers.every((c) => TILE_CATEGORIES.includes(c)))) {
+      throw new HttpError(400, `${at}: "answers" lists tile kinds: ${TILE_CATEGORIES.join(', ')}`);
+    }
+  });
 }
 
 const safeEq = (a, b) => {
@@ -413,7 +515,14 @@ const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).ver
 let spec;
 api.get('/openapi.json', (c) => c.json((spec ??= buildSpec(apiRoutes(app), { version: VERSION }))));
 
-api.get('/meta', (c) => c.json({ ...store.meta(), figcraftWebUrl: FIGCRAFT_WEB_URL, figcraftEditor: hasEditor() }));
+api.get('/meta', (c) => c.json({
+  ...store.meta(), figcraftWebUrl: FIGCRAFT_WEB_URL, figcraftEditor: hasEditor(), legacyMigration: JSON.parse(store.getSetting('legacy_pl_report') || 'null') }));
+// Full export of the database as it was before the Polish-to-English migration (only on migrated databases).
+api.get('/legacy-backup', (c) => {
+  const backup = store.getSetting('legacy_pl_backup');
+  if (!backup) throw new HttpError(404, 'This database was never migrated from the Polish version, so there is no backup');
+  return c.body(backup, 200, { 'content-type': 'application/json', 'content-disposition': 'attachment; filename="offer-studio-before-english.json"' });
+});
 
 // knowledge blocks
 api.get('/blocks', (c) => c.json(store.listBlocks({ type: c.req.query('type'), tag: c.req.query('tag'), q: c.req.query('q') })));
@@ -495,7 +604,7 @@ api.delete('/templates/:id', (c) => {
 
 // offers
 api.get('/offers', (c) => c.json(store.list('offers')));
-api.get('/offers/:id', (c) => c.json(store.getOffer(c.req.param('id'))));
+api.get('/offers/:id', (c) => c.json(offerView(c.req.param('id'))));
 api.post('/offers', async (c) => {
   const b = await body(c);
   if (!b.name) throw new HttpError(400, 'An offer must have a "name"');
@@ -529,6 +638,75 @@ api.put('/offers/:id/order', async (c) => {
   const { ids } = await body(c);
   if (!Array.isArray(ids)) throw new HttpError(400, 'Expected {"ids": [...]}');
   const o = store.reorderSlides(c.req.param('id'), ids);
+  changed('slides', null, { offer_id: o.id });
+  return c.json(o);
+});
+
+// offers from tiles
+api.post('/offers/generate', async (c) => {
+  const b = await body(c);
+  if (!b.client || typeof b.client !== 'string') throw new HttpError(400, 'Give the client name ("client")');
+  const all = store.list('tiles');
+  const sel = parseSelection(b.tiles, all);
+  const scenario = scenarioFor(sel);
+  const label = (id) => all.find((t) => t.id === id)?.label || id;
+  const price = b.price ?? all.find((t) => t.id === sel.product)?.data?.price ?? '';
+  const slides = buildSlides(scenario, sel, generationData());
+  const tiles = [sel.role, sel.segment, sel.product, ...sel.pains];
+  const created = store.tx(() => {
+    const o = store.insert('offers', {
+      name: b.name || `${b.client} · ${label(sel.role)}`,
+      template_id: store.list('templates')[0]?.id ?? null,
+      data: { client: b.client, price: String(price), tiles, scenario_id: scenario.id },
+    }, b.client);
+    slides.forEach((s, i) => store.insert('slides', { ...s, offer_id: o.id, position: i }, 'slide'));
+    return o;
+  });
+  changed('offers', created.id, { offer_id: created.id });
+  return c.json(offerView(created.id), 201);
+});
+api.put('/offers/:id/tiles', async (c) => {
+  const id = c.req.param('id');
+  const { tiles } = await body(c);
+  const offer = store.mustGet('offers', id);
+  if (!offer.data?.scenario_id) throw new HttpError(400, 'This offer was not created from tiles');
+  const sel = parseSelection(tiles, store.list('tiles'));
+  scenarioFor(sel);
+  store.update('offers', id, { data: { tiles: [sel.role, sel.segment, sel.product, ...sel.pains] } });
+  const o = recompute(id);
+  changed('slides', null, { offer_id: id });
+  return c.json(o);
+});
+// Swappable slots: what n8n (or a model) reads to choose elements, and where it sends the choice.
+function slotsContext(offerId) {
+  const offer = store.getOffer(offerId);
+  if (!offer.data?.scenario_id) throw new HttpError(400, 'This offer was not created from tiles');
+  const sel = parseSelection(offer.data.tiles, store.list('tiles'));
+  const ctx = buildSlots(offer, scenarioFor(sel), sel, generationData());
+  const tiles = Object.fromEntries(store.list('tiles').map((t) => [t.id, t]));
+  // client tiles with their labels and guidance, so the model sees what the client needs
+  ctx.client_tiles = ctx.client.map((id) => ({ id, label: tiles[id]?.label, description: tiles[id]?.description, quotes: tiles[id]?.quotes || [] }));
+  return ctx;
+}
+api.get('/offers/:id/slots', (c) => c.json(slotsContext(c.req.param('id'))));
+api.put('/offers/:id/slots', async (c) => {
+  const id = c.req.param('id');
+  const { slides, chosen_by: chosenBy } = await body(c);
+  const patches = applySlotChoice(slotsContext(id), slides);
+  store.tx(() => {
+    for (const [slideId, p] of Object.entries(patches)) {
+      const cur = store.mustGet('slides', slideId);
+      const { reasons, ...content } = p;
+      // chosen elements are kept on recompute, like manual edits
+      store.update('slides', slideId, { ...content, locked: true, origin: { ...(cur.origin || {}), reasons, chosen_by: chosenBy || 'model' } });
+    }
+    store.touch('offers', id);
+  });
+  changed('slides', null, { offer_id: id });
+  return c.json(offerView(id));
+});
+api.post('/offers/:id/recompute', (c) => {
+  const o = recompute(c.req.param('id'));
   changed('slides', null, { offer_id: o.id });
   return c.json(o);
 });
@@ -567,14 +745,26 @@ api.get('/offers/:id/figcraft', async (c) => {
 api.post('/offers/:id/slides', async (c) => {
   const b = await body(c);
   if (!b.frame) throw new HttpError(400, 'A slide must have a "frame" (the slide name in the template)');
-  const s = store.addSlide(c.req.param('id'), b);
+  const s = store.addSlide(c.req.param('id'), { ...b, origin: null, locked: true });
   changed('slides', s.id, { offer_id: s.offer_id });
   return c.json(s, 201);
 });
 api.get('/slides/:id', (c) => c.json(store.mustGet('slides', c.req.param('id'))));
 api.patch('/slides/:id', async (c) => {
-  const { offer_id: _ignored, ...patch } = await body(c);
-  const s = store.update('slides', c.req.param('id'), patch, { replaceData: c.req.query('replace') === '1' });
+  const { offer_id: _ignored, origin: _origin, ...patch } = await body(c);
+  // Unlock and recompute run in one transaction: if the recompute fails (e.g. a deleted tile), the slide
+  // stays locked. The response is the whole offer, since the slide may be replaced by a new one (new id).
+  if (patch.locked === false) {
+    const offerId = store.mustGet('slides', c.req.param('id')).offer_id;
+    const o = store.tx(() => {
+      store.update('slides', c.req.param('id'), { locked: false });
+      return store.mustGet('offers', offerId).data?.scenario_id ? recompute(offerId) : offerView(offerId);
+    });
+    changed('slides', null, { offer_id: offerId });
+    return c.json(o);
+  }
+  // Any outside change (UI, n8n) marks the slide as edited by hand.
+  const s = store.update('slides', c.req.param('id'), { ...patch, locked: true }, { replaceData: c.req.query('replace') === '1' });
   store.touch('offers', s.offer_id);
   changed('slides', s.id, { offer_id: s.offer_id });
   return c.json(s);
@@ -620,11 +810,64 @@ api.post('/slides/:id/pick', async (c) => {
   const result = await pickComponents({ offer: ctx.offer, slide: ctx.slide, brief: b.brief, sets: ctx.sets });
   let slide = store.mustGet('slides', ctx.slide.id);
   if (b.apply !== false) {
-    slide = store.update('slides', slide.id, { picks: { ...(slide.picks || {}), ...result.picks } });
+    slide = store.update('slides', slide.id, { picks: { ...(slide.picks || {}), ...result.picks }, locked: true });
     store.touch('offers', slide.offer_id);
     changed('slides', slide.id, { offer_id: slide.offer_id });
   }
   return c.json({ applied: b.apply !== false, ...result, slide });
+});
+
+// tiles
+api.get('/tiles', (c) => c.json(store.list('tiles')));
+api.post('/tiles', async (c) => {
+  const b = await body(c);
+  if (!TILE_CATEGORIES.includes(b.category)) throw new HttpError(400, `Tile category: ${TILE_CATEGORIES.join(', ')}`);
+  if (!b.label) throw new HttpError(400, 'A tile needs a name ("label")');
+  const id = b.id || `${b.category}:${slugify(b.label)}`;
+  if (!id.startsWith(`${b.category}:`)) throw new HttpError(400, `A tile id must start with "${b.category}:"`);
+  const t = store.insert('tiles', { status: 'active', ...b, id });
+  changed('tiles', t.id);
+  return c.json(t, 201);
+});
+api.patch('/tiles/:id', async (c) => {
+  const { id: _id, category: _cat, ...patch } = await body(c);
+  if (patch.status && !['active', 'soon'].includes(patch.status)) throw new HttpError(400, 'Status: active or soon');
+  const t = store.update('tiles', c.req.param('id'), patch, { replaceData: c.req.query('replace') === '1' });
+  changed('tiles', t.id);
+  return c.json(t);
+});
+api.delete('/tiles/:id', (c) => {
+  store.remove('tiles', c.req.param('id'));
+  changed('tiles', c.req.param('id'));
+  return c.body(null, 204);
+});
+
+// scenarios
+api.get('/scenarios', (c) => c.json(store.list('scenarios')));
+api.get('/scenarios/:id', (c) => c.json(store.mustGet('scenarios', c.req.param('id'))));
+api.put('/scenarios/:id', async (c) => {
+  const id = c.req.param('id');
+  const b = await body(c);
+  validateSteps(b.steps);
+  const role = store.get('tiles', id);
+  if (id !== 'base' && (!role || role.category !== 'role')) throw new HttpError(400, `A scenario id is "base" or a role tile (e.g. role:board), not "${id}"`);
+  const row = store.get('scenarios', id)
+    ? store.update('scenarios', id, { steps: b.steps, ...(b.name ? { name: b.name } : {}) })
+    : store.insert('scenarios', { id, name: b.name || role?.label || 'Base deck', steps: b.steps });
+  changed('scenarios', id);
+  return c.json(row);
+});
+
+// lead analysis: n8n sends text (email, transcript) and gets back the segment, decision-maker role and concerns
+api.post('/leads/analyze', async (c) => {
+  const b = await body(c);
+  const text = String(b.text || '').trim();
+  if (!text) throw new HttpError(400, 'Missing "text": nothing to analyze');
+  if (text.length > 60000) throw new HttpError(413, 'Text is too long (max 60,000 characters)');
+  const active = store.list('tiles').filter((t) => t.status !== 'soon');
+  const pick = (category) => active.filter((t) => t.category === category).map(({ id, label, description }) => ({ id, label, description }));
+  const catalog = { pains: pick('pain'), products: pick('product') };
+  return c.json(await analyzeLead({ text, hints: b.hints && typeof b.hints === 'object' ? b.hints : {}, catalog }));
 });
 
 // export / import of the whole database

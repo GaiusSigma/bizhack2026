@@ -1,6 +1,9 @@
 // Starter data, loaded into an EMPTY database only. The content comes from gaius-offer.figcraft,
 // and the template (seed/gaius-template.figcraft) is the same file with {{…}} fields in its layer names.
 // Same format as an /api/export dump; the server adds the template file itself.
+import { retiredScenarios, scenarios } from './scenarios.js';
+import { solutionBlocks, tileTags, tileUpgrade, tiles } from './tiles.js';
+
 const ts = '2026-11-25T00:00:00.000Z';
 const tags = ['vault'];
 
@@ -45,11 +48,11 @@ const blocks = [
   block('sg-repetitive-tasks', 'signal', 'Repetitive tasks eat up experts’ time', 'The same kinds of analysis, research and checks come back in matter after matter.'),
 
   // Rollout steps
-  block('st-processes', 'step', 'We pick the highest-impact processes', 'We identify the questions, documents and analyses that come back most often.'),
-  block('st-real-matters', 'step', 'We work on real matters', 'Workshops are built on your documents, questions and team standards.'),
-  block('st-routines', 'step', 'We build routines', 'We turn processes into workflows, checklists, prompts and answer patterns.'),
-  block('st-verification', 'step', 'We set verification rules', 'We define how sources, quotes, risks and accountability are checked.'),
-  block('st-adoption', 'step', 'We measure adoption and scale', 'We track usage, collect feedback and pick the next processes.'),
+  block('st-processes', 'step', 'We pick the highest-impact processes', 'We identify the questions, documents and analyses that come back most often.', { order: 0 }),
+  block('st-real-matters', 'step', 'We work on real matters', 'Workshops are built on your documents, questions and team standards.', { order: 1 }),
+  block('st-routines', 'step', 'We build routines', 'We turn processes into workflows, checklists, prompts and answer patterns.', { order: 2 }),
+  block('st-verification', 'step', 'We set verification rules', 'We define how sources, quotes, risks and accountability are checked.', { order: 3 }),
+  block('st-adoption', 'step', 'We measure adoption and scale', 'We track usage, collect feedback and pick the next processes.', { order: 4 }),
 
   // Comparison: several tools vs Gaius Vault
   block('cmp-data', 'comparison', 'Data and documents', '', { them: 'need policies, integrations and usage limits', us: 'a private environment for work on legal documents' }),
@@ -202,14 +205,23 @@ export const componentSets = [{
 
 export const TEMPLATE = { id: 'gaius', name: 'Gaius Vault', file: 'gaius-template.figcraft' };
 
+// Tiles appended to content tags (no duplicates).
+const withTiles = (item) => ({ ...item, tags: [...new Set([...item.tags, ...(tileTags[item.id] || [])])] });
+
 export default {
   format: 'offer-studio',
   version: 3,
   exported_at: ts,
-  blocks,
+  blocks: [...blocks.map(withTiles), ...solutionBlocks],
+  tiles,
+  scenarios,
+  tileTags,
+  solutionBlocks,
+  tileUpgrade,
+  retiredScenarios,
   templates: [],
   offers: [{ id: OFFER, name: 'Gaius Vault – base offer', template_id: TEMPLATE.id, data: { client: '', price: '------' }, created_at: ts, updated_at: ts }],
   slides,
-  components,
+  components: components.map(withTiles),
   component_sets: componentSets,
 };

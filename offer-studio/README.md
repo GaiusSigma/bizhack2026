@@ -3,6 +3,8 @@
 A minimal dashboard for collecting knowledge about an offer and assembling presentations from it.
 **FigCraft** handles slide design, preview and PDF: the dashboard holds the data and FigCraft renders it.
 
+- **Offers from tiles** (the main path, see below): the salesperson describes the client with tiles
+  (role, segment, pains, product), and the deck builds itself from the role's scenario.
 - **Knowledge**: blocks (use cases, problems, arguments, comparison rows, package components…).
   Type and tags are free-form strings, and you add type-specific fields yourself (e.g. `effect` on a use case).
 - **Slides (library)**: anyone can add a new slide designed in FigCraft by dropping a file
@@ -41,6 +43,57 @@ editor already knows the `figcraft-server` collaboration server.
 How it works: `/static/editor.html` frames `/figcraft/?host=parent` on the same origin. FigCraft's host
 mode hands every Save to the page over `postMessage` instead of downloading it, and the page uploads it with
 `POST /api/templates` plus `base` (the `x-updated-at` of the version it opened) for the conflict check.
+
+## Tiles and scenarios
+
+**How a salesperson makes an offer.** Offers → "+ New offer": the client name and tiles from four categories:
+
+| Category | Pick | Active at launch |
+|---|---|---|
+| Who you are talking to (role) | one | Champion, Board (CTO, GC, budget owner, DPO: coming soon) |
+| Segment | one | Law firm, In-house legal team, Public administration (others: coming soon) |
+| Client pains | 1 to 5 | 11 pains from sales calls (the "Bóle (Fireflies)" tab of the sales sheet) |
+| Product / scale | one | SaaS, Vault, On-premise |
+
+The role picks a **scenario** (slide order and default copy), and the other tiles pick the content:
+blocks and cards carry tiles in their tags. On a slide like "How we solve it", every selected pain first
+gets its best-matching block, so a pain that has content is never left out; the remaining slots go to the
+highest sum of matched tile weights (pain 3, segment 2, role 1, product 1), with ties broken by a fixed order. Content tagged with a segment only goes to
+that segment. The same tiles always give the same offer. Every slide shows "because: …", the tiles that
+picked it, and the left column shows "X of Y pains solved" (only solutions and use cases count).
+
+**Manual edits.** Any slide change (copy, swapping a block, hiding, also through the API) marks it as
+"edited by hand". "Recompute" and "Change tiles" rebuild the offer but leave those slides alone; a slide whose
+step no longer applies (e.g. architecture after switching to SaaS) is hidden, and comes back when the step
+applies again. "Restore automatic" discards a slide's edits. Offers made before tiles open in the existing editor.
+
+**Pinning content.** The Tiles tab: a tile's description and quotes, and its pinned content ("Pin content"
+searches blocks and cards). Pains without a pinned solution are flagged in the list. In Knowledge, a block's
+tiles are toggled with a click. The starting pins (27 solutions from the sheet's PRKW tab and 5 from its
+product sentences, each with its source) are a proposal to review. A solution is pinned only where it truly fits;
+nothing is pinned to raise a count. The Tiles tab opens on a coverage map (solutions per pain and segment): bold
+pairs are where the sales sheet reports the pain, amber pairs have one solution only. In New offer, every pain
+shows how many solutions it has for the selected segment and whether it is less common there.
+
+**Scenarios.** The Scenarios tab: steps with a slide thumbnail, a fill rule ("2–3 solutions that best fit
+the client's tiles") and a condition ("only with: Vault or On-premise"). Offers pick up changes after
+"Recompute". Step copy has a Vault version; SaaS and On-premise versions (`data_by_product`) are drafts,
+marked in the editor.
+
+**Automation.** `POST /api/offers/generate` with `{"client": "...", "tiles": [...]}` does what the
+"New offer" screen does (400 for a coming-soon tile or a wrong tile count). Also:
+`PUT /api/offers/:id/tiles`, `POST /api/offers/:id/recompute`, `GET/POST/PATCH/DELETE /api/tiles`,
+`GET/PUT /api/scenarios/:id`. The n8n node shows them under the "Tiles" resource.
+
+**Databases from the Polish version.** A database created before the English translation still held the
+Polish seed content (blocks, "why" cards, the base offer and the old slide template with Polish frame names).
+On startup it is migrated once: a full export is saved first (download it with `GET /api/legacy-backup`),
+seed records are swapped for their English versions, every offer is re-pointed to the new slide, block and
+card ids, default slide copy becomes English, and copy written for a client stays. Seed records edited by
+hand before the switch are listed in Knowledge with a link to the backup. The id map is `seed/legacy-pl.js`.
+
+An existing database gets tiles, scenarios and solution blocks on the first start of this version
+(only when it has no tiles yet). Seed data: `seed/tiles.js` and `seed/scenarios.js`.
 
 ## Adding a new slide
 

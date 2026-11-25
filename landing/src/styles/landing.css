@@ -141,6 +141,21 @@
 .chip[aria-pressed='true'], .role-pick[aria-pressed='true'] { background: var(--rose-soft); border-color: var(--rose-deep); }
 .role-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .role-pick { min-height: 52px; padding: 10px 14px; font-size: 15px; font-weight: 600; gap: 10px; }
+.role-pick:disabled { cursor: not-allowed; color: var(--muted); background: var(--sand); border-style: dashed; }
+.role-pick .soon { margin-left: auto; }
+
+/* „Coming soon”: segmenty i role, dla których jeszcze nie piszemy ofert */
+.soon {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap;
+  color: var(--muted); border: 1px solid var(--line); background: #fff; padding: 2px 6px;
+}
+.segments { display: flex; flex-direction: column; gap: 12px; }
+.segments__list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.segment {
+  display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px;
+  border: 1px solid var(--rose-deep); background: var(--rose-soft); color: var(--ink); font-size: 14px; font-weight: 600;
+}
+.segment--soon { border: 1px dashed var(--parchment); background: transparent; color: var(--muted); font-weight: 500; }
 
 .voice { display: flex; align-items: center; gap: 20px; padding: 20px; background: var(--sand); border: 1px solid var(--line); }
 .voice__btn {
@@ -290,6 +305,9 @@
 .role-card__text { line-height: 24px; }
 .role-card__gets { line-height: 24px; font-weight: 600; color: var(--ink); display: flex; gap: 8px; align-items: flex-start; }
 .role-card__gets .icon { flex: 0 0 18px; margin-top: 3px; }
+.role-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.role-card--soon { background: var(--sand); }
+.role-card--soon .role-card__title, .role-card--soon .role-card__gets, .role-card--soon .role-card__text { color: var(--muted); }
 
 /* ---------- Results ---------- */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
@@ -326,3 +344,27 @@
   .voice { flex-direction: column; align-items: flex-start; }
   .fear, .role-card, .stat { padding: 24px; }
 }
+
+.btn[aria-disabled='true'] { opacity: .45; pointer-events: none; }
+
+/* ---------- Voice note transcript ---------- */
+.transcript { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); background: #fff; }
+.transcript[hidden] { display: none; }
+.transcript__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.transcript__label { font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.transcript__text { margin: 0; font-size: 15px; line-height: 22px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.transcript__text .interim { color: var(--muted); }
+.transcript__edit {
+  width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; line-height: 22px; color: var(--ink);
+  border: 1px solid var(--rose); padding: 8px 10px; resize: vertical; background: #fff;
+}
+.transcript__edit:focus { outline: none; border-color: var(--rose-deep); }
+.transcript__btn {
+  flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid var(--parchment); background: #fff; color: var(--rose-deep);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.transcript__btn:hover { background: var(--rose-soft); }
+.transcript__btn[hidden] { display: none; }
+.transcript__icon-save { display: none; }
+.transcript[data-state='editing'] .transcript__icon-edit { display: none; }
+.transcript[data-state='editing'] .transcript__icon-save { display: block; }

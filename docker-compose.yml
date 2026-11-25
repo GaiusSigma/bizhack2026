@@ -15,6 +15,7 @@ services:
       context: ./landing
       args:
         SITE_URL: ${SERVICE_URL_LANDING}
+        PUBLIC_OFFER_WEBHOOK_URL: ${OFFER_WEBHOOK_URL:-}
     environment:
       - SERVICE_URL_LANDING_80
     restart: unless-stopped
