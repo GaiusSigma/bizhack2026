@@ -14,7 +14,8 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "dd7c4b67-f5f6-40f4-9325-1ca924d5ff78",
-        "options": {}
+        "options": {},
+        "responseMode": "responseNode"
       }
     },
     {
@@ -549,6 +550,86 @@
       "retryOnFail": true,
       "maxTries": 2,
       "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b6f0c1de-landing-only",
+              "leftValue": "={{ $('Website form').isExecuted }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1d6e0f2-3c4b-4e5a-9b6c-7d8e9f0a1b2c",
+      "name": "Zgłoszenie z landingu?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3616,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "inputFieldName": "data",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/pdf"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "={{ 'attachment; filename=\"' + ('Gaius-offer-' + $json.offer_id).replace(/[^A-Za-z0-9._-]/g, '-') + '.pdf\"' }}"
+              },
+              {
+                "name": "X-Offer-Id",
+                "value": "={{ $json.offer_id }}"
+              },
+              {
+                "name": "X-Offer-Name",
+                "value": "={{ encodeURIComponent($json.offer_name || '') }}"
+              },
+              {
+                "name": "X-Offer-Tiles",
+                "value": "={{ ($json.tiles || []).join(',') }}"
+              },
+              {
+                "name": "Access-Control-Expose-Headers",
+                "value": "Content-Disposition, X-Offer-Id, X-Offer-Name, X-Offer-Tiles"
+              }
+            ]
+          }
+        }
+      },
+      "id": "c3e8f2a4-5d6e-4f7a-8b9c-0d1e2f3a4b5c",
+      "name": "PDF dla landingu",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3856,
+        120
+      ]
     }
   ],
   "connections": {
@@ -709,6 +790,11 @@
             "node": "Send a message",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Zgłoszenie z landingu?",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -817,6 +903,18 @@
             "index": 0
           }
         ]
+      ]
+    },
+    "Zgłoszenie z landingu?": {
+      "main": [
+        [
+          {
+            "node": "PDF dla landingu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     }
   },

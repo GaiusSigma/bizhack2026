@@ -753,10 +753,15 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     role: 'champion' | 'board';
     who: string;
     concerns: string[];
-    pdfPath: string;
+    // Either a path on the n8n host, or pdfUrl: the final deck n8n sent back (a blob: URL)
+    pdfPath?: string;
+    pdfUrl?: string;
+    fileName?: string;
     known: boolean;
     ms: number;
   };
+  // The final deck from the last answer; released when a new one arrives.
+  let deckUrl: string | null = null;
 
   const typedEmail = () => $<HTMLInputElement>('#email')?.value.trim() || '';
   // The landing only collects input; n8n interprets it. We send what the visitor actually gave us and
@@ -830,8 +835,12 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
     const pdf = $<HTMLAnchorElement>('[data-offer-pdf]');
     if (pdf) {
-      if (live) pdf.href = `${N8N_ORIGIN}${live.pdfPath}`;
+      const href = live?.pdfUrl || (live?.pdfPath ? `${N8N_ORIGIN}${live.pdfPath}` : '');
+      if (href) pdf.href = href;
       else pdf.removeAttribute('href');
+      // A blob: URL is downloaded as a file; a link on n8n opens in a new tab.
+      if (live?.pdfUrl) pdf.download = live.fileName || 'Gaius-offer.pdf';
+      else pdf.removeAttribute('download');
       pdf.setAttribute('aria-disabled', String(!live));
     }
     $('[data-offer-meta]')!.textContent = live
@@ -850,15 +859,38 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   };
 
   const requestOffer = async (): Promise<LeadResult | null> => {
+    const t0 = performance.now();
     try {
       const res = await fetch(OFFER_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(leadPayload()),
-        signal: AbortSignal.timeout(120_000),
+        // n8n answers once the deck is rendered, which can take a few minutes
+        signal: AbortSignal.timeout(480_000),
       });
       if (!res.ok) throw new Error(`n8n ${res.status}`);
-      // The webhook may answer with just an acknowledgement; only a full offer replaces the sample one.
+      // The production workflow answers with the final deck itself (the PDF it also posts to Discord).
+      if ((res.headers.get('content-type') || '').includes('application/pdf')) {
+        const blob = await res.blob();
+        if (deckUrl) URL.revokeObjectURL(deckUrl);
+        deckUrl = URL.createObjectURL(blob);
+        const offerId = res.headers.get('x-offer-id') || '';
+        const tiles = (res.headers.get('x-offer-tiles') || '').split(',').filter(Boolean);
+        const name = decodeURIComponent(res.headers.get('x-offer-name') || '');
+        const fileName = /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') || '')?.[1];
+        const fallback = sampleResult();
+        return {
+          offerId,
+          role: tiles.includes('role:board') ? 'board' : tiles.includes('role:champion') ? 'champion' : (fallback.roleId as LeadResult['role']),
+          who: name || fallback.who,
+          concerns: [],
+          pdfUrl: deckUrl,
+          fileName: fileName || `Gaius-offer-${offerId || 'deck'}.pdf`,
+          known: true,
+          ms: performance.now() - t0,
+        };
+      }
+      // Otherwise JSON: an acknowledgement, or a full offer from the local workflow.
       const data = (await res.json().catch(() => null)) as LeadResult | null;
       return data?.offerId ? data : null;
     } catch (e) {
