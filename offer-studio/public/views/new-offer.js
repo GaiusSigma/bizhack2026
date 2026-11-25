@@ -48,6 +48,11 @@ const painFit = (t, seg, segLabel) => {
     typical ? null : h('span', { class: 'fit-atypical', title: `The sales sheet does not list this pain for ${segLabel}` }, `less common for ${segLabel}`));
 };
 
+// Coming-soon tiles are folded away per category until someone opens them.
+const showSoon = {};
+const soonToggle = (cat, n, render) => (n ? h('button', { class: 'soon-toggle', onclick: () => { showSoon[cat] = !showSoon[cat]; render(); } },
+  showSoon[cat] ? `Hide ${n} coming soon` : `Show ${n} coming soon`) : null);
+
 // Tile picker. `selected` = list of ids; onChange gets the new list.
 export function tilePicker(selected, onChange) {
   let ids = cleanSelection(selected, state.tiles);
@@ -62,7 +67,7 @@ export function tilePicker(selected, onChange) {
       return h('section', { class: 'tp-cat' },
         h('div', { class: 'tp-head' }, h('h3', {}, title),
           h('span', { class: 'hint' }, multi ? `pick 1 to ${MAX_PAINS} · ${count} selected` : 'pick one')),
-        h('div', { class: 'tp-tiles grid' }, tiles.map((t) => {
+        h('div', { class: 'tp-tiles grid' }, tiles.filter((t) => t.status !== 'soon' || showSoon[cat]).map((t) => {
           const on = ids.includes(t.id);
           const soon = t.status === 'soon';
           return h('button', {
@@ -84,6 +89,7 @@ export function tilePicker(selected, onChange) {
           soon ? h('span', { class: 'soon-tag' }, 'coming soon') : null,
           multi && seg ? painFit(t, seg, segLabel) : null);
         })),
+        soonToggle(cat, tiles.filter((t) => t.status === 'soon').length, render),
         selectedGuide(tiles.filter((t) => ids.includes(t.id))));
     }));
   };

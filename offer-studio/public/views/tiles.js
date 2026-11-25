@@ -80,16 +80,22 @@ function painCoverage(t, save) {
 
 export function viewTiles(selectedId) {
   const listEl = h('div', { class: 'items' });
+  const showSoon = {};
   const editor = h('div', { class: 'editor' });
   const renderList = () => listEl.replaceChildren(...Object.entries(CATEGORY_LABELS).flatMap(([cat, title]) => [
     h('div', { class: 'group tl-group' }, h('span', {}, title),
       h('button', { class: 'icon', title: 'Add a tile', onclick: () => addTile(cat) }, '+')),
-    ...state.tiles.filter((t) => t.category === cat).map((t) => {
+    ...state.tiles.filter((t) => t.category === cat && (t.status !== 'soon' || showSoon[cat] || t.id === selectedId)).map((t) => {
       const n = pinnedTo(t.id).length;
       return h('div', { class: `item ${t.id === selectedId ? 'active' : ''} ${t.status === 'soon' ? 'soon' : ''}`, onclick: () => go('tiles', t.id) },
         h('div', {}, t.label, t.status === 'soon' ? h('span', { class: 'badge muted' }, 'coming soon') : null),
         h('div', { class: 'sub' }, n ? `pinned: ${n}` : (cat === 'pain' ? 'no content: offers won\'t solve this pain' : 'nothing pinned')));
     }),
+    ...(() => {
+      const n = state.tiles.filter((t) => t.category === cat && t.status === 'soon').length;
+      return n ? [h('button', { class: 'soon-toggle list', onclick: () => { showSoon[cat] = !showSoon[cat]; renderList(); } },
+        showSoon[cat] ? `Hide ${n} coming soon` : `Show ${n} coming soon`)] : [];
+    })(),
   ]));
   const addTile = async (cat) => {
     const label = prompt(`Name of the new tile (${CATEGORY_LABELS[cat]}):`);

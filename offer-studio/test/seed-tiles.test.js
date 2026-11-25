@@ -54,9 +54,9 @@ test('pinning: every id in tileTags exists in the seed, every tag is an existing
   const tileIds = new Set(tiles.map((t) => t.id));
   for (const [id, tags] of Object.entries(tileTags)) {
     assert.ok(known.has(id), `nie ma ${id}`);
-    for (const t of tags) assert.ok(tileIds.has(t), `${id}: nieznany kafelek ${t}`);
+    for (const t of tags.filter((x) => x.includes(':'))) assert.ok(tileIds.has(t), `${id}: unknown tile ${t}`);
   }
-  for (const b of solutionBlocks) for (const t of b.tags) assert.ok(tileIds.has(t), `${b.id}: nieznany kafelek ${t}`);
+  for (const b of solutionBlocks) for (const t of b.tags) assert.ok(tileIds.has(t), `${b.id}: unknown tile ${t}`);
   // the seed already has the pins applied
   assert.ok(seed.blocks.find((b) => b.id === 'uc-urgent-letter').tags.some((t) => t.startsWith('pain:')));
   assert.deepEqual(seed.tiles, tiles);
@@ -149,4 +149,9 @@ test('tiles: every tile says when to pick it, active tiles also when not to and 
     assert.ok(t.data.avoid_when?.length > 10, `${t.id}: avoid_when`);
     if (t.status === 'active') assert.ok(t.description.length > 40, `${t.id}: description too short`);
   }
+});
+
+test('content: every block and card is pinned to a tile or marked general', () => {
+  const loose = [...seed.blocks, ...seed.components].filter((x) => !x.tags.some((t) => t.includes(':')) && !x.tags.includes('general'));
+  assert.deepEqual(loose.map((x) => x.id), []);
 });

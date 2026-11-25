@@ -219,3 +219,12 @@ test('pickBlocks: every selected pain gets a block before the rest is filled by 
   // more pains than slots: the first pains in the selection win the slots
   assert.deepEqual(pickBlocks(cands, { min: 1, max: 1 }, sel).map((x) => x.id), ['x1']);
 });
+
+test('pickBlocks: content tagged with products goes only to offers with one of those products', () => {
+  const pkgs = [
+    block('pkg-all', 'package', []),
+    block('pkg-vault', 'package', ['product:vault', 'product:on-prem']),
+  ];
+  assert.deepEqual(pickBlocks(pkgs, { min: 2, max: 2 }, SEL).map((x) => x.id), ['pkg-vault', 'pkg-all']);
+  assert.deepEqual(pickBlocks(pkgs, { min: 2, max: 2 }, { ...SEL, product: 'product:saas' }).map((x) => x.id), ['pkg-all']);
+});
