@@ -654,7 +654,9 @@ export const solutionBlocks = [
       "pain:group-scale",
       "segment:law-firm",
       "segment:in-house",
-      "segment:public-sector"
+      "segment:public-sector",
+      "product:vault",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1019,7 +1021,8 @@ export const solutionBlocks = [
       "pain:shadow-ai",
       "segment:law-firm",
       "segment:in-house",
-      "segment:public-sector"
+      "segment:public-sector",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1061,7 +1064,9 @@ export const solutionBlocks = [
       "pain:confidentiality",
       "segment:in-house",
       "segment:public-sector",
-      "segment:law-firm"
+      "segment:law-firm",
+      "product:vault",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1082,7 +1087,8 @@ export const solutionBlocks = [
       "pain:shadow-ai",
       "pain:group-scale",
       "segment:in-house",
-      "segment:public-sector"
+      "segment:public-sector",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1104,7 +1110,9 @@ export const solutionBlocks = [
       "pain:repetitive-documents",
       "segment:in-house",
       "segment:law-firm",
-      "segment:public-sector"
+      "segment:public-sector",
+      "product:vault",
+      "product:on-prem"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -1146,7 +1154,9 @@ export const tileTags = {
     "segment:in-house"
   ],
   "pl-private-environment": [
-    "pain:confidentiality"
+    "pain:confidentiality",
+    "product:vault",
+    "product:on-prem"
   ],
   "pl-sourced-answers": [
     "pain:hallucinated-citations"
@@ -1207,14 +1217,20 @@ export const tileTags = {
   ],
   "df-private-legal-ai": [
     "pain:confidentiality",
-    "pain:shadow-ai"
+    "pain:shadow-ai",
+    "product:vault",
+    "product:on-prem"
   ],
   "df-one-environment": [
     "pain:weak-case-law-search",
-    "pain:unsearchable-archive"
+    "pain:unsearchable-archive",
+    "product:vault",
+    "product:on-prem"
   ],
   "df-rollout-routine": [
-    "pain:shadow-ai"
+    "pain:shadow-ai",
+    "product:vault",
+    "product:on-prem"
   ],
   "df-no-lock-in": [
     "pain:board-pressure",
@@ -1344,7 +1360,7 @@ export const tileTags = {
 // Content revision. A database seeded with an older revision is updated on startup (src/db.js ensureTiles):
 // new solutions are added, solution pins follow this file, missing guidance is filled in, and a tile
 // description is replaced only if it still has the previous revision's text (edits made by hand stay).
-export const tileUpgrade = { rev: 5, previousDescriptions: {
+export const tileUpgrade = { rev: 6, previousDescriptions: {
   "role:champion": "The enthusiast on the team who brings Gaius in and has to win over colleagues.",
   "role:board": "The board, managing partner or director who signs off the decision and the budget.",
   "role:cto": "Technical sign-off: architecture, security, deployment.",

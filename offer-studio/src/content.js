@@ -5,6 +5,7 @@
 // contentContext() describes every writable field of an offer, with its current value, for the model's prompt;
 // applyContent() validates the model's answer and turns it into slide patches.
 import { HttpError } from './db.js';
+import { productOk, score, segmentOk } from './generate.js';
 
 // "a | b" lines -> [{title, value}] with the step's columns.
 function parseLines(text, columns) {
@@ -104,3 +105,41 @@ export function applyContent(ctx, answer, { strict = true } = {}) {
   return { patches, problems };
 }
 
+
+// What the library knows about this client's situation, for the model writing the copy: per selected pain its
+// description, typical quotes (from other clients, not this one), the solutions that fit the client's segment and
+// product (best match first) and proof (differentiators, comparisons, pillars). A pain without content says so
+// (no_solution) instead of borrowing another pain's solution.
+export const SOLUTION_TYPES = ['solution', 'use_case'];
+export const PROOF_TYPES = ['differentiator', 'comparison', 'pillar'];
+const PER_PAIN = 3;
+
+export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
+  const about = (id) => ({ id, label: tiles[id]?.label || id, description: tiles[id]?.description || '' });
+  const fitting = (types, pain) => blocks
+    .map((b, i) => ({ b, i, ...score(b.tags, sel) }))
+    .filter((x) => types.includes(x.b.type) && x.matched.includes(pain) && segmentOk(x.b.tags, sel) && productOk(x.b.tags, sel))
+    .sort((a, b) => b.score - a.score || a.i - b.i)
+    .slice(0, PER_PAIN)
+    .map((x) => x.b);
+  const solution = (b) => ({
+    id: b.id, type: b.type, title: b.title, text: b.body || '',
+    ...(b.data?.effect ? { effect: b.data.effect } : {}), ...(b.data?.value ? { value: b.data.value } : {}),
+  });
+  const proof = (b) => {
+    const cmp = b.data?.them || b.data?.us ? `Others: ${b.data.them || '-'}. Gaius: ${b.data.us || '-'}` : '';
+    return { id: b.id, type: b.type, title: b.title, text: [b.body, cmp].filter(Boolean).join(' ') };
+  };
+  return {
+    segment: about(sel.segment),
+    product: about(sel.product),
+    pains: sel.pains.map((id) => {
+      const solutions = fitting(SOLUTION_TYPES, id).map(solution);
+      return {
+        ...about(id), typical_quotes: tiles[id]?.quotes || [], solutions,
+        proof: fitting(PROOF_TYPES, id).map(proof),
+        ...(solutions.length ? {} : { no_solution: true }),
+      };
+    }),
+  };
+}

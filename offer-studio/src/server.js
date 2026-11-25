@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyzeLead, pickComponents } from './ai.js';
-import { applyContent, contentContext } from './content.js';
+import { applyContent, contentContext, evidencePack } from './content.js';
 import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import {
@@ -752,6 +752,7 @@ function contentFor(offerId) {
   const ctx = contentContext(offer, scenarioFor(sel), { tiles });
   ctx.product_name = offerVars(offer).product_name;
   ctx.client_tiles = ctx.tiles.map((id) => ({ id, label: tiles[id]?.label, description: tiles[id]?.description }));
+  ctx.evidence = evidencePack(sel, { tiles, blocks: store.list('blocks') });
   return ctx;
 }
 api.get('/offers/:id/content', (c) => c.json(contentFor(c.req.param('id'))));

@@ -148,3 +148,50 @@ test('role: the content context names the reader and adds per-role guidance to t
   // without tile data the reader is still named by its id
   assert.deepEqual(contentContext(offerFor(sel), base).reader, { role: 'role:champion', label: 'Champion', description: '', brief: '' });
 });
+
+import { evidencePack } from '../src/content.js';
+
+test('evidence pack: per client pain the fitting solutions and proof from the library, nothing forced', () => {
+  const tiles = {
+    'pain:a': { id: 'pain:a', label: 'Pain A', description: 'About A', quotes: ['We lose hours on A'] },
+    'pain:b': { id: 'pain:b', label: 'Pain B', description: 'About B', quotes: [] },
+    'segment:law-firm': { id: 'segment:law-firm', label: 'Law firm', description: 'Firms' },
+    'product:saas': { id: 'product:saas', label: 'SaaS', description: 'Cloud' },
+    'role:board': { id: 'role:board', label: 'Board' },
+  };
+  const blocks = [
+    { id: 's1', type: 'solution', title: 'Sol 1', body: 'Does A', tags: ['pain:a'], data: { effect: 'A is fast', value: 'Time' } },
+    { id: 's2', type: 'solution', title: 'Sol 2', body: 'Does A for firms', tags: ['pain:a', 'segment:law-firm'], data: {} },
+    { id: 's3', type: 'solution', title: 'Sol 3', body: 'Does A in-house', tags: ['pain:a', 'segment:in-house'], data: {} },
+    { id: 's4', type: 'use_case', title: 'UC', body: 'A case', tags: ['pain:a', 'product:on-prem'], data: {} },
+    { id: 'd1', type: 'differentiator', title: 'Diff', body: 'Why us on A', tags: ['pain:a'], data: {} },
+    { id: 'c1', type: 'comparison', title: 'Cmp', body: '', tags: ['pain:a'], data: { them: 'chatbots', us: 'private' } },
+    { id: 'p1', type: 'person', title: 'Janusz', body: '', tags: ['pain:a'], data: {} },
+  ];
+  const sel = { role: 'role:board', segment: 'segment:law-firm', product: 'product:saas', pains: ['pain:a', 'pain:b'] };
+  const ev = evidencePack(sel, { tiles, blocks });
+  assert.deepEqual(ev.segment, { id: 'segment:law-firm', label: 'Law firm', description: 'Firms' });
+  assert.deepEqual(ev.product, { id: 'product:saas', label: 'SaaS', description: 'Cloud' });
+  const [a, b] = ev.pains;
+  assert.equal(a.label, 'Pain A');
+  assert.deepEqual(a.typical_quotes, ['We lose hours on A']);
+  // the segment match first; another segment and another product never fit
+  assert.deepEqual(a.solutions.map((s) => s.id), ['s2', 's1']);
+  assert.deepEqual(a.solutions[1], { id: 's1', type: 'solution', title: 'Sol 1', text: 'Does A', effect: 'A is fast', value: 'Time' });
+  assert.deepEqual(a.proof.map((p) => p.id), ['d1', 'c1']);
+  assert.equal(a.proof[1].text, 'Others: chatbots. Gaius: private');
+  // a pain without content says so instead of borrowing another pain's solution
+  assert.deepEqual(b.solutions, []);
+  assert.deepEqual(b.proof, []);
+  assert.equal(b.no_solution, true);
+  assert.equal(a.no_solution, undefined);
+});
+
+test('evidence pack: at most 3 solutions and 3 proof items per pain', () => {
+  const blocks = Array.from({ length: 6 }, (_, i) => ({ id: `s${i}`, type: 'solution', title: `S${i}`, body: '', tags: ['pain:a'], data: {} }))
+    .concat(Array.from({ length: 5 }, (_, i) => ({ id: `d${i}`, type: 'pillar', title: `D${i}`, body: '', tags: ['pain:a'], data: {} })));
+  const ev = evidencePack({ role: 'role:board', segment: 'segment:x', product: 'product:y', pains: ['pain:a'] }, { tiles: {}, blocks });
+  assert.deepEqual(ev.pains[0].solutions.map((s) => s.id), ['s0', 's1', 's2']);
+  assert.equal(ev.pains[0].proof.length, 3);
+  assert.equal(ev.pains[0].label, 'pain:a');
+});

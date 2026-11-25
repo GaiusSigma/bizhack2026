@@ -208,3 +208,19 @@ test('base deck: every field a model writes is a field of its slide, and the def
     }
   }
 });
+
+test('product fit: content that names Gaius Vault or the client’s own server never reaches a SaaS offer', () => {
+  const all = [...seed.blocks, ...solutionBlocks].map((b) => ({ ...b, tags: [...b.tags, ...(tileTags[b.id] || [])] }));
+  const offered = all.filter((b) => ['solution', 'use_case', 'differentiator', 'comparison', 'pillar'].includes(b.type));
+  const text = (b) => [b.title, b.body, ...Object.values(b.data || {}).map(String)].join(' ');
+  const vaultOnly = offered.filter((b) => /\bVault\b|own server|your server|local language models|on-premise/i.test(text(b)) && !/SaaS/.test(text(b)));
+  assert.ok(vaultOnly.length >= 5);
+  for (const b of vaultOnly) {
+    const prods = b.tags.filter((t) => t.startsWith('product:'));
+    assert.ok(prods.length && !prods.includes('product:saas'), `${b.id}: names Vault or an own server, so it needs product tags without SaaS (has ${prods.join(', ') || 'none'})`);
+    // the client's own server is the on-prem product only
+    if (/own server|your server|on a server in your organisation|local language models/i.test(text(b)) && !/can run on-premise/i.test(text(b))) {
+      assert.deepEqual(prods, ['product:on-prem'], `${b.id}: own server -> on-prem only`);
+    }
+  }
+});
