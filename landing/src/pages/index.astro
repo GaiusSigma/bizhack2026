@@ -457,7 +457,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
 <script>
   import { icons } from '../lib/icons';
-  import { personas, roles, sources, buildSteps, flowNodes, voiceSample } from '../lib/data';
+  import { personas, roles, sources, buildSteps, flowNodes } from '../lib/data';
 
   // Every "Generate my offer" click posts the form here (override with PUBLIC_OFFER_WEBHOOK_URL at build time).
   const OFFER_WEBHOOK_URL = String(import.meta.env.PUBLIC_OFFER_WEBHOOK_URL || 'https://n8n.bizhack.trygaius.com/webhook/dd7c4b67-f5f6-40f4-9325-1ca924d5ff78');
@@ -468,6 +468,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
   /* ---------- Offer generator ---------- */
   const state = { mode: 'email', persona: personas[0].id, role: roles[0].id, rec: false };
+  // What the visitor actually clicked (preselected defaults do not count).
+  const touched = { persona: false, role: false };
   let genTimers: number[] = [];
   let genRun = 0;
 
@@ -507,6 +509,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     buttons.forEach((b) =>
       b.addEventListener('click', () => {
         state[key] = b.getAttribute(attr)!;
+        touched[key] = true;
         buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
         resetGen();
       }),
@@ -755,42 +758,40 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     ms: number;
   };
 
-  // What we send to n8n. Without text (email or role only) the workflow takes the "nothing known" path.
   const typedEmail = () => $<HTMLInputElement>('#email')?.value.trim() || '';
-  // Everything the visitor set in the form goes to n8n on every click, whichever tab is open.
-  // `mode` says which tab they generated from; n8n decides what to use.
+  // The landing only collects input; n8n interprets it. We send what the visitor actually gave us and
+  // nothing else: no preselected defaults they never touched, no sample text, no guessing.
+  // A field is null when the visitor did not use it. `touched` lists what they used.
   const leadPayload = () => {
-    const p = personas.find((x) => x.id === state.persona) ?? personas[0];
     const email = typedEmail() || null;
-    const source = { email: email ? 'landing-email' : 'landing-try-it-as', voice: 'landing-voice', role: 'landing-role' }[state.mode] ?? 'landing';
+    // "Try it as" counts when a chip was clicked, or when it is what the Email tab submits (no email typed).
+    const usedTryItAs = touched.persona || (state.mode === 'email' && !email);
+    // A role counts when it was clicked, or when the visitor generates from the Pick your role tab.
+    const usedRole = touched.role || state.mode === 'role';
+    const usedVoice = !!(voice.audio || voice.transcript);
+    const p = personas.find((x) => x.id === state.persona) ?? personas[0];
     return {
-      source,
+      source: `landing-${state.mode}`,
       mode: state.mode,
-      // Email tab
+      touched: [email && 'email', usedTryItAs && 'tryItAs', usedRole && 'pickedRole', usedVoice && 'voice'].filter(Boolean),
       email,
-      tryItAs: { persona: p.id, label: p.label, role: p.role, segment: p.segment, text: p.text },
-      // Pick your role tab
-      pickedRole: state.role,
-      // Voice note tab: real audio when recorded, otherwise the sample transcript
-      voice: {
-        recorded: !!voice.audio,
-        audioBase64: voice.audio,
-        mimeType: voice.mimeType,
-        seconds: voice.seconds ? Math.round(voice.seconds * 10) / 10 : null,
-        // What was said: live transcript, corrected by the visitor if they used the pencil
-        transcript: voice.transcript || null,
-        transcriptEdited: voice.edited,
-        // Set when the browser could not transcribe (unsupported, network…): transcribe the audio in n8n
-        transcriptionError: voice.recognitionError,
-        sampleTranscript: voice.audio || voice.transcript ? null : voiceSample,
-        error: voice.error,
-      },
-      // What the generator would use for the active tab (a ready-made brief for the workflow)
-      brief: state.mode === 'role'
-        ? { role: state.role, segment: null, text: null }
-        : state.mode === 'voice'
-          ? { role: null, segment: null, text: voice.transcript || (voice.audio ? null : voiceSample) }
-          : { role: p.role, segment: p.segment, text: email ? null : p.text },
+      // A demo persona: its text is sample copy, not something the visitor wrote.
+      tryItAs: usedTryItAs ? { persona: p.id, label: p.label, role: p.role, segment: p.segment, sampleText: p.text } : null,
+      pickedRole: usedRole ? state.role : null,
+      voice: usedVoice
+        ? {
+            audioBase64: voice.audio,
+            mimeType: voice.mimeType,
+            seconds: voice.seconds ? Math.round(voice.seconds * 10) / 10 : null,
+            // What was said: the browser's live transcript, corrected by the visitor if they used the pencil
+            transcript: voice.transcript || null,
+            transcriptEdited: voice.edited,
+            // Set when the browser could not transcribe (unsupported, network…): transcribe the audio in n8n
+            transcriptionError: voice.recognitionError,
+          }
+        : null,
+      // Microphone problem (e.g. permission denied), even when nothing was recorded
+      microphoneError: voice.error,
       page: location.href,
       language: navigator.language,
       sentAt: new Date().toISOString(),
