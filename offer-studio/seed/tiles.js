@@ -13,7 +13,8 @@ export const tiles = [
     "position": 0,
     "data": {
       "pick_when": "The contact uses AI or wants to test Gaius themselves, asks how it works in daily practice, or will show it to colleagues. Often an in-house lawyer on a 2-week SaaS trial, an associate or a knowledge manager.",
-      "avoid_when": "The contact signs the budget (pick Board) or only checks security and infrastructure (CTO, coming soon)."
+      "avoid_when": "The contact signs the budget (pick Board) or only checks security and infrastructure (CTO, coming soon).",
+      "writing_brief": "Write for the person who will use Gaius every day and has to win over colleagues and the board. Lead with daily legal work: which tasks get faster and how, how the team gets started, and arguments they can pass on to the decision makers. Concrete and practical, in the language of legal work."
     }
   },
   {
@@ -26,7 +27,8 @@ export const tiles = [
     "position": 1,
     "data": {
       "pick_when": "The contact talks about cost, headcount, return on AI, risk or the decision itself. Typical titles: CEO, CFO, board member, managing partner, director general, chancellor.",
-      "avoid_when": "The contact will use the tool themselves and has no say on the budget (pick Champion)."
+      "avoid_when": "The contact will use the tool themselves and has no say on the budget (pick Champion).",
+      "writing_brief": "Write for the person who signs the decision and the budget. Lead with the outcome for the organisation: time saved, risk to client data and quality kept under control, what the pilot will prove and what decision follows. Short sentences, numbers only where the call gave them, no feature detail or daily how-to."
     }
   },
   {
@@ -39,7 +41,8 @@ export const tiles = [
     "position": 10,
     "data": {
       "pick_when": "The contact is CIO, CTO, CISO or head of IT and asks about infrastructure, data flows or a security pack.",
-      "avoid_when": "Coming soon: no scenario yet."
+      "avoid_when": "Coming soon: no scenario yet.",
+      "writing_brief": "Write for technical sign-off: architecture, hosting, data flows, access control and how Gaius fits the existing systems. Precise and verifiable, no marketing language."
     }
   },
   {
@@ -52,7 +55,8 @@ export const tiles = [
     "position": 11,
     "data": {
       "pick_when": "The contact is head of legal or General Counsel and sponsors the purchase.",
-      "avoid_when": "Coming soon: no scenario yet."
+      "avoid_when": "Coming soon: no scenario yet.",
+      "writing_brief": "Write for the head of the legal team: quality and verifiability of answers, how the team adopts the tool and how it fits the way the department works."
     }
   },
   {
@@ -65,7 +69,8 @@ export const tiles = [
     "position": 12,
     "data": {
       "pick_when": "The contact owns the budget and mainly asks about price and return.",
-      "avoid_when": "Coming soon: no scenario yet."
+      "avoid_when": "Coming soon: no scenario yet.",
+      "writing_brief": "Write for the budget owner: what it costs, what it replaces, how the return will be measured and how predictable the cost is."
     }
   },
   {
@@ -78,7 +83,8 @@ export const tiles = [
     "position": 13,
     "data": {
       "pick_when": "The contact is a DPO or compliance officer and asks about personal data.",
-      "avoid_when": "Coming soon: no scenario yet."
+      "avoid_when": "Coming soon: no scenario yet.",
+      "writing_brief": "Write for data protection and compliance: which personal data is processed, where, under which agreement, who has access and how long it is kept."
     }
   },
   {
@@ -1338,7 +1344,7 @@ export const tileTags = {
 // Content revision. A database seeded with an older revision is updated on startup (src/db.js ensureTiles):
 // new solutions are added, solution pins follow this file, missing guidance is filled in, and a tile
 // description is replaced only if it still has the previous revision's text (edits made by hand stay).
-export const tileUpgrade = { rev: 4, previousDescriptions: {
+export const tileUpgrade = { rev: 5, previousDescriptions: {
   "role:champion": "The enthusiast on the team who brings Gaius in and has to win over colleagues.",
   "role:board": "The board, managing partner or director who signs off the decision and the budget.",
   "role:cto": "Technical sign-off: architecture, security, deployment.",

@@ -748,8 +748,8 @@ function contentFor(offerId) {
   const offer = store.getOffer(offerId);
   if (!offer.data?.scenario_id) throw new HttpError(400, 'This offer was not created from tiles');
   const sel = parseSelection(offer.data.tiles, store.list('tiles'));
-  const ctx = contentContext(offer, scenarioFor(sel));
   const tiles = Object.fromEntries(store.list('tiles').map((t) => [t.id, t]));
+  const ctx = contentContext(offer, scenarioFor(sel), { tiles });
   ctx.product_name = offerVars(offer).product_name;
   ctx.client_tiles = ctx.tiles.map((id) => ({ id, label: tiles[id]?.label, description: tiles[id]?.description }));
   return ctx;

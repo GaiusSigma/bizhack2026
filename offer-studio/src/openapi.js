@@ -414,7 +414,7 @@ export const DOCS = {
   },
   'GET /api/offers/:id/content': {
     tag: 'Tiles', operationId: 'getOfferContent', summary: 'Slide copy a model writes for the client',
-    description: 'For each slide of the base deck that has copy written per client: the fields, what to write in each (hint), the length limit, the current value, and for list fields (a slide\'s cards) the item count and columns. Optional slides (e.g. the tool comparison) start hidden. Feed this to a model with the call transcript, then send its answer with PUT',
+    description: 'For each slide of the base deck that has copy written per client: the fields, what to write in each (hint), the length limit, the current value, and for list fields (a slide\'s cards) the item count and columns. Optional slides (e.g. the tool comparison) start hidden. "reader" names who the deck is for (the role tile: label, description, writing brief); hints already include what changes for that role, and the default copy is written for it. Feed this to a model with the call transcript, then send its answer with PUT',
     parameters: [idParam('offer', '/api/offers')],
     responses: { 200: json(anyObject) },
   },

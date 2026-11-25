@@ -425,6 +425,8 @@ test('tile content update: a database seeded with revision 1 gets the new soluti
   s.update('tiles', 'pain:shadow-ai', { data: { pick_when: null, avoid_when: null } });
   s.update('tiles', 'segment:law-firm', { description: seed.tileUpgrade.previousDescriptions['segment:law-firm'] });
   s.update('tiles', 'role:board', { description: 'Our own wording' });
+  s.update('tiles', 'role:champion', { data: { writing_brief: null } });
+  s.update('tiles', 'role:cto', { data: { writing_brief: 'Our own brief' } });
   s.setSetting('tile_content_rev', '1');
 
   const counts = s.ensureTiles(seed);
@@ -436,6 +438,8 @@ test('tile content update: a database seeded with revision 1 gets the new soluti
   assert.ok(s.get('tiles', 'pain:shadow-ai').data.pick_when.length > 20);
   assert.equal(s.get('tiles', 'segment:law-firm').description, seed.tiles.find((t) => t.id === 'segment:law-firm').description);
   assert.equal(s.get('tiles', 'role:board').description, 'Our own wording', 'a description edited by hand stays');
+  assert.equal(s.get('tiles', 'role:champion').data.writing_brief, seed.tiles.find((t) => t.id === 'role:champion').data.writing_brief);
+  assert.equal(s.get('tiles', 'role:cto').data.writing_brief, 'Our own brief', 'a brief edited by hand stays');
   assert.equal(s.getSetting('tile_content_rev'), String(seed.tileUpgrade.rev));
   assert.deepEqual(s.ensureTiles(seed), { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 }, 'second run changes nothing');
 });

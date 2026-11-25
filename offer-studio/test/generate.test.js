@@ -296,3 +296,15 @@ test('applySlotChoice: valid choice becomes slide patches with reasons; wrong ki
   assert.match(err([{ slide_id: 's0', items: [{ id: 'pr-1' }] }])[1], /no swappable/i);
   assert.match(err([{ slide_id: 'zzz', items: [] }])[1], /zzz/);
 });
+
+test('stepData: copy per role over copy per product, and per role and product over both', () => {
+  const step = {
+    data: { a: 'base', b: 'base', c: 'base' },
+    data_by_product: { 'product:saas': { a: 'saas', b: 'saas' } },
+    data_by_role: { 'role:board': { b: 'board', c: 'board' } },
+    data_by_role_product: { 'role:board': { 'product:saas': { c: 'board saas' } } },
+  };
+  assert.deepEqual(stepData(step, { role: 'role:champion', product: 'product:saas' }), { a: 'saas', b: 'saas', c: 'base' });
+  assert.deepEqual(stepData(step, { role: 'role:board', product: 'product:vault' }), { a: 'base', b: 'board', c: 'board' });
+  assert.deepEqual(stepData(step, { role: 'role:board', product: 'product:saas' }), { a: 'saas', b: 'board', c: 'board saas' });
+});

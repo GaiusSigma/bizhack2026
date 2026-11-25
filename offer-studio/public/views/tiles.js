@@ -196,6 +196,10 @@ export function viewTiles(selectedId) {
         h('label', { class: 'f' }, 'Default price (goes into new offers with this product)'),
         h('input', { value: t.data?.price || '', placeholder: 'e.g. 12,000 PLN / month', oninput: (e) => save({ data: { price: e.target.value } }) }),
       ] : null,
+      t.category === 'role' ? [
+        h('label', { class: 'f' }, 'Writing brief (the AI model writes the slide copy from this reader’s perspective)'),
+        autosize(h('textarea', { rows: 3, oninput: (e) => save({ data: { writing_brief: e.target.value } }) }, t.data?.writing_brief || '')),
+      ] : null,
       t.category === 'role' ? roleScenario(t) : null,
       h('h3', { class: 'sec' }, `Linked content (${pinned.length})`),
       h('p', { class: 'hint' }, LINKED_HELP[t.category]),

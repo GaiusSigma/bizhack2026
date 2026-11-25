@@ -117,7 +117,13 @@ export function pickCards(components, slots, sel) {
 
 export const stepApplies = (step, sel) => !step.when?.any?.length || step.when.any.some((t) => selected(sel).has(t));
 
-export const stepData = (step, sel) => ({ ...(step.data || {}), ...(step.data_by_product?.[sel.product] || {}) });
+// Default copy, then per product, per role (the reader's perspective) and per role and product.
+export const stepData = (step, sel) => ({
+  ...(step.data || {}),
+  ...(step.data_by_product?.[sel.product] || {}),
+  ...(step.data_by_role?.[sel.role] || {}),
+  ...(step.data_by_role_product?.[sel.role]?.[sel.product] || {}),
+});
 
 // Offer slides from the scenario steps. `data.blocks` in the order that should break ties.
 export function buildSlides(scenario, sel, { blocks = [], components = [], slots = {} } = {}) {

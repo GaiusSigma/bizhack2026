@@ -107,3 +107,44 @@ test('the 2026 deck renders to a PDF with written copy', { skip: !hasCli && 'fig
   assert.equal(pdf.subarray(0, 4).toString(), '%PDF');
   assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length, 10);
 });
+
+const board = { ...sel, role: 'role:board' };
+const offerFor = (s) => {
+  const o = offerFrom(buildSlides(base, s, { blocks: [person] }));
+  o.data.tiles = [s.role, s.segment, s.product, ...s.pains];
+  return o;
+};
+const copy = (o) => Object.fromEntries(o.slides.map((s) => [s.origin.step, s.data]));
+
+test('role: Board and Champion get different default copy on the slides that answer the role, the same deck', () => {
+  for (const product of ['product:vault', 'product:saas', 'product:on-prem']) {
+    const ch = offerFor({ ...sel, product });
+    const bo = offerFor({ ...board, product });
+    assert.deepEqual(bo.slides.map((s) => s.origin.step), ch.slides.map((s) => s.origin.step), 'one core deck for every role');
+    const a = copy(ch);
+    const b = copy(bo);
+    for (const [step, field] of [['title', 'lead'], ['starting-point', 'lead'], ['team-support', 'lead'], ['team-support', 'concerns'], ['preparation', 'lead'], ['preparation', 'steps'], ['contact-person', 'lead']]) {
+      assert.notEqual(b[step][field], a[step][field], `${product} ${step}.${field}`);
+    }
+    // the Champion has to win over the board; the board does not talk to itself
+    assert.match(a.preparation.steps, /Talk to the board/);
+    assert.doesNotMatch(b.preparation.steps, /Talk to the board/);
+    // facts that depend on the product, not the role, stay the same
+    assert.equal(b.security.features, a.security.features);
+  }
+});
+
+test('role: the content context names the reader and adds per-role guidance to the field hints', () => {
+  const tiles = {
+    'role:board': { id: 'role:board', label: 'Board', description: 'Signs the budget.', data: { writing_brief: 'Outcome, cost and risk.' } },
+  };
+  const ctx = contentContext(offerFor(board), base, { tiles });
+  assert.deepEqual(ctx.reader, { role: 'role:board', label: 'Board', description: 'Signs the budget.', brief: 'Outcome, cost and risk.' });
+  const prep = ctx.slides.find((s) => s.step === 'preparation');
+  const general = contentContext(offerFor(sel), base).slides.find((s) => s.step === 'preparation');
+  assert.ok(prep.fields.steps.hint.startsWith(base.steps.find((st) => st.key === 'preparation').write.steps.hint));
+  assert.match(prep.fields.steps.hint, /For the Board:/);
+  assert.match(general.fields.steps.hint, /For the Champion:/);
+  // without tile data the reader is still named by its id
+  assert.deepEqual(contentContext(offerFor(sel), base).reader, { role: 'role:champion', label: 'Champion', description: '', brief: '' });
+});
