@@ -21,6 +21,10 @@ export const segmentOk = (tags, sel) => {
   const segs = (tags || []).filter((t) => t.startsWith('segment:'));
   return !segs.length || segs.includes(sel.segment);
 };
+// Solutions pinned to a pain that fit a segment.
+export const solutionsFor = (painId, segId) => state.blocks.filter((b) => b.type === 'solution' && b.tags.includes(painId)
+  && segmentOk(b.tags, { segment: segId }));
+
 // Pains that have content fitting the segment (a solution or a use case).
 export const painsWithContent = (sel) => sel.pains.filter((p) => state.blocks.some((b) =>
   COVERAGE_TYPES.includes(b.type) && b.tags.includes(p) && segmentOk(b.tags, sel)));
@@ -35,6 +39,15 @@ const selectedGuide = (chosen) => {
     t.data?.avoid_when ? h('div', {}, h('span', { class: 'gk no' }, 'Not when'), ' ', t.data.avoid_when) : null)));
 };
 
+// For a pain: how many solutions it has for the selected segment, and whether the pain is typical there.
+const painFit = (t, seg, segLabel) => {
+  const n = solutionsFor(t.id, seg).length;
+  const typical = (t.data?.typical_segments || []).includes(seg);
+  return h('span', { class: 'pain-fit' },
+    h('span', { class: `fit-n ${n >= 2 ? 'ok' : n === 1 ? 'thin' : 'none'}` }, n === 1 ? '1 solution' : `${n} solutions`),
+    typical ? null : h('span', { class: 'fit-atypical', title: `The sales sheet does not list this pain for ${segLabel}` }, `less common for ${segLabel}`));
+};
+
 // Tile picker. `selected` = list of ids; onChange gets the new list.
 export function tilePicker(selected, onChange) {
   let ids = cleanSelection(selected, state.tiles);
@@ -44,6 +57,8 @@ export function tilePicker(selected, onChange) {
       const tiles = state.tiles.filter((t) => t.category === cat).sort((a, b) => (a.status === 'soon') - (b.status === 'soon') || a.position - b.position);
       const multi = cat === 'pain';
       const count = ids.filter((id) => id.startsWith(`${cat}:`)).length;
+      const seg = ids.find((id) => id.startsWith('segment:'));
+      const segLabel = state.tiles.find((t) => t.id === seg)?.label;
       return h('section', { class: 'tp-cat' },
         h('div', { class: 'tp-head' }, h('h3', {}, title),
           h('span', { class: 'hint' }, multi ? `pick 1 to ${MAX_PAINS} · ${count} selected` : 'pick one')),
@@ -66,7 +81,8 @@ export function tilePicker(selected, onChange) {
           },
           h('span', { class: 'tile-label' }, t.label),
           !soon && t.description ? h('span', { class: 'tile-desc' }, t.description) : null,
-          soon ? h('span', { class: 'soon-tag' }, 'coming soon') : null);
+          soon ? h('span', { class: 'soon-tag' }, 'coming soon') : null,
+          multi && seg ? painFit(t, seg, segLabel) : null);
         })),
         selectedGuide(tiles.filter((t) => ids.includes(t.id))));
     }));

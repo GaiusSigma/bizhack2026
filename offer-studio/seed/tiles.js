@@ -186,7 +186,15 @@ export const tiles = [
     "position": 0,
     "data": {
       "pick_when": "The client says documents or know-how must stay in-house, asks whether the model learns from their data, or must show clients proof of security.",
-      "avoid_when": "The client works only on public materials and has no sensitive documents."
+      "avoid_when": "The client works only on public materials and has no sensitive documents.",
+      "typical_segments": [
+        "segment:law-firm",
+        "segment:in-house",
+        "segment:public-sector",
+        "segment:notaries",
+        "segment:mass-claims",
+        "segment:finance"
+      ]
     }
   },
   {
@@ -203,7 +211,11 @@ export const tiles = [
     "position": 1,
     "data": {
       "pick_when": "Staff already use ChatGPT or other public chatbots on their own accounts and the organisation wants to regulate or legalise AI rather than ban it.",
-      "avoid_when": "The organisation has no AI use yet and no plans to regulate it."
+      "avoid_when": "The organisation has no AI use yet and no plans to regulate it.",
+      "typical_segments": [
+        "segment:in-house",
+        "segment:public-sector"
+      ]
     }
   },
   {
@@ -220,7 +232,12 @@ export const tiles = [
     "position": 2,
     "data": {
       "pick_when": "The team handles many similar documents: NDAs, data processing agreements, counterparty templates, the same letters again and again.",
-      "avoid_when": "Work is mostly one-off, bespoke matters."
+      "avoid_when": "Work is mostly one-off, bespoke matters.",
+      "typical_segments": [
+        "segment:in-house",
+        "segment:law-firm",
+        "segment:finance"
+      ]
     }
   },
   {
@@ -236,7 +253,10 @@ export const tiles = [
     "position": 3,
     "data": {
       "pick_when": "The board expects more output without new hires, wants to cut outside counsel costs or asks about the return on AI.",
-      "avoid_when": "The contact has no cost or headcount pressure to talk about."
+      "avoid_when": "The contact has no cost or headcount pressure to talk about.",
+      "typical_segments": [
+        "segment:in-house"
+      ]
     }
   },
   {
@@ -251,7 +271,10 @@ export const tiles = [
     "position": 4,
     "data": {
       "pick_when": "The client tried ChatGPT and says it only gives information but doesn’t help draft or check real documents.",
-      "avoid_when": "The client has never used a general AI tool."
+      "avoid_when": "The client has never used a general AI tool.",
+      "typical_segments": [
+        "segment:in-house"
+      ]
     }
   },
   {
@@ -268,7 +291,12 @@ export const tiles = [
     "position": 5,
     "data": {
       "pick_when": "The client found made-up rulings or wrong statute numbers in AI answers and now checks everything by hand. Talk about sources and citation checks, never promise \"zero hallucinations\".",
-      "avoid_when": "The client doesn’t do research or cite case law."
+      "avoid_when": "The client doesn’t do research or cite case law.",
+      "typical_segments": [
+        "segment:law-firm",
+        "segment:in-house",
+        "segment:tax-advisors"
+      ]
     }
   },
   {
@@ -285,7 +313,13 @@ export const tiles = [
     "position": 6,
     "data": {
       "pick_when": "Opinions, contracts and emails sit on drives, SharePoint or Outlook and are found only by file name; know-how leaves with departing staff.",
-      "avoid_when": "A young organisation without an archive of its own documents."
+      "avoid_when": "A young organisation without an archive of its own documents.",
+      "typical_segments": [
+        "segment:law-firm",
+        "segment:in-house",
+        "segment:notaries",
+        "segment:finance"
+      ]
     }
   },
   {
@@ -301,7 +335,11 @@ export const tiles = [
     "position": 7,
     "data": {
       "pick_when": "The client copies chat output into Word and formats it by hand, or wants AI inside Word.",
-      "avoid_when": "The client doesn’t work in Word."
+      "avoid_when": "The client doesn’t work in Word.",
+      "typical_segments": [
+        "segment:law-firm",
+        "segment:notaries"
+      ]
     }
   },
   {
@@ -316,7 +354,10 @@ export const tiles = [
     "position": 8,
     "data": {
       "pick_when": "The client runs the same legal tasks across many companies, sites or contracts (groups, holdings, large portfolios).",
-      "avoid_when": "A single small organisation with a few contracts."
+      "avoid_when": "A single small organisation with a few contracts.",
+      "typical_segments": [
+        "segment:in-house"
+      ]
     }
   },
   {
@@ -332,7 +373,10 @@ export const tiles = [
     "position": 9,
     "data": {
       "pick_when": "Good templates exist but must be filled by hand with data from many matters (mass cases, bulk annexes, similar decisions).",
-      "avoid_when": "Each document is drafted from scratch with no template."
+      "avoid_when": "Each document is drafted from scratch with no template.",
+      "typical_segments": [
+        "segment:mass-claims"
+      ]
     }
   },
   {
@@ -348,7 +392,11 @@ export const tiles = [
     "position": 10,
     "data": {
       "pick_when": "The client finds case law hard to find in LEX or Legalis or misses rulings. Position Gaius as a complement to LEX, not a replacement.",
-      "avoid_when": "The client doesn’t search case law."
+      "avoid_when": "The client doesn’t search case law.",
+      "typical_segments": [
+        "segment:law-firm",
+        "segment:in-house"
+      ]
     }
   },
   {
@@ -475,8 +523,7 @@ export const solutionBlocks = [
     "tags": [
       "pain:shadow-ai",
       "segment:in-house",
-      "segment:public-sector",
-      "segment:law-firm"
+      "segment:public-sector"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -515,7 +562,7 @@ export const solutionBlocks = [
     "tags": [
       "pain:chatgpt-only-informs",
       "pain:copy-to-word",
-      "pain:templates-at-scale",
+      "pain:repetitive-documents",
       "segment:law-firm",
       "segment:in-house",
       "segment:public-sector"
@@ -579,7 +626,6 @@ export const solutionBlocks = [
     "tags": [
       "pain:chatgpt-only-informs",
       "pain:board-pressure",
-      "pain:repetitive-documents",
       "segment:public-sector"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
@@ -703,7 +749,7 @@ export const solutionBlocks = [
       "source": "Sales sheet, PRKW row 15"
     },
     "tags": [
-      "pain:shadow-ai",
+      "pain:board-pressure",
       "segment:in-house",
       "segment:law-firm",
       "segment:public-sector"
@@ -844,8 +890,7 @@ export const solutionBlocks = [
     "tags": [
       "pain:group-scale",
       "pain:templates-at-scale",
-      "segment:in-house",
-      "segment:law-firm"
+      "segment:in-house"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -882,8 +927,9 @@ export const solutionBlocks = [
       "source": "Sales sheet, PRKW row 24"
     },
     "tags": [
-      "pain:unsearchable-archive",
-      "segment:in-house"
+      "pain:repetitive-documents",
+      "segment:in-house",
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"
@@ -902,6 +948,7 @@ export const solutionBlocks = [
     },
     "tags": [
       "pain:unsearchable-archive",
+      "pain:group-scale",
       "segment:in-house",
       "segment:public-sector"
     ],
@@ -1007,7 +1054,8 @@ export const solutionBlocks = [
     "tags": [
       "pain:confidentiality",
       "segment:in-house",
-      "segment:public-sector"
+      "segment:public-sector",
+      "segment:law-firm"
     ],
     "created_at": "2026-11-25T00:00:00.000Z",
     "updated_at": "2026-11-25T00:00:00.000Z"

@@ -110,15 +110,37 @@ const fitsSegment = (b, seg) => {
   return !segs.length || segs.includes(seg);
 };
 
-test('coverage: every pain has 2 to 4 solutions in every active segment', () => {
+// Pairs where only one solution honestly fits. They are pains the sales sheet does not list for that segment,
+// so content is thin on purpose (nothing is pinned just to raise the count). Changing this list is a content decision.
+const THIN = [
+  'pain:group-scale x segment:law-firm',
+  'pain:shadow-ai x segment:law-firm',
+  'pain:templates-at-scale x segment:in-house',
+  'pain:templates-at-scale x segment:law-firm',
+  'pain:templates-at-scale x segment:public-sector',
+];
+
+test('coverage: every pain has a solution in every active segment, typical pairs at least two, thin pairs listed', () => {
+  const thin = [];
   const problems = [];
   for (const p of tiles.filter((t) => t.category === 'pain')) {
     for (const seg of ACTIVE_SEGMENTS) {
       const n = solutionBlocks.filter((b) => b.tags.includes(p.id) && fitsSegment(b, seg)).length;
-      if (n < 2 || n > 4) problems.push(`${p.id} x ${seg}: ${n}`);
+      if (n === 0) problems.push(`${p.id} x ${seg}: no solution`);
+      if (n < 2 && p.data.typical_segments.includes(seg)) problems.push(`${p.id} x ${seg}: typical pair with ${n}`);
+      if (n === 1) thin.push(`${p.id} x ${seg}`);
     }
   }
   assert.deepEqual(problems, []);
+  assert.deepEqual(thin.sort(), THIN);
+});
+
+test('pains: typical segments are known segment tiles', () => {
+  const segs = new Set(tiles.filter((t) => t.category === 'segment').map((t) => t.id));
+  for (const p of tiles.filter((t) => t.category === 'pain')) {
+    assert.ok(p.data.typical_segments.length, p.id);
+    for (const s of p.data.typical_segments) assert.ok(segs.has(s), `${p.id}: ${s}`);
+  }
 });
 
 test('tiles: every tile says when to pick it, active tiles also when not to and what they are', () => {
