@@ -57,11 +57,18 @@ export function segmentOk(tags, sel) {
   return !segs.length || segs.includes(sel.segment);
 }
 
+// Content tagged with products fits only the selected product (e.g. a Vault package in a SaaS offer would be wrong);
+// content without product tags fits every product.
+export function productOk(tags, sel) {
+  const prods = (tags || []).filter((t) => categoryOf(t) === 'product');
+  return !prods.length || prods.includes(sel.product);
+}
+
 // Candidates sorted by score (descending), ties in input order.
 const ranked = (items, sel) =>
   items
     .map((item, i) => ({ item, i, ...score(item.tags, sel) }))
-    .filter((x) => segmentOk(x.item.tags, sel))
+    .filter((x) => segmentOk(x.item.tags, sel) && productOk(x.item.tags, sel))
     .sort((a, b) => b.score - a.score || a.i - b.i);
 
 // First every selected pain (in selection order) gets its best-scoring block, so a pain with content is never

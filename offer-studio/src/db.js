@@ -555,6 +555,13 @@ export class Store {
       this.update('blocks', b.id, { tags, ...(Object.keys(data).length ? { data } : {}) });
       counts.tagged++;
     }
+    for (const [id, add] of Object.entries(seed.tileTags || {})) {
+      const table = id.includes('/') ? 'components' : 'blocks';
+      const cur = this.get(table, id);
+      if (!cur) continue;
+      const tags = [...new Set([...cur.tags, ...add])];
+      if (tags.length !== cur.tags.length) { this.update(table, id, { tags }); counts.tagged++; }
+    }
     for (const t of seed.tiles || []) {
       const cur = this.get('tiles', t.id);
       if (!cur) { this.upsert('tiles', t); counts.tiles++; continue; }

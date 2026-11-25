@@ -178,6 +178,7 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
       autosize(h('textarea', { rows: 4, oninput: (e) => save({ body: e.target.value }) }, block.body)),
     ],
     h('label', { class: 'f' }, 'Tiles: which clients this block is for (click to toggle)'),
+    (block.tags || []).includes('general') ? h('div', { class: 'hint' }, 'Marked general: used in every offer, whatever the client. Remove "general" under Advanced to pin it to tiles instead.') : null,
     tileTagEditor(block.tags, (tags) => {
       const next = [...plainTags(block.tags), ...tags.filter((t) => t.includes(':'))];
       block.tags = next;
@@ -217,7 +218,8 @@ function viewBlocks(selectedId) {
         bs.map((b) => h('div', { class: `item ${b.id === selectedId ? 'active' : ''}`, onclick: () => go('blocks', b.id) },
           h('div', {}, b.title || '(untitled)'),
           h('div', { class: 'sub' }, (b.body || '').slice(0, 90)),
-          h('div', { class: 'item-tiles' }, (b.tags || []).filter((t) => t.includes(':')).map((t) => h('span', { class: `chip tile-chip small ${t.split(':')[0]}` }, tileLabel(t)))))),
+          h('div', { class: 'item-tiles' }, (b.tags || []).filter((t) => t.includes(':')).map((t) => h('span', { class: `chip tile-chip small ${t.split(':')[0]}` }, tileLabel(t))),
+            (b.tags || []).includes('general') ? h('span', { class: 'chip tile-chip small general', title: 'Used in every offer, whatever the client' }, 'general') : null))),
       ]),
       items.length ? [] : [h('div', { class: 'empty' }, 'No blocks')],
     ].flat(Infinity));

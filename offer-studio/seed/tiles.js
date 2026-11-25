@@ -1182,6 +1182,73 @@ export const tileTags = {
   "cmp-word": [
     "pain:copy-to-word"
   ],
+  "pr-research-from-scratch": [
+    "pain:weak-case-law-search",
+    "pain:unsearchable-archive"
+  ],
+  "pr-repeated-analyses": [
+    "pain:unsearchable-archive"
+  ],
+  "pr-hidden-know-how": [
+    "pain:unsearchable-archive"
+  ],
+  "pr-repetitive-work": [
+    "pain:repetitive-documents",
+    "pain:board-pressure"
+  ],
+  "pr-ai-without-rules": [
+    "pain:shadow-ai"
+  ],
+  "df-private-legal-ai": [
+    "pain:confidentiality",
+    "pain:shadow-ai"
+  ],
+  "df-one-environment": [
+    "pain:weak-case-law-search",
+    "pain:unsearchable-archive"
+  ],
+  "df-rollout-routine": [
+    "pain:shadow-ai"
+  ],
+  "df-no-lock-in": [
+    "pain:board-pressure",
+    "pain:group-scale"
+  ],
+  "df-one-service": [
+    "pain:board-pressure"
+  ],
+  "df-safe-start": [
+    "pain:board-pressure"
+  ],
+  "pkg-environment": [
+    "product:vault",
+    "product:on-prem"
+  ],
+  "pkg-legal-engineering": [
+    "product:vault",
+    "product:on-prem"
+  ],
+  "pkg-technology": [
+    "general"
+  ],
+  "st-processes": [
+    "general"
+  ],
+  "st-real-matters": [
+    "general"
+  ],
+  "st-routines": [
+    "general"
+  ],
+  "st-verification": [
+    "general"
+  ],
+  "st-adoption": [
+    "general"
+  ],
+  "person-janusz": [
+    "general"
+  ],
   "why/no-lock-in": [
     "pain:board-pressure",
     "pain:group-scale",
