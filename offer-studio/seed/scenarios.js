@@ -20,7 +20,7 @@ const okladka = {
   },
   data_by_product: {
     [SAAS]: {
-      title: 'Gaius',
+      title: 'Gaius Pro',
       lead: 'Legal AI do pracy na realnych dokumentach: źródła prawa, Wasze wzory i gotowe pisma w jednym narzędziu, bez instalacji.',
     },
     [ONPREM]: {
@@ -72,7 +72,7 @@ const cennik = {
   },
   data_by_product: {
     [SAAS]: {
-      title_accent: 'Gaius?',
+      title_accent: 'Pro?',
       lead: 'Abonament obejmuje narzędzie, aktualne źródła prawa i pomoc we wdrożeniu zespołu.',
       lines: 'Dostęp dla zespołu | w cenie abonamentu\nAktualizacje źródeł | w cenie abonamentu\nWdrożenie i szkolenie | w cenie abonamentu',
     },
@@ -84,7 +84,7 @@ const cennik = {
   fill: { kind: 'blocks', type: 'package', min: 3, max: 3 },
 };
 
-const czymJestOverrides = { [SAAS]: { title_accent: 'Gaius?' } };
+const czymJestOverrides = { [SAAS]: { title_accent: 'Pro?' } };
 
 export const scenarios = [
   {
@@ -104,7 +104,7 @@ export const scenarios = [
       {
         key: 'dlaczego', label: 'Dlaczego Gaius', frame: 'dlaczego',
         data: { title: 'Dlaczego ', title_accent: 'Vault?', lead: 'Gaius Vault łączy technologię, źródła, dokumenty, wdrożenie i adopcję w jednym modelu.' },
-        data_by_product: { [SAAS]: { title_accent: 'Gaius?', lead: 'Gaius łączy technologię, źródła prawa, Wasze dokumenty i wdrożenie zespołu w jednym abonamencie.' } },
+        data_by_product: { [SAAS]: { title_accent: 'Pro?', lead: 'Gaius łączy technologię, źródła prawa, Wasze dokumenty i wdrożenie zespołu w jednym abonamencie.' } },
         draft: [SAAS],
         fill: { kind: 'picks', set: 'dlaczego' },
       },
@@ -164,7 +164,7 @@ export const scenarios = [
           lead: 'Nie chodzi o samą technologię. Chodzi o moment, w którym Legal AI powinno stać się standardem pracy zespołu.',
           note: 'Gaius pomaga zamienić te sygnały w plan wdrożenia: procesy, rutyny i mierzalny efekt.',
         },
-        data_by_product: { [SAAS]: { title_accent: 'Gaius?' } },
+        data_by_product: { [SAAS]: { title_accent: 'Pro?' } },
         draft: [SAAS],
         fill: { kind: 'blocks', type: 'signal', min: 4, max: 4 },
       },
@@ -176,7 +176,7 @@ export const scenarios = [
           lead: 'Większość rozwiązań rozwiązuje jeden fragment problemu. Gaius Vault dostarcza kompletny standard pracy prawnej z AI — w ramach jednej licencji.',
           col_area: 'Obszar', col_them: 'Kilka narzędzi AI / LegalTech', col_us: 'Gaius Vault',
         },
-        data_by_product: { [SAAS]: { lead: 'Większość rozwiązań rozwiązuje jeden fragment problemu. Gaius łączy źródła prawa, dokumenty i pisma w jednym narzędziu.', col_us: 'Gaius' } },
+        data_by_product: { [SAAS]: { lead: 'Większość rozwiązań rozwiązuje jeden fragment problemu. Gaius łączy źródła prawa, dokumenty i pisma w jednym narzędziu.', col_us: 'Gaius Pro' } },
         draft: [SAAS],
         fill: { kind: 'blocks', type: 'comparison', min: 5, max: 7 },
       },

@@ -1,155 +1,11 @@
 // Offer Studio: minimalistyczny frontend bez buildu. Wszystko idzie przez to samo REST API,
 // z którego mogą korzystać skrypty i n8n (patrz /static/api.html). Slajdy renderuje FigCraft.
 
-// ------------------------------------------------------------------ narzędzia
-const $ = (sel, root = document) => root.querySelector(sel);
-
-function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v == null || v === false) continue;
-    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else if (k === 'class') el.className = v;
-    else if (k === 'value') el.value = v;
-    else if (k === 'checked') el.checked = !!v;
-    else el.setAttribute(k, v === true ? '' : v);
-  }
-  for (const c of children.flat(Infinity)) if (c != null && c !== false) el.append(c instanceof Node ? c : document.createTextNode(String(c)));
-  return el;
-}
-
-async function api(method, path, body) {
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers: body !== undefined ? { 'content-type': 'application/json' } : {},
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  if (res.status === 204) return null;
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `${res.status} ${res.statusText}`);
-  return data;
-}
-
-let toastTimer;
-function toast(msg, err = false) {
-  const t = $('#toast');
-  t.textContent = msg;
-  t.className = err ? 'err' : '';
-  t.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.hidden = true), err ? 6000 : 2200);
-}
-
-const debounce = (fn, ms = 450) => {
-  let t;
-  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-};
-
-// Pole statusu zapisu („zapisywanie…”, „zapisano”, błąd).
-function saver(statusEl, fn, ms) {
-  return debounce(async (...a) => {
-    statusEl.textContent = 'zapisywanie…';
-    statusEl.className = 'status';
-    try {
-      await fn(...a);
-      statusEl.textContent = 'zapisano';
-      statusEl.className = 'status ok';
-    } catch (e) {
-      statusEl.textContent = 'błąd';
-      statusEl.className = 'status err';
-      toast(e.message, true);
-    }
-  }, ms);
-}
-
-function autosize(t) {
-  const fit = () => { t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight + 2, 600)}px`; };
-  t.addEventListener('input', fit);
-  requestAnimationFrame(fit);
-  return t;
-}
-
-// Edytor pól klucz → wartość (dla `data` bloków, slajdów i ofert).
-// `hints` to klucze, które warto pokazać od razu (np. pola wyczytane z szablonu).
-function kvEditor(obj, hints, onChange) {
-  const rows = [];
-  const types = {};
-  const collect = () => {
-    const out = {};
-    for (const r of rows) {
-      const k = r.k.value.trim();
-      if (!k) continue;
-      let v = r.v.value;
-      if (types[k] === 'number' && v.trim() !== '' && !isNaN(Number(v))) v = Number(v);
-      else if (types[k] === 'json') { try { v = JSON.parse(v); } catch { /* zostaje tekst */ } }
-      else if (types[k] === 'boolean') v = v.trim() === 'true';
-      if (v === '' && !(k in obj)) continue;
-      out[k] = v;
-    }
-    // klucze usunięte z listy -> null (API usuwa je przy scalaniu)
-    for (const k of Object.keys(obj)) if (!(k in out)) out[k] = null;
-    return out;
-  };
-  const fire = () => onChange(collect());
-  const list = h('div', { class: 'kv' });
-  const addRow = (k = '', v = '') => {
-    if (v !== null && typeof v === 'object') { types[k] = 'json'; v = JSON.stringify(v, null, 2); }
-    else if (typeof v === 'number') types[k] = 'number';
-    else if (typeof v === 'boolean') types[k] = 'boolean';
-    const r = {
-      k: h('input', { value: k, placeholder: 'klucz', oninput: fire }),
-      v: autosize(h('textarea', { rows: 1, oninput: fire }, String(v ?? ''))),
-    };
-    const del = h('button', { class: 'icon', title: 'Usuń pole', onclick: () => { rows.splice(rows.indexOf(r), 1); row.remove(); fire(); } }, '×');
-    const row = h('div', { class: 'r' }, r.k, r.v, del);
-    rows.push(r);
-    list.append(row);
-    return r;
-  };
-  for (const [k, v] of Object.entries(obj)) addRow(k, v);
-  for (const k of hints || []) if (!(k in obj)) addRow(k, '');
-  return h('div', { class: 'kv' }, list, h('div', {}, h('button', { class: 'btn sm', onclick: () => addRow().k.focus() }, '+ pole')));
-}
-
-let onModalClose = null;
-function modal(content) {
-  const m = $('#modal');
-  m.replaceChildren(h('div', { class: 'dlg' }, content));
-  m.hidden = false;
-  const close = () => { m.hidden = true; m.replaceChildren(); onModalClose?.(); onModalClose = null; };
-  m.onclick = (e) => { if (e.target === m) close(); };
-  return close;
-}
-addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').hidden) $('#modal').click(); });
-
-async function download(path, fallbackName) {
-  toast('Generuję…');
-  try {
-    const res = await fetch(`/api${path}`);
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
-    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || fallbackName;
-    const url = URL.createObjectURL(await res.blob());
-    h('a', { href: url, download: name }).click();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    toast('Gotowe');
-  } catch (e) {
-    toast(e.message, true);
-  }
-}
-
-// ------------------------------------------------------------------ stan i routing
-const state = { blocks: [], offers: [], templates: [], library: [], components: [], componentSets: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
-
-async function loadAll() {
-  [state.blocks, state.offers, state.templates, state.library, state.components, state.componentSets, state.meta] = await Promise.all([
-    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/library'),
-    api('GET', '/components?missing=1'), api('GET', '/component-sets'), api('GET', '/meta'),
-  ]);
-}
-
-const slugify = (s) => String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L')
-  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
-const UPLOAD_ACCEPT = '.figcraft,.json,.fig,.penpot,.sketch,.svg';
+import {
+  $, UPLOAD_ACCEPT, api, autosize, debounce, download, go, h, kvEditor, loadAll, modal, saver, slugify, state, toast, ui,
+} from './lib.js';
+import { viewNewOffer } from './views/new-offer.js';
+import { viewOffer, viewOfferList } from './views/offer.js';
 
 // Wgranie plików ze slajdami (każda ramka najwyższego poziomu = slajd w bibliotece).
 async function uploadSlideFiles(files, { replaceId } = {}) {
@@ -216,22 +72,43 @@ function pickSlide(title = 'Wybierz slajd z biblioteki') {
         h('div', { class: 'lib-grid' }, slides.map((s) => h('button', { class: 'lib-card', onclick: () => { picked = s.frame; close(); } },
           h('img', { src: s.thumb, alt: s.frame, loading: 'lazy' }), h('span', {}, s.frame)))),
       ])));
-    onModalClose = () => resolve(picked);
+    ui.onModalClose = () => resolve(picked);
   });
 }
 
+const VIEWS = {
+  blocks: (...a) => viewBlocks(...a),
+  templates: (...a) => viewTemplates(...a),
+  components: (...a) => viewComponents(...a),
+  'offer-advanced': (...a) => viewOffers(...a),
+};
+
 function route() {
+  ui.refresh = null;
   const [view = 'offers', id = '', sub = ''] = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
-  ({ blocks: viewBlocks, offers: viewOffers, templates: viewTemplates, components: viewComponents }[view] || viewOffers)(id, sub);
+  if (view === 'offers' || !VIEWS[view]) return routeOffers(id, sub);
+  VIEWS[view](id, sub);
 }
-const go = (...parts) => { location.hash = `#/${parts.filter((p) => p != null && p !== '').map(encodeURIComponent).join('/')}`; };
+
+// Oferty: lista, nowa oferta z kafelków, widok oferty z kafelków albo dotychczasowy edytor (oferty składane ręcznie).
+function routeOffers(id, sub) {
+  document.querySelector('#tabs button[data-view="offers"]')?.classList.add('active');
+  if (!id) return viewOfferList();
+  if (id === 'new') return viewNewOffer();
+  const o = state.offers.find((x) => x.id === id);
+  if (o?.data?.scenario_id) return viewOffer(id, sub);
+  Promise.resolve(viewOffers(id, sub)).then(() => {
+    if (!o) return;
+    document.querySelector('.editor.narrow')?.prepend(h('div', { class: 'legacy-note' },
+      'Ta oferta nie powstała z kafelków, więc edytujesz ją ręcznie. ', h('a', { href: '#/offers/new' }, 'Nowa oferta z kafelków')));
+  });
+}
 document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => go(b.dataset.view)));
 addEventListener('hashchange', route);
 
 // Zmiany z innych kart / z API odświeżają listy i podgląd (edytorów w trakcie pisania nie ruszamy).
 let editingUntil = 0;
-let refreshLists = null;
 document.addEventListener('input', () => (editingUntil = Date.now() + 2500), true);
 const es = new EventSource('/api/events');
 es.onmessage = debounce(async (e) => {
@@ -240,7 +117,7 @@ es.onmessage = debounce(async (e) => {
   await loadAll();
   const inOffers = location.hash.startsWith('#/offers') || location.hash === '';
   if (!inOffers && Date.now() > editingUntil && $('#modal').hidden) route();
-  else refreshLists?.();
+  else ui.refresh?.();
 }, 300);
 
 
@@ -311,7 +188,7 @@ function viewBlocks(selectedId) {
       items.length ? [] : [h('div', { class: 'empty' }, 'Brak bloków')],
     ].flat(Infinity));
   };
-  refreshLists = renderList;
+  ui.refresh = renderList;
 
   const typeSel = h('select', { onchange: (e) => { f.type = e.target.value; renderList(); } },
     h('option', { value: '' }, 'wszystkie typy'), state.meta.types.map((t) => h('option', { value: t.type }, `${t.type} (${t.count})`)));
@@ -355,7 +232,7 @@ async function viewOffers(offerId, slideId) {
     ...state.offers.map((o) => h('div', { class: `item ${o.id === offerId ? 'active' : ''}`, onclick: () => go('offers', o.id) },
       h('div', {}, o.name), h('div', { class: 'sub' }, [o.data?.client, new Date(o.updated_at).toLocaleString('pl-PL')].filter(Boolean).join(' · ')))),
   );
-  refreshLists = renderList;
+  ui.refresh = renderList;
   renderList();
 
   const newOffer = async () => {
@@ -509,7 +386,7 @@ async function viewOffers(offerId, slideId) {
   renderSlideEditor();
 
   // Każda zmiana (z UI albo z API) -> odśwież listę slajdów i podgląd.
-  refreshLists = async () => {
+  ui.refresh = async () => {
     renderList();
     try {
       const fresh = await api('GET', `/offers/${encodeURIComponent(offer.id)}`);
@@ -572,7 +449,7 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
             return h('div', { class: 'p' },
               h('span', {}, b ? b.title : h('s', {}, id), ' ', h('small', {}, b?.type || 'brak bloku')),
               h('span', {},
-                h('button', { class: 'icon', title: 'Edytuj blok', onclick: () => b && (modal(blockEditor(b, { inModal: true, onDeleted: () => $('#modal').click() })), (onModalClose = () => loadAll().then(() => refreshLists?.()))) }, '✎'),
+                h('button', { class: 'icon', title: 'Edytuj blok', onclick: () => b && (modal(blockEditor(b, { inModal: true, onDeleted: () => $('#modal').click() })), (ui.onModalClose = () => loadAll().then(() => ui.refresh?.()))) }, '✎'),
                 h('button', { class: 'icon', onclick: () => { if (i > 0) { const n = [...ids]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; setIds(n); } } }, '↑'),
                 h('button', { class: 'icon', onclick: () => { if (i < ids.length - 1) { const n = [...ids]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; setIds(n); } } }, '↓'),
                 h('button', { class: 'icon', title: 'Zdejmij ze slajdu', onclick: () => setIds(ids.filter((x) => x !== id)) }, '×')));
@@ -697,7 +574,7 @@ function pickComponent(set, taken = []) {
         h('div', { class: 'body' },
           h('b', {}, c.title), h('div', {}, compChips(c)),
           c.use_when ? h('div', {}, h('span', { class: 'muted' }, 'Kiedy: '), c.use_when) : h('div', { class: 'muted' }, 'bez opisu: uzupełnij w zakładce Komponenty')))))));
-    onModalClose = () => resolve(picked);
+    ui.onModalClose = () => resolve(picked);
   });
 }
 
@@ -722,7 +599,7 @@ function editPickText(pick, comp, onSave) {
 
 // ------------------------------------------------------------------ widok: Komponenty (opisy kart dla AI)
 function viewComponents(focusSet) {
-  refreshLists = null;
+  ui.refresh = null;
   const sets = [...new Set([...state.componentSets.map((x) => x.id), ...state.components.map((c) => c.set_name)])];
   const view = h('div', { class: 'editor library' },
     h('div', { class: 'bar' }, h('h2', {}, `Komponenty (${state.components.filter((c) => !c.missing).length})`)),
@@ -780,7 +657,7 @@ function componentEditor(c) {
 // ------------------------------------------------------------------ widok: Biblioteka slajdów
 // Sprzedawca projektuje slajd w FigCraft (ramka 1920×1080), zapisuje plik albo JSON strony i wrzuca go tutaj.
 function viewTemplates(focusId) {
-  refreshLists = null;
+  ui.refresh = null;
   const fileInput = (replaceId) => h('input', { type: 'file', accept: UPLOAD_ACCEPT, multiple: !replaceId, hidden: true, onchange: async (e) => {
     const t = await uploadSlideFiles([...e.target.files], { replaceId });
     e.target.value = '';
