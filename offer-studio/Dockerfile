@@ -25,6 +25,12 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
+# --- FigCraft web (WASM): the slide editor at /figcraft/, SHA-256 checked by the script ---
+# Version and checksum live in scripts/fetch-figcraft-web.mjs (keep them in step with figcraft/web/Dockerfile).
+FROM deps AS figcraft-web
+COPY scripts ./scripts
+RUN FIGCRAFT_WEB_DIR=/figcraft-web node scripts/fetch-figcraft-web.mjs
+
 # --- runtime ---
 FROM node:24-bookworm-slim
 # figcraft-cli needs fontconfig; Figtree (the Gaius template font, OFL) is in the repo.
@@ -44,6 +50,7 @@ COPY package.json ./
 COPY src ./src
 COPY public ./public
 COPY seed ./seed
+COPY --from=figcraft-web /figcraft-web ./vendor/figcraft-web
 
 RUN mkdir -p /data && chown node:node /data
 USER node

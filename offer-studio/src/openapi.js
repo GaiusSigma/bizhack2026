@@ -71,7 +71,7 @@ const tileFields = {
   quotes: { type: 'array', items: { type: 'string' }, description: 'Client quotes' },
   status: { type: 'string', enum: ['active', 'soon'], description: 'soon = visible but cannot be selected' },
   position: { type: 'number', description: 'Order within the category' },
-  data: { type: 'object', description: 'Extra fields, e.g. {"price": "12,000 PLN"} for a product' },
+  data: { type: 'object', description: 'Extra fields: pick_when and avoid_when (guidance for choosing the tile, e.g. by an AI agent), price for a product' },
 };
 const tilesList = { type: 'array', items: { type: 'string' }, description: 'Tile ids: exactly one role, one segment, one product and 1–5 pains, e.g. ["role:board", "segment:law-firm", "product:vault", "pain:confidentiality"]', 'x-n8n-list': '/api/tiles' };
 const componentFields = {
@@ -171,6 +171,11 @@ export const DOCS = {
   },
 
   // ---------------------------------------------------------------- knowledge blocks
+  'GET /api/legacy-backup': {
+    tag: 'Database', operationId: 'getLegacyBackup', summary: 'Download the backup made before the Polish-to-English migration',
+    description: 'Full export of the database as it was before its Polish seed content was replaced with English. 404 if the database was never migrated',
+    responses: { 200: json(anyObject, 'Export file') },
+  },
   'GET /api/blocks': {
     tag: 'Knowledge blocks', operationId: 'listBlocks', summary: 'List blocks',
     parameters: [
@@ -239,6 +244,7 @@ export const DOCS = {
               file: { type: 'string', format: 'binary', description: 'A .figcraft, .json, .fig, .penpot, .sketch or .svg file' },
               id: { type: 'string', description: 'Template id (defaults to the file name)' },
               name: { type: 'string', description: 'Template name' },
+              base: { type: 'string', description: 'Optional: the updated_at of the version you edited (x-updated-at of GET …/file). If the file was saved since, nothing is stored and the answer is 409 with code "stale"' },
             },
           },
         },
@@ -374,7 +380,7 @@ export const DOCS = {
   },
   'POST /api/offers/generate': {
     tag: 'Tiles', operationId: 'generateOffer', summary: 'Generate an offer from tiles',
-    description: 'Builds the offer from the role scenario and picks content by tiles. The same tiles give the same offer. The response includes coverage: which pains are solved',
+    description: 'Builds the offer from the role scenario and picks content by tiles. Choose the tiles with GET /api/tiles: each tile has data.pick_when and data.avoid_when. The same tiles give the same offer. The response includes coverage: which pains are solved',
     requestBody: body({
       client: { type: 'string', description: 'Client name' },
       tiles: tilesList,
@@ -388,6 +394,38 @@ export const DOCS = {
     description: 'Slides edited by hand (locked) stay unchanged',
     parameters: [idParam('offer', '/api/offers')],
     requestBody: body({ tiles: tilesList }, ['tiles']),
+    responses: { 200: json(one('Offer')) },
+  },
+  'GET /api/offers/:id/slots': {
+    tag: 'Tiles', operationId: 'getOfferSlots', summary: 'Swappable slots of an offer, with candidates',
+    description: 'For each slide of the base deck: its slots (kind, capacity), which kinds of client tiles it answers, the elements in it now and every candidate element with its description, tiles, linked solutions and the client tiles it matches (matched not empty = highlighted). Feed this to a model to choose elements, then send the choice with PUT',
+    parameters: [idParam('offer', '/api/offers')],
+    responses: { 200: json(anyObject) },
+  },
+  'PUT /api/offers/:id/slots': {
+    tag: 'Tiles', operationId: 'setOfferSlots', summary: 'Put chosen elements into slots',
+    description: 'The choice per slide, e.g. from a model: {"slides": [{"slide_id": "...", "items": [{"id": "pr-hidden-know-how", "reason": "Client wants local research"}]}]}. Elements must be candidates of that slot and fit its capacity (400 otherwise). Chosen slides are kept on recompute, like manual edits. Returns the offer',
+    parameters: [idParam('offer', '/api/offers')],
+    requestBody: body({
+      slides: { type: 'array', items: anyObject, description: 'Per slide: {slide_id, items: [{id, reason?}]}' },
+      chosen_by: { type: 'string', description: 'Who chose, shown in the offer (default "model")' },
+    }, ['slides']),
+    responses: { 200: json(one('Offer')) },
+  },
+  'GET /api/offers/:id/content': {
+    tag: 'Tiles', operationId: 'getOfferContent', summary: 'Slide copy a model writes for the client',
+    description: 'For each slide of the base deck that has copy written per client: the fields, what to write in each (hint), the length limit, the current value, and for list fields (a slide\'s cards) the item count and columns. Optional slides (e.g. the tool comparison) start hidden. "reader" names who the deck is for (the role tile: label, description, writing brief) and "product" the product with its brief; hints already include what changes for that role and product, and the default copy is written for them. "evidence" is what the library knows for the client tiles: per pain its description, typical quotes from other clients, up to 3 solutions that fit the segment and product and up to 3 proof items (a solution marked general comes from another segment when the segment has none; no_solution: true when the library has nothing that fits the product). Feed this to a model with the call transcript, then send its answer with PUT',
+    parameters: [idParam('offer', '/api/offers')],
+    responses: { 200: json(anyObject) },
+  },
+  'PUT /api/offers/:id/content': {
+    tag: 'Tiles', operationId: 'setOfferContent', summary: 'Write slide copy for the client',
+    description: 'Per slide key: text fields as strings and list fields as items, e.g. {"slides": {"starting-point": {"lead": "...", "areas": [{"title": "Contract review", "value": "..."}]}, "tool-comparison": {"hide": true}}}. Only the fields from GET; texts over their limit, wrong item counts or unknown fields are refused with a 400 that lists every problem. Written slides are kept on recompute, like manual edits. "hide" works on optional slides only; writing an optional slide shows it. Returns the offer',
+    parameters: [idParam('offer', '/api/offers')],
+    requestBody: body({
+      slides: { type: 'object', description: '{"<slide key>": {"<field>": "text" | [{"title", "value", "value2"?}], "hide"?: true}}' },
+      written_by: { type: 'string', description: 'Who wrote it, shown in the offer (default "model")' },
+    }, ['slides']),
     responses: { 200: json(one('Offer')) },
   },
   'POST /api/offers/:id/recompute': {

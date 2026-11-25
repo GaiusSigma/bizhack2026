@@ -81,6 +81,9 @@ The `n8n-data`, `postgres-data` and `figcraft-data` volumes are persistent and s
   browser app knows the collaboration server right away (Home ▸ Online, sharing, join codes).
 - FigCraft is at an early stage (alpha). In the browser, files are stored locally;
   to work together, you publish them to the server.
+- **Offer Studio slides are edited in the browser too**: Offer Studio ships the same web build at
+  `<offer-studio-domain>/figcraft/` and opens library files in it (Slides ▸ Edit in FigCraft); Ctrl+S
+  saves them straight back to the library. Details: [offer-studio/README.md](offer-studio/README.md).
 
 ### Publishing files to the server
 
@@ -106,7 +109,8 @@ Server settings (environment variables of the `figcraft-server` service):
 ### Upgrading FigCraft
 
 In `figcraft/web/Dockerfile` and `figcraft/server/Dockerfile`, change `FIGCRAFT_VERSION` and the
-SHA-256 checksums to the values from the new release's `SHA256SUMS.txt`.
+SHA-256 checksums to the values from the new release's `SHA256SUMS.txt`. Offer Studio has its own copies:
+`offer-studio/Dockerfile` (figcraft-cli) and `offer-studio/scripts/fetch-figcraft-web.mjs` (web build).
 
 ## n8n
 

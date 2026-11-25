@@ -37,6 +37,8 @@ services:
       # Default "Offer Studio API" credential: n8n fills in the URL and token itself (n8n/entrypoint.sh).
       - OFFER_STUDIO_URL=http://offer-studio:3000
       - OFFER_STUDIO_API_TOKEN=${SERVICE_PASSWORD_64_STUDIOAPI}
+      # Optional: the OpenRouter key for the models in the offer workflows (n8n/entrypoint.sh fills the credential).
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - N8N_EDITOR_BASE_URL=${SERVICE_URL_N8N}
       - WEBHOOK_URL=${SERVICE_URL_N8N}
       - N8N_HOST=${SERVICE_URL_N8N}

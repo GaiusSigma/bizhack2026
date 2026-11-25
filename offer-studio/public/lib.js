@@ -47,7 +47,7 @@ export const debounce = (fn, ms = 450) => {
 };
 
 // "1 slide", "3 slides".
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // Save status indicator ("saving…", "saved", error).
 export function saver(statusEl, fn, ms) {
@@ -154,6 +154,9 @@ export async function loadAll() {
 export const slugify = (s) => String(s).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\u0142/g, 'l').replace(/\u0141/g, 'L')
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
 export const UPLOAD_ACCEPT = '.figcraft,.json,.fig,.penpot,.sketch,.svg';
+
+// FigCraft web editor page: {template: id} | {offer: id} | {new: 1}
+export const editorUrl = (q) => `/static/editor.html?${new URLSearchParams(q)}`;
 
 export const go = (...parts) => { location.hash = `#/${parts.filter((p) => p != null && p !== '').map(encodeURIComponent).join('/')}`; };
 

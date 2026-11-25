@@ -6,6 +6,7 @@ import { openDb } from '../src/db.js';
 import { unzipSync } from 'fflate';
 import { buildLibrary, describeComponents, normalizeUpload, parseMarks, parseTemplate, renderFigcraft, renderPdf, renderThumbnails } from '../src/figcraft.js';
 import seed, { TEMPLATE, components as seedComponents, slides as seedSlides } from '../seed/seed.js';
+import { legacyPl } from '../seed/legacy-pl.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -326,7 +327,7 @@ test('v4: a v3 database from the volume gets tiles and the base offer survives',
   a.db.close();
 
   const b = openDb(path);
-  assert.equal(b.db.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(b.db.prepare('PRAGMA user_version').get().user_version, 5);
   const cols = b.db.prepare('PRAGMA table_info(slides)').all().map((c) => c.name);
   assert.ok(cols.includes('origin') && cols.includes('locked'));
   assert.equal(b.getOffer('gaius-vault-base').slides.length, 11);
@@ -359,7 +360,7 @@ test('tiles: invalid ids rejected (400)', () => {
 
 test('export v4 -> import replace restores tiles and scenarios', () => {
   const a = fresh();
-  a.update('scenarios', 'role:board', { steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
+  a.update('scenarios', 'base', { steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
   const dump = JSON.parse(JSON.stringify(a.exportAll()));
   assert.equal(dump.version, 4);
   assert.equal(dump.tiles.length, seed.tiles.length);
@@ -368,7 +369,7 @@ test('export v4 -> import replace restores tiles and scenarios', () => {
   assert.equal(counts.tiles, seed.tiles.length);
   assert.equal(counts.scenarios, seed.scenarios.length);
   assert.deepEqual(b.list('tiles'), a.list('tiles'));
-  assert.deepEqual(b.get('scenarios', 'role:board').steps[0].fill, { kind: 'none' });
+  assert.deepEqual(b.get('scenarios', 'base').steps[0].fill, { kind: 'none' });
 });
 
 test('applyRecompute: creates, hides and orders slides in one transaction, leaves locked alone', () => {
@@ -412,4 +413,152 @@ test('tx: a nested transaction works, and an error inside rolls everything back'
     s.tx(() => { throw new Error('boom'); });
   }), /boom/);
   assert.equal(s.get('offers', 'o3').name, 'w środku');
+});
+
+test('tile content update: a database seeded with revision 1 gets the new solutions, pins and guidance once', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  // simulate revision 1: no new solutions, old pins, no guidance, old description, a description edited by hand
+  for (const id of ['sol-private-vault', 'sol-word-review']) s.remove('blocks', id);
+  s.update('blocks', 'sol-nda-review', { tags: ['pain:repetitive-documents', 'custom-tag'] });
+  s.update('tiles', 'pain:shadow-ai', { data: { pick_when: null, avoid_when: null } });
+  s.update('tiles', 'segment:law-firm', { description: seed.tileUpgrade.previousDescriptions['segment:law-firm'] });
+  s.update('tiles', 'role:board', { description: 'Our own wording' });
+  s.update('tiles', 'role:champion', { data: { writing_brief: null } });
+  s.update('tiles', 'role:cto', { data: { writing_brief: 'Our own brief' } });
+  s.setSetting('tile_content_rev', '1');
+
+  const counts = s.ensureTiles(seed);
+  assert.equal(counts.blocks, 2);
+  assert.ok(s.get('blocks', 'sol-private-vault'));
+  const nda = s.get('blocks', 'sol-nda-review').tags;
+  assert.ok(nda.includes('custom-tag'), 'plain tags are kept');
+  assert.deepEqual(nda.filter((t) => t.includes(':')).sort(), seed.solutionBlocks.find((b) => b.id === 'sol-nda-review').tags.slice().sort());
+  assert.ok(s.get('tiles', 'pain:shadow-ai').data.pick_when.length > 20);
+  assert.equal(s.get('tiles', 'segment:law-firm').description, seed.tiles.find((t) => t.id === 'segment:law-firm').description);
+  assert.equal(s.get('tiles', 'role:board').description, 'Our own wording', 'a description edited by hand stays');
+  assert.equal(s.get('tiles', 'role:champion').data.writing_brief, seed.tiles.find((t) => t.id === 'role:champion').data.writing_brief);
+  assert.equal(s.get('tiles', 'role:cto').data.writing_brief, 'Our own brief', 'a brief edited by hand stays');
+  assert.equal(s.getSetting('tile_content_rev'), String(seed.tileUpgrade.rev));
+  assert.deepEqual(s.ensureTiles(seed), { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 }, 'second run changes nothing');
+});
+
+test('tile content update: generated sources are refreshed, sources written by hand stay', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  s.update('blocks', 'sol-private-vault', { data: { source: 'Sales sheet: "Gaius Vault to wewnętrzne AI…"' } });
+  s.update('blocks', 'sol-it-brief', { data: { source: 'Confirmed by Witek on the call' } });
+  s.setSetting('tile_content_rev', String(seed.tileUpgrade.rev - 1));
+  s.ensureTiles(seed);
+  assert.equal(s.get('blocks', 'sol-private-vault').data.source, seed.solutionBlocks.find((b) => b.id === 'sol-private-vault').data.source);
+  assert.equal(s.get('blocks', 'sol-it-brief').data.source, 'Confirmed by Witek on the call');
+});
+
+// ------------------------------------------------------------------ legacy Polish databases
+const legacyDb = () => {
+  const s = openDb(':memory:');
+  const ts = '2026-11-25T00:00:00.000Z';
+  for (const b of legacyPl.blocks) s.upsert('blocks', { id: b.id, type: b.type, title: b.title, body: b.body, data: b.data, tags: ['vault'], created_at: ts, updated_at: ts });
+  s.upsert('component_sets', { id: 'dlaczego', title: 'Dlaczego Vault? (6 kart)', rules: 'Dokładnie 6 kart.' });
+  for (const c of legacyPl.components) s.upsert('components', { id: c.id, set_name: 'dlaczego', key: c.id.split('/')[1], title: c.title, description: c.description, use_when: c.use_when, avoid_when: c.avoid_when, created_at: ts, updated_at: ts });
+  s.upsert('offers', { id: 'gaius-vault-bazowa', name: 'Gaius Vault – oferta bazowa', data: { client: '', price: '------' } });
+  legacyPl.slides.forEach((sl, i) => s.upsert('slides', { id: sl.id, offer_id: 'gaius-vault-bazowa', position: i, frame: sl.frame, data: sl.data, block_ids: [], picks: {} }));
+  s.upsert('offers', { id: 'moja-oferta', name: 'Oferta dla ACME', data: { client: 'ACME' } });
+  s.upsert('slides', { id: 'm1', offer_id: 'moja-oferta', position: 0, frame: 'problemy', data: legacyPl.slides[1].data, block_ids: ['pr-research-od-nowa', 'pr-ai-bez-zasad'], picks: {} });
+  s.upsert('slides', { id: 'm2', offer_id: 'moja-oferta', position: 1, frame: 'dlaczego', data: { title: 'Dlaczego my, ACME?' }, picks: { dlaczego: [{ component: 'dlaczego/on-premise' }] } });
+  s.upsert('blocks', { ...s.get('blocks', 'uc-pilne-pismo'), body: 'Zmienione ręcznie przez zespół.' });
+  return s;
+};
+
+test('legacy migration: a Polish database becomes English, references follow, a backup keeps everything', () => {
+  const s = legacyDb();
+  const before = JSON.stringify(s.exportAll());
+  const report = s.migrateLegacyPolish(legacyPl, seed);
+
+  const english = Object.fromEntries(seed.blocks.map((b) => [b.id, b]));
+  for (const b of legacyPl.blocks) {
+    if (b.id !== b.en) assert.equal(s.get('blocks', b.id), undefined, `${b.id} still there`);
+    assert.equal(s.get('blocks', b.en)?.title, english[b.en].title, `${b.en} is not the English version`);
+  }
+  for (const c of legacyPl.components) assert.ok(s.get('components', c.en) && !s.get('components', c.id), c.id);
+  assert.ok(s.get('component_sets', 'why') && !s.get('component_sets', 'dlaczego'));
+  assert.equal(s.get('offers', 'gaius-vault-bazowa'), undefined);
+  assert.deepEqual(s.getOffer('gaius-vault-base').slides.map((x) => x.frame), seedSlides.map((x) => x.frame));
+
+  const mine = s.getOffer('moja-oferta').slides;
+  assert.deepEqual(mine.map((x) => x.frame), ['problems', 'why']);
+  assert.deepEqual(mine[0].block_ids, ['pr-research-from-scratch', 'pr-ai-without-rules']);
+  assert.deepEqual(mine[0].data, seedSlides.find((x) => x.frame === 'problems').data, 'default Polish slide copy becomes the English default');
+  assert.deepEqual(mine[1].picks, { why: [{ component: 'why/on-premise' }] });
+  assert.equal(mine[1].data.title, 'Dlaczego my, ACME?', 'copy written for a client stays as written');
+
+  assert.deepEqual(report.editedBlocks, ['uc-pilne-pismo']);
+  assert.deepEqual(report.keptOfferCopy, ['moja-oferta/m2']);
+  const drop = (j) => { const { exported_at: _t, ...rest } = JSON.parse(j); return rest; };
+  assert.deepEqual(drop(s.getSetting('legacy_pl_backup')), drop(before), 'the full Polish database is kept as a backup');
+  assert.equal(s.migrateLegacyPolish(legacyPl, seed), null, 'runs once');
+});
+
+test('legacy migration: an English database is left alone', () => {
+  const s = fresh();
+  assert.equal(s.migrateLegacyPolish(legacyPl, seed), null);
+  assert.equal(s.getSetting('legacy_pl_backup'), null);
+});
+
+test('tile content update: the stored base deck gets the seed’s writing hints and per-role copy, hand edits stay', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  const fresh = seed.scenarios.find((x) => x.id === 'base');
+  // an older base deck: no per-role copy or hints, a label and copy edited by hand, one step deleted
+  const old = fresh.steps
+    .filter((st) => st.key !== 'add-on-services')
+    .map(({ data_by_role, data_by_role_product, write, ...st }) => ({ ...st, ...(write ? { write: { old: { hint: 'old', max: 10 } } } : {}) }));
+  old[0] = { ...old[0], label: 'Our title', data: { ...old[0].data, lead: 'Our lead' } };
+  s.update('scenarios', 'base', { steps: old });
+  s.setSetting('tile_content_rev', String(seed.tileUpgrade.rev - 1));
+
+  s.ensureTiles(seed);
+  const steps = s.get('scenarios', 'base').steps;
+  assert.equal(steps[0].label, 'Our title');
+  assert.equal(steps[0].data.lead, 'Our lead');
+  assert.ok(!steps.some((st) => st.key === 'add-on-services'), 'a deleted step stays deleted');
+  for (const st of steps) {
+    const f = fresh.steps.find((x) => x.key === st.key);
+    assert.deepEqual(st.write, f.write, `${st.key}: write`);
+    assert.deepEqual(st.data_by_role, f.data_by_role, `${st.key}: data_by_role`);
+    assert.deepEqual(st.data_by_role_product, f.data_by_role_product, `${st.key}: data_by_role_product`);
+  }
+});
+
+test('tile content update: guidance rewritten in the seed replaces the old seed text, guidance edited by hand stays', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  const prev = seed.tileUpgrade.previousGuidance;
+  const [changedId, keptId] = Object.keys(prev);
+  s.update('tiles', changedId, { data: { ...prev[changedId] } });
+  s.update('tiles', keptId, { data: { pick_when: 'Our own rule' } });
+  s.setSetting('tile_content_rev', String(seed.tileUpgrade.rev - 1));
+  s.ensureTiles(seed);
+  const fresh = seed.tiles.find((t) => t.id === changedId).data;
+  assert.equal(s.get('tiles', changedId).data.pick_when, fresh.pick_when);
+  assert.equal(s.get('tiles', changedId).data.avoid_when, fresh.avoid_when);
+  assert.equal(s.get('tiles', keptId).data.pick_when, 'Our own rule');
+});
+
+test('tile content update: a description from any older seed version is replaced', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  const olds = [].concat(seed.tileUpgrade.previousDescriptions['product:saas']);
+  assert.ok(olds.length >= 2);
+  for (const old of olds) {
+    s.update('tiles', 'product:saas', { description: old });
+    s.setSetting('tile_content_rev', String(seed.tileUpgrade.rev - 1));
+    s.ensureTiles(seed);
+    assert.equal(s.get('tiles', 'product:saas').description, seed.tiles.find((t) => t.id === 'product:saas').description, old);
+  }
 });

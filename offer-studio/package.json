@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning src/server.js",
     "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
+    "figcraft-web": "node scripts/fetch-figcraft-web.mjs",
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
   },
   "dependencies": {

@@ -21,6 +21,70 @@ A minimal dashboard for collecting knowledge about an offer and assembling prese
 Out of the box the database holds the content of `gaius-offer.figcraft` (40 blocks, a base offer with
 11 slides) and `seed/gaius-template.figcraft` (the same file with marked-up fields) as the first library entry.
 
+## The 2026 deck: copy written per client
+
+The base deck (the `base` scenario) uses the **Gaius deck 2026** template (`seed/gaius-deck.figcraft`, library id
+`gaius-deck`): ten slides, from the title slide to the contact person. Most of its copy is written for each client
+by a model from the call transcript or the enquiry; n8n does that (workflow `n8n/workflows/offer-studio-deck.json`).
+
+| Slide (frame) | Written per client | Fixed or from product material |
+|---|---|---|
+| `title` | title, one-sentence lead | client name, date |
+| `starting-point` | who the organisation is, 3–4 areas of work in the client's words | |
+| `use-areas` | for each area, the product feature that handles it | |
+| `team-support` | lead, 1–2 concerns from the call with our answers | the "from similar rollouts" card |
+| `tool-comparison` | the tool the client mentioned, 4–6 comparison rows | **optional**: hidden until written |
+| `security` | lead answering the client's security concern | the six features (per product) |
+| `preparation` | title, lead, 3–5 steps before the pilot or the contract | |
+| `rollout-process` | | the five rollout stages |
+| `add-on-services` | lead, workshops / developer hours / development plans | |
+| `contact-person` | the next step | the person (a `person` block) |
+
+What a model may write, and how long, lives in the scenario: each step's `write` lists its fields with a hint and a
+character limit, and list fields (a slide's repeated cards) with an item count and columns. Change the hints in
+`seed/scenarios.js` (or the Scenarios tab), not in n8n: n8n reads them from the API.
+
+- `GET /api/offers/:id/content`: per slide, the fields to write with hint, limit and current value.
+- `PUT /api/offers/:id/content` with `{"slides": {"starting-point": {"lead": "…", "areas": [{"title": "…", "value": "…"}]}, "tool-comparison": {"hide": true}}}`.
+  Unknown fields, texts over their limit and wrong item counts are refused with one 400 that lists every problem.
+  Written slides are kept on recompute, like manual edits, and show "written by …" in the offer.
+
+The slides print `{{offer.product_name}}` (Gaius Vault, or Gaius-Lex for SaaS; `data.product_name` on the offer
+overrides it) and `{{offer.date}}` (the offer's creation date). Offers built with this deck have no pain-coverage
+box: their slides are written, not picked from knowledge blocks.
+
+**Changing the design.** The designer works on `seed/source/gaius-deck.figcraft` (Polish placeholders, plain
+groups). `node seed/build-deck.mjs` turns it into the template: it names the slides, binds the fields, translates
+fixed copy to English and turns card groups into auto-layout frames so written copy wraps and cards grow. Then
+upload the result on the Slides tab (it replaces `gaius-deck`), or start with an empty database.
+
+**Existing databases.** On the first start of this version the `gaius-deck` template joins the library and the
+`base` scenario moves onto it; the previous base deck is kept as the `base-2025` scenario, and offers made from it
+keep their slides (the 2025 template stays in the library).
+
+## Editing slides in the browser (FigCraft web)
+
+Offer Studio ships the FigCraft web editor (WebAssembly) and serves it at `/figcraft/`, so slide files
+can be designed and changed without the desktop app or the CLI:
+
+- **Slides ▸ Edit in FigCraft** opens a file from the library in a new tab. **Ctrl+S saves it straight
+  back to the library**: thumbnails, components and every offer that uses its slides update right away.
+- **Slides ▸ New in FigCraft** starts an empty editor (Home screen ▸ new design file). The first Save asks
+  whether to add the file to the library; its file name becomes the library name.
+- **Offer ▸ Open in FigCraft** opens the finished offer for manual touch-ups. It is generated, so saving
+  there downloads a `.figcraft` and the offer in Offer Studio does not change.
+- Exports from the editor (PNG, PDF, SVG…) are ordinary downloads.
+
+Several people can work on the library at once. If someone saves a file you have open, a banner says so
+(load their version or keep editing yours), and saving over a newer version is refused until you choose
+**Overwrite with my version** (or download yours). "Set your name" in the editor bar names you on
+FigCraft comments. To edit one file together live, use FigCraft's own Share ▸ Online: in the stack the
+editor already knows the `figcraft-server` collaboration server.
+
+How it works: `/static/editor.html` frames `/figcraft/?host=parent` on the same origin. FigCraft's host
+mode hands every Save to the page over `postMessage` instead of downloading it, and the page uploads it with
+`POST /api/templates` plus `base` (the `x-updated-at` of the version it opened) for the conflict check.
+
 ## Tiles and scenarios
 
 **How a salesperson makes an offer.** Offers → "+ New offer": the client name and tiles from four categories:
@@ -46,7 +110,11 @@ applies again. "Restore automatic" discards a slide's edits. Offers made before 
 
 **Pinning content.** The Tiles tab: a tile's description and quotes, and its pinned content ("Pin content"
 searches blocks and cards). Pains without a pinned solution are flagged in the list. In Knowledge, a block's
-tiles are toggled with a click. The starting pins (27 solutions from the sheet's PRKW tab) are a proposal to review.
+tiles are toggled with a click. The starting pins (27 solutions from the sheet's PRKW tab and 5 from its
+product sentences, each with its source) are a proposal to review. A solution is pinned only where it truly fits;
+nothing is pinned to raise a count. The Tiles tab opens on a coverage map (solutions per pain and segment): bold
+pairs are where the sales sheet reports the pain, amber pairs have one solution only. In New offer, every pain
+shows how many solutions it has for the selected segment and whether it is less common there.
 
 **Scenarios.** The Scenarios tab: steps with a slide thumbnail, a fill rule ("2–3 solutions that best fit
 the client's tiles") and a condition ("only with: Vault or On-premise"). Offers pick up changes after
@@ -57,6 +125,13 @@ marked in the editor.
 "New offer" screen does (400 for a coming-soon tile or a wrong tile count). Also:
 `PUT /api/offers/:id/tiles`, `POST /api/offers/:id/recompute`, `GET/POST/PATCH/DELETE /api/tiles`,
 `GET/PUT /api/scenarios/:id`. The n8n node shows them under the "Tiles" resource.
+
+**Databases from the Polish version.** A database created before the English translation still held the
+Polish seed content (blocks, "why" cards, the base offer and the old slide template with Polish frame names).
+On startup it is migrated once: a full export is saved first (download it with `GET /api/legacy-backup`),
+seed records are swapped for their English versions, every offer is re-pointed to the new slide, block and
+card ids, default slide copy becomes English, and copy written for a client stays. Seed records edited by
+hand before the switch are listed in Knowledge with a link to the backup. The id map is `seed/legacy-pl.js`.
 
 An existing database gets tiles, scenarios and solution blocks on the first start of this version
 (only when it has no tiles yet). Seed data: `seed/tiles.js` and `seed/scenarios.js`.
@@ -124,8 +199,11 @@ You need FigCraft installed. On Windows `figcraft-cli.exe` is detected automatic
 point the `FIGCRAFT_CLI` variable at it.
 
 ```powershell
-cd offer-studio; npm install; npm run dev
+cd offer-studio; npm install; npm run figcraft-web; npm run dev
 ```
+
+`npm run figcraft-web` downloads the FigCraft web build (about 25 MB, SHA-256 checked) into
+`vendor/figcraft-web` once; without it everything works except the in-browser editor.
 
 The app starts at http://localhost:3000 with no password. The database lives in `offer-studio/data/studio.db`.
 
@@ -144,7 +222,9 @@ and the Figtree font (`fonts/`, OFL licence). In Coolify, set a domain for `offe
 |---|---|---|
 | `STUDIO_PASSWORD` | `SERVICE_PASSWORD_STUDIO` | Browser password (any username) |
 | `STUDIO_API_TOKEN` | `SERVICE_PASSWORD_64_STUDIOAPI` | `Authorization: Bearer …` for scripts and n8n |
-| `FIGCRAFT_WEB_URL` | `SERVICE_URL_FIGCRAFT` | "Open FigCraft" link |
+| `FIGCRAFT_WEB_URL` | `SERVICE_URL_FIGCRAFT` | The stack's FigCraft domain; the editor's collaboration server is derived from it (`wss://<domain>/sync/`) |
+| `FIGCRAFT_SERVER_URL` | – | Collaboration server for Share ▸ Online in the editor, if it is not at `FIGCRAFT_WEB_URL` + `/sync/` |
+| `FIGCRAFT_WEB_DIR` | `/app/vendor/figcraft-web` | The FigCraft web build served at `/figcraft/` |
 | `FIGCRAFT_CLI` | `/usr/local/bin/figcraft-cli` | Path to figcraft-cli |
 | `STUDIO_DB` | `/data/studio.db` | Database file (`offer-studio-data` volume) |
 | `STUDIO_SEED` | – | `false` disables starter data on an empty database |
@@ -159,7 +239,8 @@ to get the current starter content, start with an empty `offer-studio-data` volu
 On the first start of a new version against a database with HTML layouts, the database migrates itself:
 blocks and offers stay, the Gaius template is added and the base offer gets slides for that template.
 
-Upgrading FigCraft: in the `Dockerfile`, change `FIGCRAFT_VERSION` and both checksums from the release's `SHA256SUMS.txt`.
+Upgrading FigCraft: in the `Dockerfile`, change `FIGCRAFT_VERSION` and both checksums from the release's `SHA256SUMS.txt`,
+and in `scripts/fetch-figcraft-web.mjs` the web build's `VERSION` and `SHA256` (the `figcraft-web-<version>.zip` line).
 
 ### n8n
 

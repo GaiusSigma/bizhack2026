@@ -135,6 +135,30 @@ curl -s -X POST http://localhost:5678/webhook/offer -H 'content-type: applicatio
 More sources (Gmail, Fireflies, Gaius Meet) are triggers connected to the **Brief** node: they only
 need to pass `text` (the email body, the transcript) and `source`.
 
+## Workflow "Lead → oferta Gaius Vault (Offer Studio)": the 2026 deck
+
+File: [`workflows/offer-studio-deck.json`](workflows/offer-studio-deck.json), the workflow running in production,
+extended for the 2026 deck. The tile part is unchanged; after the offer is created, a second AI step writes the
+slides' copy from the enquiry or the call transcript.
+
+```
+Form / Website form / Fireflies transcript / Gmail
+  → Normalizuj zgłoszenie        one input format, every text part labelled
+  → Kafelki → Kontekst dla AI → AI Agent → Przygotowanie scenariusza ⇄ Samopoprawka AI
+  → Utwórz ofertę                POST /api/offers/generate
+  → Pola slajdów                 GET /api/offers/:id/content (fields, hints, limits)
+  → Kontekst treści → AI: treść slajdów → Sprawdź treść ⇄ Samopoprawka treści (up to 3 tries)
+  → Zapisz treść                 PUT /api/offers/:id/content
+  → Pobierz PDF → Podsumowanie → Discord
+```
+
+The model writes the copy in English and only from the enquiry; a field it has nothing for keeps the scenario's
+default. **Sprawdź treść** applies the same rules as Offer Studio (fields, character limits, item counts) and sends
+the model its mistakes; after the third try it saves what is valid and lists the rest in the Discord summary.
+What to write in each field comes from Offer Studio's scenario, so changing a hint needs no change here.
+
+Import it over the running workflow only after Offer Studio with `/api/offers/:id/content` is deployed.
+
 ## Building the image
 
 `n8n/Dockerfile`: a `node:22-alpine` stage compiles the `n8n-nodes-offer-studio` package (TypeScript) and

@@ -3,11 +3,12 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { timingSafeEqual } from 'node:crypto';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyzeLead, pickComponents } from './ai.js';
-import { buildSlides, coverage, mergeRecompute, parseSelection } from './generate.js';
+import { applyContent, contentContext, evidencePack } from './content.js';
+import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import {
   buildLibrary, describeComponents, describeTemplate, hashOf, normalizeUpload, parseTemplate, renderFigcraft, renderPdf, renderPreview, renderThumbnails, UPLOAD_EXT,
@@ -21,6 +22,12 @@ const DB_PATH = env.STUDIO_DB || join(ROOT, 'data', 'studio.db');
 const PASSWORD = env.STUDIO_PASSWORD || '';
 const API_TOKEN = env.STUDIO_API_TOKEN || '';
 const FIGCRAFT_WEB_URL = env.FIGCRAFT_WEB_URL || '';
+// FigCraft web build embedded as the slide editor (/figcraft/, see scripts/fetch-figcraft-web.mjs).
+const FIGCRAFT_WEB_DIR = resolve(env.FIGCRAFT_WEB_DIR || join(ROOT, 'vendor', 'figcraft-web'));
+// Collaboration server for Share ▸ Online inside the editor: FIGCRAFT_SERVER_URL, or derived from the
+// stack's FigCraft domain (https://host -> wss://host/sync/, where its nginx proxies figcraft-server).
+const FIGCRAFT_SERVER_URL = env.FIGCRAFT_SERVER_URL
+  || FIGCRAFT_WEB_URL.replace(/\/+$/, '').replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://').replace(/^(wss?:\/\/.+)$/, '$1/sync/');
 
 mkdirSync(dirname(DB_PATH), { recursive: true });
 const store = openDb(DB_PATH);
@@ -63,10 +70,42 @@ if (gaiusRow && env.STUDIO_SEED !== 'false' && !store.list('components').length
   });
   console.log('offer-studio: added components (set @why) and their descriptions');
 }
+// Legacy Polish databases (created before the English translation): swap the old template for the current
+// one and migrate Polish seed records to their English counterparts. A full backup is kept (GET /api/legacy-backup).
+if (env.STUDIO_SEED !== 'false') {
+  const { legacyPl } = await import('../seed/legacy-pl.js');
+  const gaius = store.get('templates', seedModule.TEMPLATE.id);
+  if (gaius) {
+    const frames = parseTemplate(store.templateFile(gaius.id).file).frames.map((f) => f.name);
+    if (frames.length === legacyPl.templateFrames.length && frames.every((f, i) => f === legacyPl.templateFrames[i])) seedTemplate();
+  }
+  const report = store.migrateLegacyPolish(legacyPl, seedModule.default);
+  if (report) console.log('offer-studio: migrated the Polish seed content to English (backup: GET /api/legacy-backup)', report);
+}
 // Tiles (v4): a database without tiles gets tiles, scenarios, solution blocks and content pinned to tiles.
 if (env.STUDIO_SEED !== 'false') {
   const added = store.ensureTiles(seedModule.default);
   if (Object.values(added).some(Boolean)) console.log('offer-studio: added tiles and scenarios', added);
+}
+// The 2026 deck: its template joins the library, and the base deck moves onto it. The previous base deck
+// (2025 template) is kept as the `base-2025` scenario, and offers made from it keep their slides.
+if (env.STUDIO_SEED !== 'false') {
+  const deck = seedModule.DECK_TEMPLATE;
+  if (!store.get('templates', deck.id)) {
+    store.putTemplate({ id: deck.id, name: deck.name, file: readFileSync(join(ROOT, 'seed', deck.file)) });
+    console.log(`offer-studio: added the ${deck.name} template`);
+  }
+  const base = store.get('scenarios', 'base');
+  const fresh = seedModule.default.scenarios.find((s) => s.id === 'base');
+  if (base && fresh && !base.steps.some((s) => s.frame === 'starting-point')) {
+    store.tx(() => {
+      if (!store.get('scenarios', seedModule.PREVIOUS_BASE)) {
+        store.insert('scenarios', { id: seedModule.PREVIOUS_BASE, name: `${base.name} (2025)`, steps: base.steps });
+      }
+      store.update('scenarios', 'base', { name: fresh.name, steps: fresh.steps });
+    });
+    console.log(`offer-studio: the base deck now uses the ${deck.name} template (previous one kept as ${seedModule.PREVIOUS_BASE})`);
+  }
 }
 
 // ------------------------------------------------------------------ live: Server-Sent Events
@@ -149,7 +188,8 @@ function thumbs(id) {
 }
 
 // Slide file upload: convert to .figcraft, validate slide names (unique across the whole library).
-async function uploadSource({ buf, filename, id, name }) {
+// `base`: the updated_at of the version the editor opened; a file saved since then is a conflict (409, code "stale").
+async function uploadSource({ buf, filename, id, name, base }) {
   const file = await normalizeUpload(buf, filename);
   const parsed = parseTemplate(file);
   if (!parsed.frames.length) throw new HttpError(400, 'The file has no top-level frame (slide)');
@@ -167,6 +207,12 @@ async function uploadSource({ buf, filename, id, name }) {
   const compTaken = libraryComponents().filter((c) => c.source !== sourceId && compIds.includes(c.id));
   if (compTaken.length) {
     throw new HttpError(409, `Components with these names already exist in another file: ${compTaken.map((c) => `"${c.id}" (${c.source_name})`).join(', ')}. Rename the set (@…) or the card.`);
+  }
+  const current = store.get('templates', sourceId);
+  if (base && current?.updated_at !== base) {
+    throw Object.assign(new HttpError(409, current
+      ? `"${current.name}" was saved by someone else (${current.updated_at}) after you opened it`
+      : `"${sourceId}" was deleted from the library after you opened it`), { code: 'stale' });
   }
   const t = store.putTemplate({ id: sourceId, name: name || store.get('templates', sourceId)?.name || String(filename || parsed.name).replace(/\.[a-z]+$/i, ''), file });
   const sync = syncComponents();
@@ -196,6 +242,18 @@ function resolveBlocks(slide, ctx = {}) {
     return { ...base, ...(byRole?.[ctx.role] || {}), ...(byProduct?.[ctx.product] || {}) };
   });
 }
+
+// Product names printed on the slides ({{offer.product_name}}); an offer can override it with data.product_name.
+const PRODUCT_NAMES = { 'product:saas': 'Gaius-Lex', 'product:vault': 'Gaius Vault', 'product:on-prem': 'Gaius Vault' };
+const ddmmyyyy = (iso) => {
+  const d = new Date(iso || Date.now());
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+};
+// Offer variables for {{offer.…}} fields: the offer's data plus product_name and date when it does not set them.
+const offerVars = (offer) => {
+  const product = (offer.data?.tiles || []).find((t) => t.startsWith('product:'));
+  return { id: offer.id, name: offer.name, product_name: PRODUCT_NAMES[product] || 'Gaius', date: ddmmyyyy(offer.created_at), ...offer.data };
+};
 
 // The offer's role and product from its tiles (for role- and product-specific copy).
 const offerCtx = (offer) => {
@@ -243,7 +301,7 @@ async function renderInput(offerId, { includeHidden }) {
   return {
     offer,
     report,
-    input: { templateBuf: lib.buf, parsed: lib.parsed, slides, offer: { id: offer.id, name: offer.name, ...offer.data } },
+    input: { templateBuf: lib.buf, parsed: lib.parsed, slides, offer: offerVars(offer) },
     key: hashOf({ l: lib.key, o: offer.data, s: slides.map((x) => ({ ...x, picks: Object.fromEntries(Object.entries(x.picks).map(([k, v]) => [k, v.map((p) => [p.comp.id, p.data])])) })) }),
   };
 }
@@ -330,12 +388,18 @@ function offerView(id) {
   const ids = offer.data?.tiles;
   if (!Array.isArray(ids)) return offer;
   offer.tiles = ids.map((t) => store.get('tiles', t) || { id: t, missing: true });
-  offer.coverage = coverage(offer.slides, ids.filter((t) => t.startsWith('pain:')), blocksById());
+  // Pain coverage counts knowledge blocks and cards on the slides. A deck whose copy is written per client
+  // (the 2026 deck: only a person block) has none, so there is nothing to count: coverage is null.
+  const blocks = blocksById();
+  const counted = offer.slides.some((s) => !s.hidden && (Object.values(s.picks || {}).some((p) => p?.length)
+    || (s.block_ids || []).some((id) => blocks[id] && blocks[id].type !== 'person')));
+  offer.coverage = counted ? coverage(offer.slides, ids.filter((t) => t.startsWith('pain:')), blocks, Object.fromEntries(store.listComponents().map((c) => [c.id, c]))) : null;
   return offer;
 }
 
+// The base deck when there is one (every client gets the same slides); otherwise the role's scenario.
 function scenarioFor(sel) {
-  const sc = store.get('scenarios', sel.role);
+  const sc = store.get('scenarios', 'base') || store.get('scenarios', sel.role);
   if (!sc) throw new HttpError(400, `No scenario for the role "${store.get('tiles', sel.role)?.label || sel.role}"`);
   return sc;
 }
@@ -373,6 +437,9 @@ function validateSteps(steps) {
     }
     if (fill.kind === 'picks' && !fill.set) throw new HttpError(400, `${at}: set the card set`);
     if (st.when && !Array.isArray(st.when.any)) throw new HttpError(400, `${at}: "when.any" must be a list of tiles`);
+    if (st.answers && !(Array.isArray(st.answers) && st.answers.every((c) => TILE_CATEGORIES.includes(c)))) {
+      throw new HttpError(400, `${at}: "answers" lists tile kinds: ${TILE_CATEGORIES.join(', ')}`);
+    }
   });
 }
 
@@ -388,7 +455,7 @@ const app = new Hono();
 app.onError((err, c) => {
   const status = err instanceof HttpError ? err.status : err instanceof SyntaxError ? 400 : 500;
   if (status === 500) console.error(err);
-  return c.json({ error: err.message }, status);
+  return c.json({ error: err.message, ...(err.code ? { code: err.code } : {}) }, status);
 });
 
 app.get('/healthz', (c) => c.text('ok'));
@@ -413,6 +480,33 @@ app.use('/static/*', serveStatic({
   onFound: (_path, c) => c.header('Cache-Control', 'no-cache'),
 }));
 app.get('/', (c) => c.html(readFileSync(join(ROOT, 'public', 'index.html'), 'utf8')));
+
+// FigCraft web (the slide editor, embedded on this origin so /static/editor.html can talk to it over
+// same-origin postMessage). index.html gets the collaboration server; the hashed .wasm/.js are cached
+// forever and sent precompressed (.br/.gz from scripts/fetch-figcraft-web.mjs).
+const hasEditor = () => existsSync(join(FIGCRAFT_WEB_DIR, 'index.html'));
+const editorIndex = (c) => {
+  if (!hasEditor()) {
+    return c.text(`The FigCraft web editor is not installed in ${FIGCRAFT_WEB_DIR}. Run: npm run figcraft-web`, 503);
+  }
+  let html = readFileSync(join(FIGCRAFT_WEB_DIR, 'index.html'), 'utf8');
+  if (/^wss?:\/\/[^\s"<>&]+$/.test(FIGCRAFT_SERVER_URL)) {
+    html = html.replace('<meta charset="utf-8">', `<meta charset="utf-8"><meta name="figcraft-server" content="${FIGCRAFT_SERVER_URL}">`);
+  }
+  return c.html(html, 200, { 'cache-control': 'no-cache' });
+};
+app.get('/figcraft', (c) => c.redirect('/figcraft/'));
+app.get('/figcraft/', editorIndex);
+app.get('/figcraft/index.html', editorIndex);
+app.use('/figcraft/*', serveStatic({
+  root: FIGCRAFT_WEB_DIR,
+  rewriteRequestPath: (p) => p.replace(/^\/figcraft/, ''),
+  precompressed: true,
+  onFound: (path, c) => {
+    c.header('X-Content-Type-Options', 'nosniff');
+    c.header('Cache-Control', /\.(wasm|js)(\.br|\.gz)?$/.test(path) ? 'public, max-age=31536000, immutable' : 'no-cache');
+  },
+}));
 
 app.get('/thumb/:source/:v/:frame', async (c) => {
   const all = await thumbs(c.req.param('source'));
@@ -459,7 +553,14 @@ const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).ver
 let spec;
 api.get('/openapi.json', (c) => c.json((spec ??= buildSpec(apiRoutes(app), { version: VERSION }))));
 
-api.get('/meta', (c) => c.json({ ...store.meta(), figcraftWebUrl: FIGCRAFT_WEB_URL }));
+api.get('/meta', (c) => c.json({
+  ...store.meta(), figcraftWebUrl: FIGCRAFT_WEB_URL, figcraftEditor: hasEditor(), legacyMigration: JSON.parse(store.getSetting('legacy_pl_report') || 'null') }));
+// Full export of the database as it was before the Polish-to-English migration (only on migrated databases).
+api.get('/legacy-backup', (c) => {
+  const backup = store.getSetting('legacy_pl_backup');
+  if (!backup) throw new HttpError(404, 'This database was never migrated from the Polish version, so there is no backup');
+  return c.body(backup, 200, { 'content-type': 'application/json', 'content-disposition': 'attachment; filename="offer-studio-before-english.json"' });
+});
 
 // knowledge blocks
 api.get('/blocks', (c) => c.json(store.listBlocks({ type: c.req.query('type'), tag: c.req.query('tag'), q: c.req.query('q') })));
@@ -490,9 +591,13 @@ api.get('/templates', (c) => c.json(store.list('templates').map(withFrames)));
 api.get('/templates/:id', (c) => c.json(withFrames(store.mustGet('templates', c.req.param('id')))));
 api.get('/templates/:id/file', (c) => {
   const t = store.mustGet('templates', c.req.param('id'));
-  return c.body(store.templateFile(t.id).file, 200, {
+  const { file, updated_at } = store.templateFile(t.id);
+  return c.body(file, 200, {
     'content-type': 'application/octet-stream',
     'content-disposition': `attachment; filename="${slugify(t.name)}.figcraft"`,
+    // the version this file is: send it back as `base` when saving, to catch someone else's save in between
+    'x-updated-at': updated_at,
+    'cache-control': 'no-store',
   });
 });
 // New slide file or replacement of an existing one (same id). Every top-level frame = a slide.
@@ -504,7 +609,7 @@ api.post('/templates', async (c) => {
     const raw = Buffer.from(await c.req.arrayBuffer());
     try { JSON.parse(raw.toString('utf8')); } catch { throw new HttpError(400, 'This is not valid JSON'); }
     const id = c.req.query('id') || undefined;
-    upload = { buf: raw, filename: `${id || 'slides'}.json`, id, name: c.req.query('name') };
+    upload = { buf: raw, filename: `${id || 'slides'}.json`, id, name: c.req.query('name'), base: c.req.query('base') || undefined };
   } else {
     const form = await c.req.parseBody();
     const file = form.file;
@@ -514,6 +619,7 @@ api.post('/templates', async (c) => {
       filename: file.name,
       id: typeof form.id === 'string' && form.id ? form.id : undefined,
       name: typeof form.name === 'string' && form.name ? form.name : undefined,
+      base: typeof form.base === 'string' && form.base ? form.base : undefined,
     };
   }
   if (upload.buf.length > 100 * 1024 * 1024) throw new HttpError(413, 'File larger than 100 MB');
@@ -608,6 +714,67 @@ api.put('/offers/:id/tiles', async (c) => {
   const o = recompute(id);
   changed('slides', null, { offer_id: id });
   return c.json(o);
+});
+// Swappable slots: what n8n (or a model) reads to choose elements, and where it sends the choice.
+function slotsContext(offerId) {
+  const offer = store.getOffer(offerId);
+  if (!offer.data?.scenario_id) throw new HttpError(400, 'This offer was not created from tiles');
+  const sel = parseSelection(offer.data.tiles, store.list('tiles'));
+  const ctx = buildSlots(offer, scenarioFor(sel), sel, generationData());
+  const tiles = Object.fromEntries(store.list('tiles').map((t) => [t.id, t]));
+  // client tiles with their labels and guidance, so the model sees what the client needs
+  ctx.client_tiles = ctx.client.map((id) => ({ id, label: tiles[id]?.label, description: tiles[id]?.description, quotes: tiles[id]?.quotes || [] }));
+  return ctx;
+}
+api.get('/offers/:id/slots', (c) => c.json(slotsContext(c.req.param('id'))));
+api.put('/offers/:id/slots', async (c) => {
+  const id = c.req.param('id');
+  const { slides, chosen_by: chosenBy } = await body(c);
+  const patches = applySlotChoice(slotsContext(id), slides);
+  store.tx(() => {
+    for (const [slideId, p] of Object.entries(patches)) {
+      const cur = store.mustGet('slides', slideId);
+      const { reasons, ...content } = p;
+      // chosen elements are kept on recompute, like manual edits
+      store.update('slides', slideId, { ...content, locked: true, origin: { ...(cur.origin || {}), reasons, chosen_by: chosenBy || 'model' } });
+    }
+    store.touch('offers', id);
+  });
+  changed('slides', null, { offer_id: id });
+  return c.json(offerView(id));
+});
+// Slide copy written by a model (n8n): what it may write, and where it sends it.
+function contentFor(offerId) {
+  const offer = store.getOffer(offerId);
+  if (!offer.data?.scenario_id) throw new HttpError(400, 'This offer was not created from tiles');
+  const sel = parseSelection(offer.data.tiles, store.list('tiles'));
+  const tiles = Object.fromEntries(store.list('tiles').map((t) => [t.id, t]));
+  const ctx = contentContext(offer, scenarioFor(sel), { tiles });
+  ctx.product_name = offerVars(offer).product_name;
+  ctx.client_tiles = ctx.tiles.map((id) => ({ id, label: tiles[id]?.label, description: tiles[id]?.description }));
+  ctx.evidence = evidencePack(sel, { tiles, blocks: store.list('blocks') });
+  return ctx;
+}
+api.get('/offers/:id/content', (c) => c.json(contentFor(c.req.param('id'))));
+api.put('/offers/:id/content', async (c) => {
+  const id = c.req.param('id');
+  const b = await body(c);
+  const { patches } = applyContent(contentFor(id), b);
+  store.tx(() => {
+    for (const [slideId, p] of Object.entries(patches)) {
+      const cur = store.mustGet('slides', slideId);
+      // written copy is kept on recompute, like manual edits
+      store.update('slides', slideId, {
+        data: { ...(cur.data || {}), ...p.data },
+        ...(p.hidden !== undefined ? { hidden: p.hidden } : {}),
+        locked: true,
+        origin: { ...(cur.origin || {}), written_by: String(b.written_by || 'model') },
+      });
+    }
+    store.touch('offers', id);
+  });
+  changed('slides', null, { offer_id: id });
+  return c.json(offerView(id));
 });
 api.post('/offers/:id/recompute', (c) => {
   const o = recompute(c.req.param('id'));
@@ -754,10 +921,10 @@ api.put('/scenarios/:id', async (c) => {
   const b = await body(c);
   validateSteps(b.steps);
   const role = store.get('tiles', id);
-  if (!role || role.category !== 'role') throw new HttpError(400, `A scenario id must be a role tile (e.g. role:board), not "${id}"`);
+  if (id !== 'base' && (!role || role.category !== 'role')) throw new HttpError(400, `A scenario id is "base" or a role tile (e.g. role:board), not "${id}"`);
   const row = store.get('scenarios', id)
     ? store.update('scenarios', id, { steps: b.steps, ...(b.name ? { name: b.name } : {}) })
-    : store.insert('scenarios', { id, name: b.name || role.label, steps: b.steps });
+    : store.insert('scenarios', { id, name: b.name || role?.label || 'Base deck', steps: b.steps });
   changed('scenarios', id);
   return c.json(row);
 });
