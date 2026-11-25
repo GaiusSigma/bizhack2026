@@ -1338,7 +1338,7 @@ export const tileTags = {
 // Content revision. A database seeded with an older revision is updated on startup (src/db.js ensureTiles):
 // new solutions are added, solution pins follow this file, missing guidance is filled in, and a tile
 // description is replaced only if it still has the previous revision's text (edits made by hand stay).
-export const tileUpgrade = { rev: 3, previousDescriptions: {
+export const tileUpgrade = { rev: 4, previousDescriptions: {
   "role:champion": "The enthusiast on the team who brings Gaius in and has to win over colleagues.",
   "role:board": "The board, managing partner or director who signs off the decision and the budget.",
   "role:cto": "Technical sign-off: architecture, security, deployment.",

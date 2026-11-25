@@ -395,6 +395,22 @@ export const DOCS = {
     requestBody: body({ tiles: tilesList }, ['tiles']),
     responses: { 200: json(one('Offer')) },
   },
+  'GET /api/offers/:id/slots': {
+    tag: 'Tiles', operationId: 'getOfferSlots', summary: 'Swappable slots of an offer, with candidates',
+    description: 'For each slide of the base deck: its slots (kind, capacity), which kinds of client tiles it answers, the elements in it now and every candidate element with its description, tiles, linked solutions and the client tiles it matches (matched not empty = highlighted). Feed this to a model to choose elements, then send the choice with PUT',
+    parameters: [idParam('offer', '/api/offers')],
+    responses: { 200: json(anyObject) },
+  },
+  'PUT /api/offers/:id/slots': {
+    tag: 'Tiles', operationId: 'setOfferSlots', summary: 'Put chosen elements into slots',
+    description: 'The choice per slide, e.g. from a model: {"slides": [{"slide_id": "...", "items": [{"id": "pr-hidden-know-how", "reason": "Client wants local research"}]}]}. Elements must be candidates of that slot and fit its capacity (400 otherwise). Chosen slides are kept on recompute, like manual edits. Returns the offer',
+    parameters: [idParam('offer', '/api/offers')],
+    requestBody: body({
+      slides: { type: 'array', items: anyObject, description: 'Per slide: {slide_id, items: [{id, reason?}]}' },
+      chosen_by: { type: 'string', description: 'Who chose, shown in the offer (default "model")' },
+    }, ['slides']),
+    responses: { 200: json(one('Offer')) },
+  },
   'POST /api/offers/:id/recompute': {
     tag: 'Tiles', operationId: 'recomputeOffer', summary: 'Recompute an offer from tiles',
     description: 'E.g. after a scenario or content change. Slides edited by hand stay',

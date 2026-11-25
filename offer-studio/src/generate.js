@@ -154,16 +154,18 @@ export function buildSlides(scenario, sel, { blocks = [], components = [], slots
   return out;
 }
 
-// A pain is covered when a visible slide has a block of a COVERAGE_TYPES type tagged with it.
-export function coverage(slides, pains, blocksById) {
+// A pain is covered when an element on a visible slide is linked to it: a block or card tagged with it, or one
+// linked to a solution tagged with it. A pain tile shown on a slide only names the pain, so it does not count.
+export function coverage(slides, pains, blocksById, componentsById = {}) {
   const hit = new Set();
+  const solutions = Object.fromEntries(Object.values(blocksById).filter((b) => b.type === 'solution').map((b) => [b.id, b]));
   for (const s of slides) {
     if (s.hidden) continue;
-    for (const id of s.block_ids || []) {
-      const b = blocksById[id];
-      if (!b || !COVERAGE_TYPES.includes(b.type)) continue;
-      for (const t of b.tags || []) hit.add(t);
-    }
+    const items = [
+      ...(s.block_ids || []).filter((id) => !id.includes(':')).map((id) => blocksById[id]),
+      ...Object.values(s.picks || {}).flat().map((p) => componentsById[p?.component]),
+    ];
+    for (const item of items) if (item) for (const t of elementTiles(item, solutions)) hit.add(t);
   }
   return { covered: pains.filter((p) => hit.has(p)), missing: pains.filter((p) => !hit.has(p)) };
 }
@@ -237,4 +239,91 @@ export function mergeRecompute(existing, fresh) {
     order.splice(pos, 0, o.id);
   }
   return { keep, create, remove, hide, unhide, order };
+}
+
+// ------------------------------------------------------------------ swappable slots (base deck)
+// Each slide of the base deck has slots filled from a pool of elements (blocks of one type or cards of one
+// set). An element can be linked to tiles (its tags) and to solutions (data.solutions); a solution's tiles
+// count as the element's own. A slide says which kinds of tiles it answers (step.answers); an element is
+// highlighted for the client when it is linked to one of the client's tiles of those kinds.
+
+const tileTags = (tags) => (tags || []).filter((t) => String(t).includes(':'));
+
+export function elementTiles(item, solutionsById = {}) {
+  const linked = (item.data?.solutions || []).flatMap((id) => tileTags(solutionsById[id]?.tags));
+  return [...new Set([...tileTags(item.tags), ...linked])];
+}
+
+// Everything a model (or a person) needs to choose elements for an offer: per slide its slots, what it
+// answers, what is in it now and every candidate with the client tiles it matches.
+export function buildSlots(offer, scenario, sel, { blocks = [], components = [], slots = {} } = {}) {
+  const steps = Object.fromEntries((scenario?.steps || []).map((s) => [s.key, s]));
+  const solutionsById = Object.fromEntries(blocks.filter((b) => b.type === 'solution').map((b) => [b.id, b]));
+  const client = [sel.role, sel.segment, sel.product, ...sel.pains];
+  const describe = (item, answers, reasons) => {
+    const tiles = elementTiles(item, solutionsById);
+    return {
+      id: item.id,
+      title: item.title,
+      ...(item.set_name ? { description: item.description || '', variant: item.variant || '', topic: item.topic || '' } : { body: item.body || '' }),
+      tiles,
+      solutions: item.data?.solutions || [],
+      matched: tiles.filter((t) => client.includes(t) && answers.includes(t.split(':')[0])),
+      fits: segmentOk(item.tags, sel) && productOk(item.tags, sel),
+      ...(reasons?.[item.id] ? { reason: reasons[item.id] } : {}),
+    };
+  };
+  return {
+    offer_id: offer.id,
+    client,
+    slides: offer.slides.map((slide) => {
+      const step = steps[slide.origin?.step];
+      const fill = step?.fill || { kind: 'none' };
+      const answers = step?.answers || [];
+      const base = { slide_id: slide.id, step: slide.origin?.step || null, label: slide.origin?.label || step?.label || slide.frame, frame: slide.frame, answers, kind: fill.kind === 'blocks' || fill.kind === 'picks' ? fill.kind : 'none' };
+      if (base.kind === 'none') return { ...base, capacity: 0, current: [], candidates: [] };
+      const reasons = slide.origin?.reasons;
+      if (fill.kind === 'blocks') {
+        const pool = blocks.filter((b) => b.type === fill.type);
+        const byId = Object.fromEntries(pool.map((b) => [b.id, b]));
+        return {
+          ...base, type: fill.type, capacity: fill.max,
+          current: (slide.block_ids || []).filter((id) => byId[id]).map((id) => describe(byId[id], answers, reasons)),
+          candidates: pool.map((b) => describe(b, answers, reasons)),
+        };
+      }
+      const pool = components.filter((c) => c.set_name === fill.set && !c.missing);
+      const byId = Object.fromEntries(pool.map((c) => [c.id, c]));
+      return {
+        ...base, set: fill.set, capacity: slots[fill.set] ?? 6,
+        current: (slide.picks?.[fill.set] || []).filter((p) => byId[p.component]).map((p) => describe(byId[p.component], answers, reasons)),
+        candidates: pool.map((c) => describe(c, answers, reasons)),
+      };
+    }),
+  };
+}
+
+// A model's choice -> slide patches ({slide_id: {block_ids | picks, reasons}}). Throws 400 when an element is
+// unknown, of the wrong kind for the slot, or there are more elements than slots.
+export function applySlotChoice(ctx, choice) {
+  if (!Array.isArray(choice)) throw new HttpError(400, 'Send "slides": [{ slide_id, items: [{ id, reason? }] }]');
+  const slides = Object.fromEntries(ctx.slides.map((s) => [s.slide_id, s]));
+  const patches = {};
+  for (const c of choice) {
+    const slot = slides[c?.slide_id];
+    if (!slot) throw new HttpError(400, `This offer has no slide "${c?.slide_id}"`);
+    if (slot.kind === 'none') throw new HttpError(400, `Slide "${slot.label}" has no swappable elements`);
+    const items = Array.isArray(c.items) ? c.items : [];
+    if (items.length > slot.capacity) throw new HttpError(400, `Slide "${slot.label}" has ${slot.capacity} slots, got ${items.length} elements`);
+    const allowed = new Set(slot.candidates.map((x) => x.id));
+    for (const it of items) {
+      if (!allowed.has(it?.id)) throw new HttpError(400, `"${it?.id}" cannot go on slide "${slot.label}": it is not a ${slot.kind === 'blocks' ? slot.type : `card from the ${slot.set} set`} element`);
+    }
+    const ids = [...new Set(items.map((it) => it.id))];
+    const reasons = Object.fromEntries(items.filter((it) => it.reason).map((it) => [it.id, String(it.reason)]));
+    patches[slot.slide_id] = slot.kind === 'blocks'
+      ? { block_ids: ids, reasons }
+      : { picks: { [slot.set]: ids.map((id) => ({ component: id })) }, reasons };
+  }
+  return patches;
 }

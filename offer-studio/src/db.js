@@ -168,7 +168,8 @@ export const TABLES = {
 
 export const TILE_CATEGORIES = ['role', 'segment', 'pain', 'product'];
 export const TILE_ID_RE = /^(role|segment|pain|product):[a-z0-9][a-z0-9-]{0,59}$/;
-const SCENARIO_ID_RE = /^role:[a-z0-9][a-z0-9-]{0,59}$/;
+// `base` is the one base deck; a role tile id is a role-specific scenario (earlier versions).
+const SCENARIO_ID_RE = /^(base|role:[a-z0-9][a-z0-9-]{0,59})$/;
 
 // Component fields described by a human (the rest comes from the library sync).
 export const COMPONENT_EDITABLE = ['title', 'description', 'use_when', 'avoid_when', 'topic', 'variant', 'tags', 'data'];
@@ -636,6 +637,9 @@ export class Store {
   // Brings tile content from an older seed revision up to date (see seed/tiles.js tileUpgrade).
   upgradeTileContent(seed, counts) {
     const prev = seed.tileUpgrade?.previousDescriptions || {};
+    // The base deck replaces the per-role scenarios of earlier versions.
+    for (const sc of seed.scenarios || []) if (!this.get('scenarios', sc.id)) { this.upsert('scenarios', sc); counts.scenarios++; }
+    for (const id of seed.retiredScenarios || []) if (this.get('scenarios', id)) this.db.prepare('DELETE FROM scenarios WHERE id = ?').run(id);
     for (const b of seed.solutionBlocks || []) {
       const cur = this.get('blocks', b.id);
       if (!cur) { this.upsert('blocks', b); counts.blocks++; continue; }

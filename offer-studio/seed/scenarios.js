@@ -1,18 +1,21 @@
-// Scenarios: the flow of the presentation for each contact role (id = role tile).
+// The base deck: one presentation for every client (the 8 slides of the base offer). Only the swappable
+// elements on its slides change. A step is one slide; its slots are filled from a pool of elements.
 // Step = a slide from the library (`frame`) + default copy (`data`) + a fill rule (`fill`).
 //   fill.kind: none (copy only) | pains (the client's selected pain tiles) | blocks (blocks of `type` picked by tiles,
 //   from `min` to `max`) | picks (cards from a component set picked by tiles).
 //   when.any: the step appears only with one of these tiles.
 //   data_by_product: copy overrides per product (the default copy is the Vault version).
 //   draft: products whose copy is a draft to review (shown as "draft" in the UI).
+//   answers: which kinds of client tiles the slide answers (e.g. the problems slide answers pains); elements
+//   linked to the client's tiles of those kinds are highlighted for this slide.
 // Order and copy are edited in the Scenarios tab.
 
 const SAAS = 'product:saas';
 const ONPREM = 'product:on-prem';
-const VAULT_LIKE = { any: ['product:vault', ONPREM] };
 
 // The template prints "GAIUS" before the accent, so SaaS gets "Pro?" (Gaius Pro is the SaaS product).
 const cover = {
+  answers: [],
   key: 'cover', label: 'Cover', frame: 'cover',
   data: {
     title: 'Gaius Vault',
@@ -32,22 +35,8 @@ const cover = {
   fill: { kind: 'none' },
 };
 
-const architecture = { key: 'architecture', label: 'Architecture', frame: 'architecture', data: {}, fill: { kind: 'none' }, when: VAULT_LIKE };
-
-const rollout = {
-  key: 'rollout', label: 'Rollout', frame: 'rollout',
-  data: {
-    quote: 'We don’t roll out access.\nWe roll out a way of working.',
-    quote_lead: 'That is why Vault covers not just the technology, but also the process, routines and accountability rules.',
-  },
-  data_by_product: {
-    [SAAS]: { quote_lead: 'That is why Gaius is not just access to a tool, but also workshops, routines and verification rules for the team.' },
-  },
-  draft: [SAAS],
-  fill: { kind: 'blocks', type: 'step', min: 5, max: 5 },
-};
-
 const contact = {
+  answers: [],
   key: 'contact', label: 'Contact', frame: 'contact',
   data: {
     kicker: 'LET’S WORK TOGETHER',
@@ -62,6 +51,7 @@ const contact = {
 };
 
 const pricing = {
+  answers: ['product'],
   key: 'pricing', label: 'Pricing', frame: 'pricing',
   data: {
     title: 'What’s included in',
@@ -87,89 +77,46 @@ const pricing = {
 
 export const scenarios = [
   {
-    id: 'role:board',
-    name: 'Board',
+    id: 'base',
+    name: 'Base deck',
     steps: [
       cover,
       {
-        key: 'pains', label: 'Client pains', frame: 'problems',
+        key: 'problems', label: 'Problems', frame: 'problems', answers: ['pain'],
         data: {
-          title: 'What is **costing** your organisation today?',
-          lead: 'This is what we heard in our conversation. Each point has its answer later in this deck.',
-          note: 'The goal is not another tool. The goal is less repetitive work with the same team.',
+          title: 'Where is the legal team’s time **leaking**?',
+          lead: 'What costs the most is not the analysis itself, but rebuilding the path to the answer every time.',
+          note: 'The problem is not the number of matters. It is walking the same road to every answer.',
         },
-        fill: { kind: 'pains' },
+        fill: { kind: 'blocks', type: 'problem', min: 5, max: 5 },
       },
       {
-        key: 'why', label: 'Why Gaius', frame: 'why',
-        data: { title: 'Why ', title_accent: 'Vault?', lead: 'Gaius Vault combines technology, sources, documents, rollout and adoption in one model.' },
-        data_by_product: { [SAAS]: { title_accent: 'Pro?', lead: 'Gaius combines technology, legal sources, your documents and team rollout in one subscription.' } },
-        draft: [SAAS],
-        fill: { kind: 'picks', set: 'why' },
-      },
-      {
-        key: 'solutions', label: 'How we solve it', frame: 'use-case',
-        data: { title: 'How Gaius solves your problems', lead: 'For each problem: what Gaius does and what your organisation gains.' },
-        fill: { kind: 'blocks', type: 'solution', min: 2, max: 3 },
-      },
-      architecture,
-      rollout,
-      pricing,
-      contact,
-    ],
-  },
-  {
-    id: 'role:champion',
-    name: 'Champion',
-    steps: [
-      cover,
-      {
-        key: 'pains', label: 'Client pains', frame: 'problems',
-        data: {
-          title: 'What is your team **up against**?',
-          lead: 'What we hear from lawyers in similar teams, and what came up in our conversation.',
-          note: 'Each of these problems has a concrete answer you can show your team on its own documents.',
-        },
-        fill: { kind: 'pains' },
-      },
-      {
-        key: 'what-is', label: 'What Gaius is', frame: 'what-is',
+        key: 'what-is', label: 'What Gaius is', frame: 'what-is', answers: ['pain'],
         data: { title: 'What is ', title_accent: 'Vault?', lead: 'A private Legal AI environment that brings together legal sources, your documents and your team’s way of working.' },
         data_by_product: { [SAAS]: { title_accent: 'Pro?', lead: 'Legal AI that brings together legal sources, your team’s documents and a shared way of working.' } },
         draft: [SAAS],
         fill: { kind: 'blocks', type: 'pillar', min: 3, max: 3 },
       },
       {
-        key: 'solutions', label: 'How we solve it', frame: 'use-case',
-        data: { title: 'How Gaius solves your problems', lead: 'In concrete terms: what Gaius does and what you and your team gain.' },
-        fill: { kind: 'blocks', type: 'solution', min: 3, max: 3 },
+        key: 'why', label: 'Why Gaius', frame: 'why', answers: ['pain', 'role', 'product'],
+        data: { title: 'Why ', title_accent: 'Vault?', lead: 'Gaius Vault combines technology, sources, documents, rollout and adoption in one model.' },
+        data_by_product: { [SAAS]: { title_accent: 'Pro?', lead: 'Gaius combines technology, legal sources, your documents and team rollout in one subscription.' } },
+        draft: [SAAS],
+        fill: { kind: 'picks', set: 'why' },
       },
       {
-        key: 'use-cases', label: 'Use cases', frame: 'use-case',
+        key: 'use-cases', label: 'Use cases', frame: 'use-case', answers: ['pain', 'segment'],
         data: {
           title: 'Vault in everyday practice',
           lead: 'Gaius Vault turns the most common touchpoints between the business and legal into repeatable routines: from contract approval and dispute response to reusing past opinions and standards.',
         },
         data_by_product: { [SAAS]: { title: 'Gaius in everyday practice', lead: 'Gaius turns your team’s most common tasks into repeatable routines: from contract approval and dispute response to reusing past opinions.' } },
         draft: [SAAS],
-        fill: { kind: 'blocks', type: 'use_case', min: 3, max: 6 },
+        fill: { kind: 'blocks', type: 'use_case', min: 6, max: 6 },
       },
+      { ...pricing, key: 'pricing' },
       {
-        key: 'signals', label: 'Readiness signals', frame: 'signals',
-        data: {
-          title: 'Signs your team is',
-          title_2: 'ready for',
-          title_accent: 'Vault?',
-          lead: 'It is not about the technology itself. It is about the moment Legal AI should become how your team works.',
-          note: 'Gaius helps turn these signals into a rollout plan: processes, routines and measurable impact.',
-        },
-        data_by_product: { [SAAS]: { title_accent: 'Pro?' } },
-        draft: [SAAS],
-        fill: { kind: 'blocks', type: 'signal', min: 4, max: 4 },
-      },
-      architecture,
-      {
-        key: 'comparison', label: 'Comparison', frame: 'comparison',
+        key: 'comparison', label: 'Comparison', frame: 'comparison', answers: ['pain'],
         data: {
           title: 'Gaius vs. a patchwork of Legal AI tools',
           lead: 'Most tools solve one piece of the problem. Gaius Vault delivers a complete standard for legal work with AI, under one licence.',
@@ -177,10 +124,12 @@ export const scenarios = [
         },
         data_by_product: { [SAAS]: { lead: 'Most tools solve one piece of the problem. Gaius brings legal sources, documents and drafting together in one tool.', col_us: 'Gaius Pro' } },
         draft: [SAAS],
-        fill: { kind: 'blocks', type: 'comparison', min: 5, max: 7 },
+        fill: { kind: 'blocks', type: 'comparison', min: 7, max: 7 },
       },
-      rollout,
       contact,
     ],
   },
 ];
+
+// Scenarios of earlier versions that the base deck replaces (removed from existing databases on startup).
+export const retiredScenarios = ['role:board', 'role:champion'];

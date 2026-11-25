@@ -81,7 +81,7 @@ test('scenarios: every frame exists in the template, and data and data_by_produc
 });
 
 test('scenarios: valid fill and when', () => {
-  assert.deepEqual(scenarios.map((s) => s.id).sort(), ['role:board', 'role:champion']);
+  assert.deepEqual(scenarios.map((s) => s.id), ['base']);
   const types = new Set(seed.blocks.map((b) => b.type));
   const sets = new Set(seed.component_sets.map((c) => c.id));
   const products = new Set(tiles.filter((t) => t.category === 'product').map((t) => t.id));
@@ -98,6 +98,7 @@ test('scenarios: valid fill and when', () => {
       }
       if (st.fill.kind === 'picks') assert.ok(sets.has(st.fill.set), where);
       for (const t of st.when?.any || []) assert.ok(products.has(t), `${where}: when ${t}`);
+      for (const c of st.answers || []) assert.ok(['role', 'segment', 'pain', 'product'].includes(c), `${where}: answers ${c}`);
       for (const t of Object.keys(st.data_by_product || {})) assert.ok(products.has(t), `${where}: data_by_product ${t}`);
     }
   }
@@ -170,4 +171,16 @@ test('content language: everything people see is in English (proper names aside)
   for (const c of seed.components) check(c.id, [c.title, c.description, c.use_when, c.avoid_when]);
   for (const s of scenarios) check(s.id, s.steps);
   assert.deepEqual(offenders, []);
+});
+
+test('base deck: the 8 slides of the base presentation, in its order, each saying what it answers', () => {
+  const base = scenarios.find((s) => s.id === 'base');
+  assert.deepEqual(base.steps.map((s) => s.frame), ['cover', 'problems', 'what-is', 'why', 'use-case', 'pricing', 'comparison', 'contact']);
+  const answers = Object.fromEntries(base.steps.map((s) => [s.key, s.answers || []]));
+  assert.deepEqual(answers.problems, ['pain']);
+  assert.deepEqual(answers.pricing, ['product']);
+  assert.deepEqual(answers.cover, []);
+  // slot sizes of the base presentation
+  const max = Object.fromEntries(base.steps.filter((s) => s.fill.kind === 'blocks').map((s) => [s.key, s.fill.max]));
+  assert.deepEqual(max, { problems: 5, 'what-is': 3, 'use-cases': 6, pricing: 3, comparison: 7, contact: 1 });
 });

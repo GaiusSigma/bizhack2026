@@ -7,7 +7,7 @@ import {
 import { viewNewOffer } from './views/new-offer.js';
 import { viewOffer, viewOfferList } from './views/offer.js';
 import { viewScenarios } from './views/scenarios.js';
-import { plainTags, tileTagEditor, viewTiles } from './views/tiles.js';
+import { plainTags, solutionLinker, tileTagEditor, viewTiles } from './views/tiles.js';
 
 const BLOCK_TYPE_LABELS = {
   solution: 'Solutions', use_case: 'Use cases', problem: 'Problems', pillar: 'Pillars', signal: 'Readiness signals', step: 'Rollout steps',
@@ -184,6 +184,10 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
       block.tags = next;
       save({ tags: next });
     }),
+    block.type !== 'solution' ? [
+      h('label', { class: 'f' }, 'Linked solutions (what this element delivers; their tiles count for highlighting)'),
+      solutionLinker(block.data?.solutions, (ids) => save({ data: { solutions: ids } })),
+    ] : null,
     h('details', { class: 'advanced' }, h('summary', {}, 'Advanced: plain tags and template fields'),
       h('label', { class: 'f' }, 'Plain tags (comma-separated)'),
       h('input', { value: plainTags(block.tags).join(', '), placeholder: tagList, oninput: (e) => {
@@ -695,8 +699,12 @@ function componentEditor(c) {
       field('What it shows', 'description', 'the card\'s content and look'),
       field('When to pick', 'use_when', 'which client, industry, concern, stage of the conversation'),
       field('When to avoid', 'avoid_when', 'e.g. when card X is already on the slide'),
-      h('label', { class: 'f' }, 'Tags (comma-separated)'),
-      h('input', { value: (c.tags || []).join(', '), oninput: (e) => save({ tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) }) })));
+      h('label', { class: 'f' }, 'Tiles: which clients this card is for (click to toggle)'),
+      tileTagEditor(c.tags, (tags) => { c.tags = [...plainTags(c.tags), ...tags.filter((t) => t.includes(':'))]; save({ tags: c.tags }); }),
+      h('label', { class: 'f' }, 'Linked solutions (what this card delivers)'),
+      solutionLinker(c.data?.solutions, (ids) => save({ data: { ...(c.data || {}), solutions: ids } })),
+      h('label', { class: 'f' }, 'Plain tags (comma-separated)'),
+      h('input', { value: plainTags(c.tags).join(', '), oninput: (e) => { c.tags = [...e.target.value.split(',').map((x) => x.trim()).filter(Boolean), ...(c.tags || []).filter((t) => t.includes(':'))]; save({ tags: c.tags }); } })));
 }
 
 // ------------------------------------------------------------------ view: Slide library

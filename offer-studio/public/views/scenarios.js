@@ -62,6 +62,7 @@ export function viewScenarios(selectedId) {
           h('input', { class: 'stc-label', value: st.label || '', placeholder: 'Step name', oninput: (e) => { st.label = e.target.value; touch(); } }),
           h('div', { class: 'hint' }, describeFill(fill)),
           describeWhen(st.when) ? h('div', { class: 'hint' }, describeWhen(st.when)) : null,
+          st.answers?.length ? h('div', { class: 'hint' }, `Answers: ${st.answers.join(', ')}`) : null,
           st.draft?.length ? h('div', { class: 'hint warn' }, `Draft copy for: ${st.draft.map(tileLabel).join(', ')}`) : null),
         h('div', { class: 'stc-acts' },
           h('button', { class: 'icon', title: 'Move up', onclick: () => move(i, -1) }, '↑'),
@@ -84,6 +85,15 @@ export function viewScenarios(selectedId) {
             h('label', { class: 'f' }, 'Card set'),
             h('select', { onchange: (e) => setFill({ set: e.target.value }) }, sets.map((s) => h('option', { value: s, selected: s === fill.set }, s))),
           ] : null,
+          h('label', { class: 'f' }, 'This slide answers (elements linked to the client\'s tiles of these kinds are highlighted)'),
+          h('div', { class: 'row' }, Object.entries({ pain: 'Client pains', segment: 'Segment', role: 'Contact role', product: 'Product' }).map(([k, l]) => h('label', { class: 'check' },
+            h('input', { type: 'checkbox', checked: (st.answers || []).includes(k), onchange: (e) => {
+              const a = new Set(st.answers || []);
+              if (e.target.checked) a.add(k); else a.delete(k);
+              st.answers = [...a];
+              touch();
+              render();
+            } }), ` ${l}`))),
           h('label', { class: 'f' }, 'Show only with product (empty = always)'),
           h('div', { class: 'row' }, products.map((p) => h('label', { class: 'check' },
             h('input', { type: 'checkbox', checked: st.when?.any?.includes(p.id), onchange: (e) => {

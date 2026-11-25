@@ -7,7 +7,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyzeLead, pickComponents } from './ai.js';
-import { buildSlides, coverage, mergeRecompute, parseSelection } from './generate.js';
+import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import {
   buildLibrary, describeComponents, describeTemplate, hashOf, normalizeUpload, parseTemplate, renderFigcraft, renderPdf, renderPreview, renderThumbnails, UPLOAD_EXT,
@@ -342,12 +342,13 @@ function offerView(id) {
   const ids = offer.data?.tiles;
   if (!Array.isArray(ids)) return offer;
   offer.tiles = ids.map((t) => store.get('tiles', t) || { id: t, missing: true });
-  offer.coverage = coverage(offer.slides, ids.filter((t) => t.startsWith('pain:')), blocksById());
+  offer.coverage = coverage(offer.slides, ids.filter((t) => t.startsWith('pain:')), blocksById(), Object.fromEntries(store.listComponents().map((c) => [c.id, c])));
   return offer;
 }
 
+// The base deck when there is one (every client gets the same slides); otherwise the role's scenario.
 function scenarioFor(sel) {
-  const sc = store.get('scenarios', sel.role);
+  const sc = store.get('scenarios', 'base') || store.get('scenarios', sel.role);
   if (!sc) throw new HttpError(400, `No scenario for the role "${store.get('tiles', sel.role)?.label || sel.role}"`);
   return sc;
 }
@@ -385,6 +386,9 @@ function validateSteps(steps) {
     }
     if (fill.kind === 'picks' && !fill.set) throw new HttpError(400, `${at}: set the card set`);
     if (st.when && !Array.isArray(st.when.any)) throw new HttpError(400, `${at}: "when.any" must be a list of tiles`);
+    if (st.answers && !(Array.isArray(st.answers) && st.answers.every((c) => TILE_CATEGORIES.includes(c)))) {
+      throw new HttpError(400, `${at}: "answers" lists tile kinds: ${TILE_CATEGORIES.join(', ')}`);
+    }
   });
 }
 
@@ -627,6 +631,34 @@ api.put('/offers/:id/tiles', async (c) => {
   changed('slides', null, { offer_id: id });
   return c.json(o);
 });
+// Swappable slots: what n8n (or a model) reads to choose elements, and where it sends the choice.
+function slotsContext(offerId) {
+  const offer = store.getOffer(offerId);
+  if (!offer.data?.scenario_id) throw new HttpError(400, 'This offer was not created from tiles');
+  const sel = parseSelection(offer.data.tiles, store.list('tiles'));
+  const ctx = buildSlots(offer, scenarioFor(sel), sel, generationData());
+  const tiles = Object.fromEntries(store.list('tiles').map((t) => [t.id, t]));
+  // client tiles with their labels and guidance, so the model sees what the client needs
+  ctx.client_tiles = ctx.client.map((id) => ({ id, label: tiles[id]?.label, description: tiles[id]?.description, quotes: tiles[id]?.quotes || [] }));
+  return ctx;
+}
+api.get('/offers/:id/slots', (c) => c.json(slotsContext(c.req.param('id'))));
+api.put('/offers/:id/slots', async (c) => {
+  const id = c.req.param('id');
+  const { slides, chosen_by: chosenBy } = await body(c);
+  const patches = applySlotChoice(slotsContext(id), slides);
+  store.tx(() => {
+    for (const [slideId, p] of Object.entries(patches)) {
+      const cur = store.mustGet('slides', slideId);
+      const { reasons, ...content } = p;
+      // chosen elements are kept on recompute, like manual edits
+      store.update('slides', slideId, { ...content, locked: true, origin: { ...(cur.origin || {}), reasons, chosen_by: chosenBy || 'model' } });
+    }
+    store.touch('offers', id);
+  });
+  changed('slides', null, { offer_id: id });
+  return c.json(offerView(id));
+});
 api.post('/offers/:id/recompute', (c) => {
   const o = recompute(c.req.param('id'));
   changed('slides', null, { offer_id: o.id });
@@ -772,10 +804,10 @@ api.put('/scenarios/:id', async (c) => {
   const b = await body(c);
   validateSteps(b.steps);
   const role = store.get('tiles', id);
-  if (!role || role.category !== 'role') throw new HttpError(400, `A scenario id must be a role tile (e.g. role:board), not "${id}"`);
+  if (id !== 'base' && (!role || role.category !== 'role')) throw new HttpError(400, `A scenario id is "base" or a role tile (e.g. role:board), not "${id}"`);
   const row = store.get('scenarios', id)
     ? store.update('scenarios', id, { steps: b.steps, ...(b.name ? { name: b.name } : {}) })
-    : store.insert('scenarios', { id, name: b.name || role.label, steps: b.steps });
+    : store.insert('scenarios', { id, name: b.name || role?.label || 'Base deck', steps: b.steps });
   changed('scenarios', id);
   return c.json(row);
 });
