@@ -1,6 +1,6 @@
 # BizHack 2026: stack Docker Compose
 
-Jeden `docker-compose.yml` z trzema aplikacjami, przygotowany do wdrożenia przez **Coolify**:
+Jeden `docker-compose.yml` z czterema aplikacjami, przygotowany do wdrożenia przez **Coolify**:
 
 | Usługa | Co to jest | Port w kontenerze | Domena w Coolify |
 |---|---|---|---|
@@ -10,6 +10,8 @@ Jeden `docker-compose.yml` z trzema aplikacjami, przygotowany do wdrożenia prze
 | `postgres` | Baza danych n8n (Postgres 17) | 5432 | nie |
 | `figcraft` | FigCraft w wersji webowej (WebAssembly) serwowany przez nginx + proxy `/sync/` | 80 | tak |
 | `figcraft-server` | Serwer współpracy FigCraft (udostępnianie plików, linki, lista zespołu) | 47900 | nie, dostępny przez `figcraft` pod `/sync/` |
+| `offer-studio` | Baza wiedzy + składanie ofert ze slajdów, podgląd na żywo, PDF ([opis](offer-studio/README.md)) | 3000 | tak |
+| `gotenberg` | Chromium jako usługa: HTML → PDF dla Offer Studio | 3000 | nie |
 
 ```
 .
@@ -17,6 +19,7 @@ Jeden `docker-compose.yml` z trzema aplikacjami, przygotowany do wdrożenia prze
 ├── docker-compose.local.yml    # nakładka lokalna: porty na localhost, n8n po http
 ├── .env.example                # zmienne do uruchomienia lokalnego
 ├── landing/                    # projekt Astro + Dockerfile (node -> nginx) + nginx.conf
+├── offer-studio/               # dashboard ofert: Node + SQLite + szablony slajdów
 └── figcraft/
     ├── web/                    # Dockerfile: oficjalny figcraft-web-<wersja>.zip + nginx
     └── server/                 # Dockerfile: oficjalna binarka figcraft-server + entrypoint
@@ -35,6 +38,7 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 - landing: http://localhost:8080
 - FigCraft: http://localhost:8081
 - n8n: http://localhost:5678 (przy pierwszym wejściu zakładasz konto właściciela)
+- Offer Studio: http://localhost:8082 (hasło z `SERVICE_PASSWORD_STUDIO` w `.env`)
 
 Praca nad samym landingiem z hot reloadem:
 
@@ -51,6 +55,7 @@ cd landing; npm install; npm run dev
    - `landing` → `https://bizhack.example.com`
    - `n8n` → `https://n8n.bizhack.example.com`
    - `figcraft` → `https://figcraft.bizhack.example.com`
+   - `offer-studio` → `https://oferty.bizhack.example.com`
 
    Porty są już zapisane w nazwach zmiennych `SERVICE_URL_<USŁUGA>_<PORT>`, więc Coolify sam
    kieruje ruch na właściwy port kontenera. Nie dodawaj `ports:` do compose: wszystko idzie przez

@@ -1,0 +1,22 @@
+{
+  "name": "offer-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Baza wiedzy (bloki) + składanie oferty ze slajdów + podgląd na żywo + PDF",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  },
+  "dependencies": {
+    "@fontsource/figtree": "^5.3.0",
+    "@hono/node-server": "^2.1.11",
+    "handlebars": "^4.7.10",
+    "hono": "^4.13.22",
+    "marked": "^18.3.0"
+  }
+}

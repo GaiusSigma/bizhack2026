@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Offer Studio</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ce5e64'/%3E%3Cpath d='M9 22 16 9l7 13z' fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <strong class="brand">Offer Studio</strong>
+    <nav id="tabs">
+      <button data-view="blocks">Wiedza</button>
+      <button data-view="offers">Oferty</button>
+      <button data-view="layouts">Layouty</button>
+      <button data-view="assets">Obrazki</button>
+    </nav>
+    <div class="spacer"></div>
+    <a class="btn ghost" href="/api/export" title="Cała baza do jednego pliku JSON">Eksport</a>
+    <label class="btn ghost" title="Wczytaj plik z eksportu">Import<input id="import-file" type="file" accept="application/json,.json" hidden></label>
+    <a class="btn ghost" href="/static/api.html" target="_blank">API</a>
+  </header>
+  <main id="view"></main>
+  <div id="modal" hidden></div>
+  <div id="toast" hidden></div>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

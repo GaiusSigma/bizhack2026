@@ -4,7 +4,12 @@
 #   landing   http://localhost:8080
 #   FigCraft  http://localhost:8081
 #   n8n       http://localhost:5678
+#   Offer Studio http://localhost:8082
 services:
+  offer-studio:
+    ports:
+      - "127.0.0.1:8082:3000"
+
   landing:
     ports:
       - "127.0.0.1:8080:80"
