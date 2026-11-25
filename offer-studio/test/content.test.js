@@ -127,8 +127,8 @@ test('role: Board and Champion get different default copy on the slides that ans
       assert.notEqual(b[step][field], a[step][field], `${product} ${step}.${field}`);
     }
     // the Champion has to win over the board; the board does not talk to itself
-    assert.match(a.preparation.steps, /Talk to the board/);
-    assert.doesNotMatch(b.preparation.steps, /Talk to the board/);
+    assert.match(a.preparation.steps, /Talk to the decision makers/);
+    assert.doesNotMatch(b.preparation.steps, /Talk to the (decision makers|board)/);
     // facts that depend on the product, not the role, stay the same
     assert.equal(b.security.features, a.security.features);
   }
@@ -208,4 +208,31 @@ test('product: the content context names the product with its brief and adds per
   assert.ok(contact.indexOf('For the Board:') < contact.indexOf('For Gaius SaaS:'), contact);
   const vault = contentContext(offerFor(board), base).slides.find((s) => s.step === 'contact-person').fields.lead.hint;
   assert.doesNotMatch(vault, /For Gaius SaaS:/);
+});
+
+test('evidence pack: a pain with nothing for the segment falls back to a general solution that fits the product', () => {
+  const blocks = [
+    { id: 'in', type: 'solution', title: 'In-house only', body: '', tags: ['pain:a', 'segment:in-house'], data: {} },
+    { id: 'onprem', type: 'solution', title: 'On-prem in-house', body: '', tags: ['pain:a', 'segment:in-house', 'product:on-prem'], data: {} },
+  ];
+  const ev = evidencePack({ role: 'role:champion', segment: 'segment:law-firm', product: 'product:saas', pains: ['pain:a'] }, { tiles: {}, blocks });
+  assert.deepEqual(ev.pains[0].solutions.map((s) => [s.id, s.general]), [['in', true]]);
+  assert.equal(ev.pains[0].no_solution, undefined);
+  // nothing that fits the product either: still says so
+  const none = evidencePack({ role: 'role:champion', segment: 'segment:law-firm', product: 'product:vault', pains: ['pain:a'] }, { tiles: {}, blocks: [blocks[1]] });
+  assert.equal(none.pains[0].no_solution, true);
+});
+
+import seedAll from '../seed/seed.js';
+import { tiles as seedTiles, solutionBlocks as seedSolutions, tileTags as seedTileTags } from '../seed/tiles.js';
+
+test('evidence pack: in the seed library every active pain has an answer for every role, segment and product', () => {
+  const blocks = [...new Map([...seedAll.blocks, ...seedSolutions].map((b) => [b.id, { ...b, tags: [...b.tags, ...(seedTileTags[b.id] || [])] }])).values()];
+  const act = (c) => seedTiles.filter((t) => t.category === c && t.status === 'active').map((t) => t.id);
+  const missing = [];
+  for (const role of act('role')) for (const segment of act('segment')) for (const product of act('product')) {
+    const ev = evidencePack({ role, segment, product, pains: act('pain') }, { tiles: {}, blocks });
+    for (const p of ev.pains) if (p.no_solution) missing.push(`${p.id} x ${segment} x ${product}`);
+  }
+  assert.deepEqual(missing, []);
 });
