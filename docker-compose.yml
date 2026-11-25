@@ -1,11 +1,11 @@
-# Stack BizHack 2026: landing (Astro + nginx), n8n (+ Postgres, task runners), FigCraft web (+ serwer współpracy).
+# Stack BizHack 2026: landing (Astro + nginx), n8n (+ Postgres, task runners), FigCraft web (+ collaboration server), Offer Studio.
 #
-# Plik jest przygotowany pod Coolify (build pack "Docker Compose"):
-#   - SERVICE_URL_<USŁUGA>_<PORT>  -> Coolify generuje domenę i kieruje ruch na ten port kontenera,
-#   - SERVICE_USER_* / SERVICE_PASSWORD_* -> Coolify generuje i zapamiętuje dane logowania,
-#   - brak `ports:`: ruch z internetu idzie wyłącznie przez proxy Coolify (Traefik) z HTTPS.
+# The file is set up for Coolify ("Docker Compose" build pack):
+#   - SERVICE_URL_<SERVICE>_<PORT>  -> Coolify generates a domain and routes traffic to this container port,
+#   - SERVICE_USER_* / SERVICE_PASSWORD_* -> Coolify generates and stores the credentials,
+#   - no `ports:`: internet traffic goes only through the Coolify proxy (Traefik) with HTTPS.
 #
-# Lokalnie: skopiuj .env.example do .env i uruchom
+# Locally: copy .env.example to .env and run
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 
 services:
@@ -25,7 +25,7 @@ services:
       retries: 3
 
   # ---------------------------------------------------------------- n8n
-  # Obraz = oficjalny n8nio/n8n + węzły Offer Studio (n8n/n8n-nodes-offer-studio), zob. n8n/Dockerfile.
+  # Image = official n8nio/n8n + the Offer Studio nodes (n8n/n8n-nodes-offer-studio), see n8n/Dockerfile.
   n8n:
     build:
       context: ./n8n
@@ -33,7 +33,7 @@ services:
         N8N_VERSION: 2.50.0
     environment:
       - SERVICE_URL_N8N_5678
-      # Domyślne poświadczenie „Offer Studio API”: n8n sam wypełnia adres i token (n8n/entrypoint.sh).
+      # Default "Offer Studio API" credential: n8n fills in the URL and token itself (n8n/entrypoint.sh).
       - OFFER_STUDIO_URL=http://offer-studio:3000
       - OFFER_STUDIO_API_TOKEN=${SERVICE_PASSWORD_64_STUDIOAPI}
       - N8N_EDITOR_BASE_URL=${SERVICE_URL_N8N}
@@ -75,7 +75,7 @@ services:
       retries: 10
 
   n8n-runners:
-    # Ta sama wersja co N8N_VERSION usługi n8n.
+    # Same version as N8N_VERSION of the n8n service.
     image: n8nio/runners:2.50.0
     environment:
       - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
@@ -107,7 +107,7 @@ services:
       retries: 10
 
   # ---------------------------------------------------------------- FigCraft
-  # Aplikacja webowa (WASM) + proxy /sync/ do serwera współpracy, jedna domena.
+  # Web app (WASM) + /sync/ proxy to the collaboration server, one domain.
   figcraft:
     build:
       context: ./figcraft/web
@@ -123,15 +123,15 @@ services:
       timeout: 5s
       retries: 3
 
-  # Serwer współpracy: udostępnianie plików, linki, lista plików zespołu.
-  # Dostępny tylko przez kontener `figcraft` pod wss://<domena-figcraft>/sync/.
+  # Collaboration server: file sharing, links, team file list.
+  # Reachable only through the `figcraft` container at wss://<figcraft-domain>/sync/.
   figcraft-server:
     build:
       context: ./figcraft/server
     environment:
       - FIGCRAFT_PUBLIC_URL=${SERVICE_URL_FIGCRAFT}
       - FIGCRAFT_OPEN_PUBLISH=${FIGCRAFT_OPEN_PUBLISH:-false}
-      # Lista plików zespołu jest widoczna dla KAŻDEGO, kto dotrze do serwera. Domyślnie wyłączona.
+      # The team file list is visible to ANYONE who can reach the server. Off by default.
       - FIGCRAFT_TEAM_FILES=${FIGCRAFT_TEAM_FILES:-}
       - FIGCRAFT_MAX_FILE_MB=${FIGCRAFT_MAX_FILE_MB:-64}
     volumes:
@@ -144,19 +144,19 @@ services:
       retries: 3
 
   # ---------------------------------------------------------------- Offer Studio
-  # Baza wiedzy (bloki) + składanie ofert ze slajdów. Slajdy, podgląd i PDF renderuje FigCraft
-  # (figcraft-cli w obrazie) z szablonu .figcraft. Dane w SQLite.
+  # Knowledge base (blocks) + building offers from slides. FigCraft renders the slides, preview and PDF
+  # (figcraft-cli in the image) from a .figcraft template. Data in SQLite.
   offer-studio:
     build:
       context: ./offer-studio
     environment:
       - SERVICE_URL_OFFER_STUDIO_3000
-      # Logowanie w przeglądarce: dowolny login + to hasło. API: nagłówek "Authorization: Bearer <token>".
+      # Browser login: any username + this password. API: "Authorization: Bearer <token>" header.
       - STUDIO_PASSWORD=${SERVICE_PASSWORD_STUDIO}
       - STUDIO_API_TOKEN=${SERVICE_PASSWORD_64_STUDIOAPI}
-      # Link „Otwórz FigCraft” w dashboardzie (wersja webowa z tego stacku).
+      # "Open FigCraft" link in the dashboard (the web version from this stack).
       - FIGCRAFT_WEB_URL=${SERVICE_URL_FIGCRAFT}
-      # Dobór kart przez Claude („Dobierz karty (AI)”). Bez klucza reszta działa, a AI zwraca 503.
+      # Card picking by Claude ("Pick cards (AI)"). Without a key everything else works and the AI returns 503.
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - STUDIO_AI_MODEL=${STUDIO_AI_MODEL:-claude-opus-5-5}
     volumes:

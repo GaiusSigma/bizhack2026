@@ -1,22 +1,22 @@
-// Renderowanie ofert przez FigCraft.
+// Rendering offers with FigCraft.
 //
-// Szablon to zwykły plik .figcraft. Każda ramka najwyższego poziomu to jeden slajd szablonu
-// (nazwa ramki = jego identyfikator). Pola wiąże się NAZWAMI warstw:
+// A template is a plain .figcraft file. Every top-level frame is one template slide
+// (frame name = its identifier). Fields are bound by layer NAMES:
 //
-//   {{data.title}}            treść slajdu (z edytora slajdu)
-//   {{offer.client|upper}}    zmienna oferty, opcjonalny filtr upper/lower
-//   Efekt: {{effect}}         tekst stały + pole; pusty wynik ukrywa warstwę
-//   #item                     slot na blok (karta). Wewnątrz: {{title}}, {{body}}, {{n}}, {{effect}}…
-//   #item:lines               slot na wiersz z pola data.lines ("etykieta | wartość" w każdej linii)
-//   **tekst**                 w wartości: styl pierwszego wyróżnienia z szablonu (np. czerwony akcent)
-//   [[2:tekst]]               w nazwie warstwy: styl drugiego wyróżnienia z szablonu
-//   \n                        w nazwie warstwy: nowa linia
+//   {{data.title}}            slide content (from the slide editor)
+//   {{offer.client|upper}}    offer variable, optional upper/lower filter
+//   Effect: {{effect}}        fixed text + field; an empty result hides the layer
+//   #item                     slot for a block (card). Inside: {{title}}, {{body}}, {{n}}, {{effect}}…
+//   #item:lines               slot for a row of the data.lines field ("label | value" on each line)
+//   **text**                  in a value: style of the template's first highlight (e.g. red accent)
+//   [[2:text]]                in a layer name: style of the template's second highlight
+//   \n                        in a layer name: new line
 //
-// Slotów może być więcej niż bloków (nadmiar jest ukrywany) albo mniej (ostatni slot jest
-// powielany; w auto-layoucie kolejne karty układają się same).
+// There can be more slots than blocks (the extra ones are hidden) or fewer (the last slot is
+// duplicated; in auto layout the extra cards arrange themselves).
 //
-// Render to dwa przebiegi `figcraft-cli run` (1: kopie slajdów i dodatkowe sloty, 2: treść),
-// a potem `figcraft-cli export` do PNG (podgląd) albo PDF.
+// A render is two `figcraft-cli run` passes (1: slide copies and extra slots, 2: content),
+// followed by `figcraft-cli export` to PNG (preview) or PDF.
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -26,7 +26,7 @@ import { join } from 'node:path';
 import { unzipSync } from 'fflate';
 import { componentId, HttpError } from './db.js';
 
-// figcraft-cli: z FIGCRAFT_CLI, z typowej instalacji FigCraft na Windows albo z PATH (Docker).
+// figcraft-cli: from FIGCRAFT_CLI, from the default FigCraft install on Windows, or from PATH (Docker).
 const WIN_CLI = 'C:\\Program Files\\ArtCraft\\FigCraft\\figcraft-cli.exe';
 const CLI = process.env.FIGCRAFT_CLI || (process.platform === 'win32' && existsSync(WIN_CLI) ? WIN_CLI : 'figcraft-cli');
 const WORK = process.env.RENDER_DIR || join(tmpdir(), 'offer-studio-renders');
@@ -36,7 +36,7 @@ const SLOT = /^#item(?::([A-Za-z_][\w]*))?$/;
 const PICK = /^#pick:([\w-]+)$/;
 const SET = /^@([\w-]+)$/;
 
-// ------------------------------------------------------------------ analiza szablonu
+// ------------------------------------------------------------------ template parsing
 const hex = (c) => `#${[c.r, c.g, c.b].map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
 
 function runStyle(style) {
@@ -53,17 +53,17 @@ export function parseTemplate(buffer) {
   try {
     files = unzipSync(new Uint8Array(buffer), { filter: (f) => f.name === 'document.json' });
   } catch {
-    throw new HttpError(400, 'To nie jest plik .figcraft (oczekiwano archiwum z document.json)');
+    throw new HttpError(400, 'This is not a .figcraft file (expected an archive with document.json)');
   }
-  if (!files['document.json']) throw new HttpError(400, 'W pliku .figcraft brakuje document.json');
+  if (!files['document.json']) throw new HttpError(400, 'The .figcraft file is missing document.json');
   const doc = JSON.parse(Buffer.from(files['document.json']).toString('utf8'));
   const N = doc.nodes;
-  // Ramki najwyższego poziomu ze wszystkich stron (plik może mieć ich kilka): slajdy albo zestawy `@…`.
+  // Top-level frames from all pages (a file can have several): slides or `@…` sets.
   const tops = doc.pages.flatMap((pid) =>
     (N[String(pid)]?.children || []).map((fid) => ({ page: Number(pid), frame: N[String(fid)] })))
     .filter((x) => x.frame && x.frame.type === 'frame');
 
-  // Teksty z polami {{…}} w poddrzewie; `stopAt` zatrzymuje zejście (sloty #pick podmieniamy w całości).
+  // Texts with {{…}} fields in a subtree; `stopAt` stops the descent (#pick slots are replaced whole).
   const collect = (rootId, onNode) => {
     const walk = (id, ctx) => {
       const n = N[String(id)];
@@ -80,7 +80,7 @@ export function parseTemplate(buffer) {
     return out.filter(Boolean).join('\n');
   };
 
-  // Zestawy komponentów: @nazwa -> dzieci ramki to karty.
+  // Component sets: @name -> the frame's children are cards.
   const components = [];
   for (const { frame } of tops.filter((t) => SET.test(t.frame.name || ''))) {
     const set = SET.exec(frame.name)[1];
@@ -102,7 +102,7 @@ export function parseTemplate(buffer) {
   }
 
   const frames = tops.filter((t) => !SET.test(t.frame.name || '')).map(({ page, frame }) => {
-    const texts = []; // {id, name, slot (id slotu albo null), runs}
+    const texts = []; // {id, name, slot (slot id or null), runs}
     const slots = []; // {id, source, grid}
     const picks = []; // {id, set, parent, index, sizingH}
     collect(frame.id, (n, slotId) => {
@@ -155,20 +155,20 @@ export function parseTemplate(buffer) {
   return { name: doc.name, pages: doc.pages.map(Number), frames, components, images: (doc.imageIndex || []).length };
 }
 
-// Krótki opis do API/UI (bez wewnętrznych id).
+// Short description for the API/UI (no internal ids).
 export const describeTemplate = (parsed) =>
   parsed.frames.map((f) => ({ name: f.name, width: f.width, height: f.height, fields: f.fields, slots: f.slots.length }));
 export const describeComponents = (parsed) =>
   parsed.components.map((c) => ({ id: c.id, set: c.set, key: c.key, title: c.title, text: c.text, fields: c.fields, width: c.width, height: c.height }));
 
-// ------------------------------------------------------------------ wartości i style
+// ------------------------------------------------------------------ values and styles
 function lookup(ctx, path) {
   let v = ctx;
   for (const k of path.split('.')) v = v == null ? undefined : v[k];
   return v;
 }
 
-// Markdown z bloków -> zwykły tekst: listy bez znaczników, **wyróżnienia** zostają do stylowania.
+// Markdown from blocks -> plain text: lists lose their markers, **highlights** stay for styling.
 function plain(v) {
   if (v == null) return '';
   if (typeof v !== 'string') return String(v);
@@ -185,14 +185,14 @@ function fill(template, ctx) {
   const out = t.replace(/\{\{\s*([^}|]+?)\s*(?:\|\s*(\w+)\s*)?\}\}/g, (_, path, filter) => {
     let v = plain(lookup(ctx, path));
     if (v !== '') hadValue = true;
-    if (filter === 'upper') v = v.toLocaleUpperCase('pl');
-    if (filter === 'lower') v = v.toLocaleLowerCase('pl');
+    if (filter === 'upper') v = v.toLocaleUpperCase('en');
+    if (filter === 'lower') v = v.toLocaleLowerCase('en');
     return v;
   });
   return { text: out, hadValue };
 }
 
-// "[[2:abc]]" i "**abc**" -> czysty tekst + zakresy ze stylem.
+// "[[2:abc]]" and "**abc**" -> plain text + styled ranges.
 export function parseMarks(s) {
   const ranges = [];
   let text = '';
@@ -203,7 +203,7 @@ export function parseMarks(s) {
     text += s.slice(last, m.index);
     const inner = m[2] ?? m[3];
     const run = m[2] != null ? Number(m[1]) : 1;
-    // zagnieżdżone ** w [[k:…]] (np. cena z akcentem) traktujemy jako zwykły tekst
+    // nested ** inside [[k:…]] (e.g. a price with an accent) is treated as plain text
     const clean = inner.replace(/\*\*/g, '');
     ranges.push({ start: text.length, end: text.length + clean.length, run });
     text += clean;
@@ -215,12 +215,12 @@ export function parseMarks(s) {
 
 const ACCENT = { textFills: ['#CE5E64'] };
 
-// ------------------------------------------------------------------ uruchamianie CLI
+// ------------------------------------------------------------------ running the CLI
 function cli(args, cwd) {
   return new Promise((resolve, reject) => {
     execFile(CLI, args, { cwd, timeout: 120_000, maxBuffer: 64 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => {
       if (err) {
-        if (err.code === 'ENOENT') return reject(new HttpError(503, `Nie znaleziono figcraft-cli (${CLI}). Ustaw FIGCRAFT_CLI albo zainstaluj FigCraft.`));
+        if (err.code === 'ENOENT') return reject(new HttpError(503, `figcraft-cli not found (${CLI}). Set FIGCRAFT_CLI or install FigCraft.`));
         const failed = String(stdout).split('\n').find((l) => l.includes('"ok":false'));
         return reject(new HttpError(500, `figcraft-cli ${args[0]}: ${failed || stderr || err.message}`.slice(0, 800)));
       }
@@ -232,21 +232,21 @@ function cli(args, cwd) {
 const results = (stdout) =>
   stdout.split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l));
 
-// ------------------------------------------------------------------ budowa dokumentu oferty
-// slides: [{ id, frame, data, items: { blocks: [...], lines: [...] }, picks: { zestaw: [{ comp, data }] } }]
-//   comp = komponent z parsed.components (ten sam dokument biblioteki), data = nadpisania pól {{…}}
-// templateBuf/parsed: dokument biblioteki (wszystkie pliki ze slajdami sklejone w jeden).
+// ------------------------------------------------------------------ building the offer document
+// slides: [{ id, frame, data, items: { blocks: [...], lines: [...] }, picks: { set: [{ comp, data }] } }]
+//   comp = component from parsed.components (same library document), data = overrides of {{…}} fields
+// templateBuf/parsed: the library document (all slide files merged into one).
 async function build({ templateBuf, parsed, slides, offer, dir }) {
   const frames = {};
   for (const f of parsed.frames) frames[f.name] ??= f;
   for (const s of slides) {
-    if (!frames[s.frame]) throw new HttpError(400, `W bibliotece nie ma slajdu "${s.frame}"`);
+    if (!frames[s.frame]) throw new HttpError(400, `No slide "${s.frame}" in the library`);
   }
   await writeFile(join(dir, 'template.figcraft'), templateBuf);
 
-  // Przebieg 1: kopie ramek na nowej stronie „oferta” (w kolejności oferty, w jednym rzędzie)
-  // + dodatkowe sloty; na końcu znikają wszystkie strony biblioteki.
-  const p1 = [{ command: 'page.add', as: 'out', params: { name: 'oferta' } }];
+  // Pass 1: frame copies on a new "offer" page (in offer order, in one row)
+  // + extra slots; at the end all library pages are deleted.
+  const p1 = [{ command: 'page.add', as: 'out', params: { name: 'offer' } }];
   const extras = []; // {slide, slotId, count}
   let x = 0;
   slides.forEach((s, i) => {
@@ -266,8 +266,8 @@ async function build({ templateBuf, parsed, slides, offer, dir }) {
       }
       if (need > 0) extras.push({ slide: i, source, count: need, lastSlot: lastSlot.id });
     }
-    // Komponenty: kopie kart z zestawu wchodzą w miejsce slotów #pick (w kolejności wyboru),
-    // a sloty znikają. Bez wyboru sloty zostają takie, jak je narysowano.
+    // Components: copies of the set's cards replace the #pick slots (in pick order),
+    // and the slots are removed. Without picks the slots stay as drawn.
     for (const [set, chosen] of Object.entries(s.picks || {})) {
       const group = f.picks.filter((p) => p.set === set);
       if (!group.length || !chosen.length) continue;
@@ -292,7 +292,7 @@ async function build({ templateBuf, parsed, slides, offer, dir }) {
   const byName = {};
   p1.forEach((step, idx) => { if (step.as) byName[step.as] = r1[idx]?.result; });
 
-  // Przebieg 2: treść.
+  // Pass 2: content.
   const p2 = [];
   slides.forEach((s, i) => {
     const f = frames[s.frame];
@@ -300,14 +300,14 @@ async function build({ templateBuf, parsed, slides, offer, dir }) {
     const ctx = { data: s.data || {}, offer };
     const copy = (origId) => map[String(origId)];
 
-    // sloty: lista [mapa orig->id kopii] w kolejności wypełniania
+    // slots: list of [orig -> copy id maps] in fill order
     const slotMaps = {};
     for (const source of f.fields.sources) {
       const group = f.slots.filter((sl) => sl.source === source);
       const list = group.map((sl) => ({ orig: sl.id, idOf: (o) => copy(o) }));
       const ex = extras.find((e) => e.slide === i && e.source === source);
       if (ex) {
-        // łańcuch: kopia ostatniego slotu -> x0 -> x1 …; id warstwy wewnątrz = złożenie map
+        // chain: copy of the last slot -> x0 -> x1 …; inner layer id = composition of the maps
         let resolveId = (o) => copy(o);
         for (let k = 0; k < ex.count; k++) {
           const m = byName[`x${i}_${source}_${k}`].map;
@@ -334,7 +334,7 @@ async function build({ templateBuf, parsed, slides, offer, dir }) {
         targetIds = [copy(t.id)];
         ctxs = [ctx];
       } else {
-        // Tekst z danego slotu szablonu; dodatkowe sloty są kopiami ostatniego, więc też do niego pasują.
+        // Text from a given template slot; extra slots are copies of the last one, so they match it too.
         const sl = f.slots.find((x) => x.id === t.slot);
         const items = s.items[sl.source] || [];
         targetIds = [];
@@ -360,8 +360,8 @@ async function build({ templateBuf, parsed, slides, offer, dir }) {
       });
     }
 
-    // Teksty w komponentach: tylko pola, które mają wartość (nadpisanie z wyboru albo z bazy);
-    // reszta zostaje tak, jak narysowano w FigCraft.
+    // Texts in components: only fields that have a value (override from the pick or from the database);
+    // the rest stays as drawn in FigCraft.
     for (const [set, chosen] of Object.entries(s.picks || {})) {
       if (!f.picks.some((p) => p.set === set)) continue;
       chosen.forEach((pick, j) => {
@@ -382,7 +382,7 @@ async function build({ templateBuf, parsed, slides, offer, dir }) {
   return join(dir, 'offer.figcraft');
 }
 
-// ------------------------------------------------------------------ API modułu
+// ------------------------------------------------------------------ module API
 let seq = 0;
 async function workdir(kind) {
   const dir = join(WORK, `${kind}-${Date.now()}-${process.pid}-${seq++}`);
@@ -411,7 +411,7 @@ export async function renderPdf(input) {
   }
 }
 
-// Podgląd: PNG każdego slajdu. Zwraca { key, files: [Buffer w kolejności slajdów] }.
+// Preview: a PNG of every slide. Returns { key, files: [Buffer in slide order] }.
 export async function renderPreview(input, { scale = 0.5 } = {}) {
   const dir = await workdir('png');
   try {
@@ -426,19 +426,19 @@ export async function renderPreview(input, { scale = 0.5 } = {}) {
 
 export const hashOf = (obj) => createHash('sha1').update(JSON.stringify(obj)).digest('hex').slice(0, 16);
 
-// ------------------------------------------------------------------ biblioteka slajdów
-// Formaty, które FigCraft umie otworzyć; wszystko zamieniamy na .figcraft przy wgrywaniu.
+// ------------------------------------------------------------------ slide library
+// Formats FigCraft can open; everything is converted to .figcraft on upload.
 export const UPLOAD_EXT = ['.figcraft', '.json', '.fig', '.penpot', '.sketch', '.svg'];
 
 export async function normalizeUpload(buf, filename) {
   const ext = (/\.[a-z]+$/i.exec(filename || '')?.[0] || '').toLowerCase();
-  if (!UPLOAD_EXT.includes(ext)) throw new HttpError(400, `Nieobsługiwany plik "${filename}". Dozwolone: ${UPLOAD_EXT.join(', ')}`);
+  if (!UPLOAD_EXT.includes(ext)) throw new HttpError(400, `Unsupported file "${filename}". Allowed: ${UPLOAD_EXT.join(', ')}`);
   if (ext === '.figcraft') return buf;
   const dir = await workdir('conv');
   try {
     await writeFile(join(dir, `in${ext}`), buf);
     await cli(['convert', `in${ext}`, 'out.figcraft'], dir).catch((e) => {
-      throw new HttpError(400, `FigCraft nie otworzył pliku "${filename}": ${e.message}`);
+      throw new HttpError(400, `FigCraft could not open "${filename}": ${e.message}`);
     });
     return await readFile(join(dir, 'out.figcraft'));
   } finally {
@@ -446,9 +446,9 @@ export async function normalizeUpload(buf, filename) {
   }
 }
 
-// Wszystkie pliki ze slajdami sklejone w jeden dokument (strony doklejane przez file.import).
+// All slide files merged into one document (pages appended with file.import).
 export async function buildLibrary(sources) {
-  if (!sources.length) throw new HttpError(400, 'Biblioteka slajdów jest pusta: wgraj plik ze slajdami');
+  if (!sources.length) throw new HttpError(400, 'The slide library is empty: upload a slide file');
   if (sources.length === 1) return { buf: sources[0].file, parsed: parseTemplate(sources[0].file) };
   const dir = await workdir('lib');
   try {
@@ -466,12 +466,12 @@ export async function buildLibrary(sources) {
   }
 }
 
-// Miniatury wszystkich slajdów jednego pliku: { nazwaRamki: Buffer PNG }.
+// Thumbnails of all slides in one file: { frameName: PNG Buffer }.
 export async function renderThumbnails(buf, parsed, { scale = 0.25 } = {}) {
   const dir = await workdir('thumb');
   try {
     await writeFile(join(dir, 'src.figcraft'), buf);
-    // slajdy pod nazwą ramki, komponenty pod "@<id>" (karty są mniejsze, więc w większej skali)
+    // slides under the frame name, components under "@<id>" (cards are smaller, so a larger scale)
     const items = [
       ...parsed.frames.map((f) => ({ key: f.name, id: f.id, scale })),
       ...parsed.components.map((c) => ({ key: `@${c.id}`, id: c.node, scale: scale * 2 })),

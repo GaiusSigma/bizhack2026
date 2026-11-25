@@ -13,11 +13,11 @@ import { CREDENTIAL, baseUrlOf, isJson, loadSpec, parseJsonBody, studioRequest }
 import { recordPath } from './spec';
 
 const TABLE_LABELS: Record<string, string> = {
-	offers: 'Oferty',
-	slides: 'Slajdy',
-	blocks: 'Bloki wiedzy',
-	templates: 'Szablony',
-	'*': 'Import całej bazy',
+	offers: 'Offers',
+	slides: 'Slides',
+	blocks: 'Knowledge blocks',
+	templates: 'Templates',
+	'*': 'Full database import',
 };
 
 interface StudioEvent {
@@ -33,43 +33,43 @@ export class OfferStudioTrigger implements INodeType {
 		icon: 'file:offerStudio.svg',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{"zmiany: " + ($parameter["tables"] || []).join(", ")}}',
-		description: 'Uruchamia workflow po zmianie w Offer Studio (oferty, slajdy, bloki, szablony)',
+		subtitle: '={{"changes: " + ($parameter["tables"] || []).join(", ")}}',
+		description: 'Starts the workflow when something changes in Offer Studio (offers, slides, blocks, templates)',
 		defaults: { name: 'Offer Studio Trigger' },
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'offerStudioApi', required: true }],
 		properties: [
 			{
-				displayName: 'Zmiany W',
+				displayName: 'Changes In',
 				name: 'tables',
 				type: 'multiOptions',
 				typeOptions: { loadOptionsMethod: 'getEventTables' },
 				default: ['offers', 'slides'],
-				description: 'Które zmiany uruchamiają workflow',
+				description: 'Which changes start the workflow',
 			},
 			{
-				displayName: 'Tylko Oferta (ID)',
+				displayName: 'Only Offer (ID)',
 				name: 'offerId',
 				type: 'string',
 				default: '',
-				description: 'Puste = każda oferta. Dotyczy zmian ofert i slajdów.',
+				description: 'Empty = any offer. Applies to offer and slide changes.',
 			},
 			{
-				displayName: 'Pobierz Aktualny Rekord',
+				displayName: 'Fetch Current Record',
 				name: 'fetchRecord',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to attach the current record (offer, slide, block, template) to the event',
 			},
 			{
-				displayName: 'Grupuj Zmiany (Ms)',
+				displayName: 'Debounce (ms)',
 				name: 'debounceMs',
 				type: 'number',
 				typeOptions: { minValue: 0 },
 				default: 3000,
 				description:
-					'Edycja w dashboardzie wysyła zmianę przy każdym zapisie. Zmiany tego samego rekordu w tym oknie dają jedno uruchomienie.',
+					'Editing in the dashboard sends a change on every save. Changes to the same record within this window produce a single run.',
 			},
 		],
 	};
@@ -81,7 +81,7 @@ export class OfferStudioTrigger implements INodeType {
 				try {
 					tables = (await loadSpec(this, { fresh: true })).eventTables;
 				} catch {
-					/* starsza wersja Offer Studio: lista domyślna */
+					/* older Offer Studio version: use the default list */
 				}
 				return tables.map((t) => ({ name: TABLE_LABELS[t] || t, value: t }));
 			},
@@ -115,7 +115,7 @@ export class OfferStudioTrigger implements INodeType {
 		const enrich = async (ev: StudioEvent): Promise<IDataObject> => {
 			const item: IDataObject = { ...ev, receivedAt: new Date().toISOString() };
 			if (!fetchRecord) return item;
-			// slajd: pobieramy całą ofertę (żeby było widać kontekst), pozostałe: sam rekord
+			// slide: fetch the whole offer (so the context is visible); everything else: just the record
 			const target =
 				ev.table === 'slides' && ev.offer_id
 					? recordPath('offers', ev.offer_id)
@@ -146,7 +146,7 @@ export class OfferStudioTrigger implements INodeType {
 
 		const onEvent = (ev: StudioEvent) => {
 			if (!ev || typeof ev !== 'object' || !('table' in ev) || !matches(ev)) return;
-			// POST z tablicą bloków daje id: [...] — rozbijamy na osobne zdarzenia
+			// a POST with an array of blocks gives id: [...] — split it into separate events
 			const ids = Array.isArray(ev.id) ? ev.id : [ev.id];
 			for (const id of ids) {
 				const one = { ...ev, id };
@@ -187,13 +187,13 @@ export class OfferStudioTrigger implements INodeType {
 							try {
 								onEvent(JSON.parse(data.join('\n')) as StudioEvent);
 							} catch {
-								/* nie-JSON: pomijamy */
+								/* not JSON: skip */
 							}
 						}
 					}
 				} catch (error) {
 					if (closed) return;
-					this.logger.warn(`Offer Studio Trigger: brak połączenia z ${url} (${(error as Error).message}), ponawiam`);
+					this.logger.warn(`Offer Studio Trigger: no connection to ${url} (${(error as Error).message}), retrying`);
 				}
 				if (closed) return;
 				await new Promise((r) => setTimeout(r, delay));

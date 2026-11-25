@@ -314,7 +314,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <div class="discord__body">
                   <span class="discord__meta"><b>Gaius Offers</b> <span class="discord__bot">BOT</span> <span class="discord__time">#sales · today 09:41</span></span>
                   <span class="discord__strong">New offer ready for <b data-flow-who>{startSource.who}</b></span>
-                  <span>Source: <span data-flow-source>{startSource.short}</span>. Opportunity moved to <b class="discord__hl">Oferta</b>. Offer PDF attached.</span>
+                  <span>Source: <span data-flow-source>{startSource.short}</span>. Opportunity moved to <b class="discord__hl">Offer</b>. Offer PDF attached.</span>
                   <span class="discord__link">Open in CRM<Icon name="arrow" size={14} /></span>
                 </div>
               </div>
@@ -322,7 +322,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <span class="crm__kicker"><Icon name="db" size={14} />CRM · OPPORTUNITY</span>
                 <span class="crm__who" data-flow-who>{startSource.who}</span>
                 <div class="crm__stages">
-                  <span>Nowe</span><span>Trial</span><span class="is-current pulse">Oferta</span><span>Sukces</span>
+                  <span>New</span><span>Trial</span><span class="is-current pulse">Offer</span><span>Won</span>
                 </div>
                 <span class="crm__next"><Icon name="calendar" size={16} stroke="#9b5155" />Offer attached · next activity: follow-up call in 2 days · owner [SALESPERSON]</span>
               </div>
@@ -446,7 +446,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel as string) as T | null;
   const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => Array.from(root.querySelectorAll<T>(sel as string)) as T[];
 
-  /* ---------- Generator ofert ---------- */
+  /* ---------- Offer generator ---------- */
   const state = { mode: 'email', persona: personas[0].id, role: roles[0].id, rec: false };
   let genTimers: number[] = [];
 

@@ -1,4 +1,4 @@
-# Nakładka do uruchamiania lokalnego (Coolify jej nie używa):
+# Overlay for running locally (Coolify does not use it):
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 #
 #   landing   http://localhost:8080

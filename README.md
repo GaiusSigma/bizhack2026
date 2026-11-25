@@ -1,31 +1,31 @@
-# BizHack 2026: stack Docker Compose
+# BizHack 2026: Docker Compose stack
 
-Jeden `docker-compose.yml` z czterema aplikacjami, przygotowany do wdrożenia przez **Coolify**:
+One `docker-compose.yml` with four apps, ready to deploy with **Coolify**:
 
-| Usługa | Co to jest | Port w kontenerze | Domena w Coolify |
+| Service | What it is | Container port | Domain in Coolify |
 |---|---|---|---|
-| `landing` | Landing page w Astro, zbudowany statycznie i serwowany przez nginx | 80 | tak |
-| `n8n` | n8n 2.50 (automatyzacje) z wbudowanymi węzłami Offer Studio ([opis](n8n/README.md)) | 5678 | tak |
-| `n8n-runners` | Zewnętrzne task runnery n8n (JS i Python w węzłach Code) | – | nie |
-| `postgres` | Baza danych n8n (Postgres 17) | 5432 | nie |
-| `figcraft` | FigCraft w wersji webowej (WebAssembly) serwowany przez nginx + proxy `/sync/` | 80 | tak |
-| `figcraft-server` | Serwer współpracy FigCraft (udostępnianie plików, linki, lista zespołu) | 47900 | nie, dostępny przez `figcraft` pod `/sync/` |
-| `offer-studio` | Baza wiedzy + składanie ofert; slajdy, podgląd i PDF renderuje FigCraft ([opis](offer-studio/README.md)) | 3000 | tak |
+| `landing` | Astro landing page, built statically and served by nginx | 80 | yes |
+| `n8n` | n8n 2.50 (automations) with built-in Offer Studio nodes ([details](n8n/README.md)) | 5678 | yes |
+| `n8n-runners` | External n8n task runners (JS and Python in Code nodes) | – | no |
+| `postgres` | n8n database (Postgres 17) | 5432 | no |
+| `figcraft` | FigCraft web version (WebAssembly) served by nginx + `/sync/` proxy | 80 | yes |
+| `figcraft-server` | FigCraft collaboration server (file sharing, links, team list) | 47900 | no, reachable through `figcraft` at `/sync/` |
+| `offer-studio` | Knowledge base + offer builder; FigCraft renders the slides, preview and PDF ([details](offer-studio/README.md)) | 3000 | yes |
 
 ```
 .
-├── docker-compose.yml          # produkcja / Coolify
-├── docker-compose.local.yml    # nakładka lokalna: porty na localhost, n8n po http
-├── .env.example                # zmienne do uruchomienia lokalnego
-├── landing/                    # projekt Astro + Dockerfile (node -> nginx) + nginx.conf
-├── n8n/                        # obraz n8n + węzły Offer Studio (n8n-nodes-offer-studio)
-├── offer-studio/               # dashboard ofert: Node + SQLite + render przez figcraft-cli
+├── docker-compose.yml          # production / Coolify
+├── docker-compose.local.yml    # local overlay: ports on localhost, n8n over http
+├── .env.example                # variables for running locally
+├── landing/                    # Astro project + Dockerfile (node -> nginx) + nginx.conf
+├── n8n/                        # n8n image + Offer Studio nodes (n8n-nodes-offer-studio)
+├── offer-studio/               # offer dashboard: Node + SQLite + rendering via figcraft-cli
 └── figcraft/
-    ├── web/                    # Dockerfile: oficjalny figcraft-web-<wersja>.zip + nginx
-    └── server/                 # Dockerfile: oficjalna binarka figcraft-server + entrypoint
+    ├── web/                    # Dockerfile: official figcraft-web-<version>.zip + nginx
+    └── server/                 # Dockerfile: official figcraft-server binary + entrypoint
 ```
 
-## Uruchomienie lokalne
+## Running locally
 
 ```powershell
 Copy-Item .env.example .env
@@ -37,85 +37,85 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 
 - landing: http://localhost:8080
 - FigCraft: http://localhost:8081
-- n8n: http://localhost:5678 (przy pierwszym wejściu zakładasz konto właściciela)
-- Offer Studio: http://localhost:8082 (hasło z `SERVICE_PASSWORD_STUDIO` w `.env`)
+- n8n: http://localhost:5678 (on first visit you create the owner account)
+- Offer Studio: http://localhost:8082 (password from `SERVICE_PASSWORD_STUDIO` in `.env`)
 
-Praca nad samym landingiem z hot reloadem:
+Working on the landing page alone, with hot reload:
 
 ```powershell
 cd landing; npm install; npm run dev
 ```
 
-## Wdrożenie w Coolify
+## Deploying with Coolify
 
-1. Wypchnij repo na GitHuba (lub inny Git, który Coolify widzi).
-2. W Coolify: **New Resource → Public/Private Repository**, wybierz repo i gałąź, jako
-   **Build Pack** wybierz **Docker Compose**, ścieżka pliku: `/docker-compose.yml`.
-3. Coolify wczyta usługi. Przy `landing`, `n8n` i `figcraft` ustaw domeny, np.:
+1. Push the repo to GitHub (or another Git host Coolify can see).
+2. In Coolify: **New Resource → Public/Private Repository**, pick the repo and branch, choose
+   **Docker Compose** as the **Build Pack**, file path: `/docker-compose.yml`.
+3. Coolify reads the services. Set domains for `landing`, `n8n`, `figcraft` and `offer-studio`, e.g.:
    - `landing` → `https://bizhack.example.com`
    - `n8n` → `https://n8n.bizhack.example.com`
    - `figcraft` → `https://figcraft.bizhack.example.com`
-   - `offer-studio` → `https://oferty.bizhack.example.com`
+   - `offer-studio` → `https://offers.bizhack.example.com`
 
-   Porty są już zapisane w nazwach zmiennych `SERVICE_URL_<USŁUGA>_<PORT>`, więc Coolify sam
-   kieruje ruch na właściwy port kontenera. Nie dodawaj `ports:` do compose: wszystko idzie przez
-   proxy Coolify z certyfikatem Let's Encrypt.
-4. **Deploy.** Hasła (`SERVICE_USER_POSTGRES`, `SERVICE_PASSWORD_POSTGRES`,
-   `SERVICE_PASSWORD_N8NRUNNERS`, `SERVICE_PASSWORD_64_N8NKEY`) Coolify generuje przy pierwszym
-   wdrożeniu i trzyma w zakładce Environment Variables.
+   The ports are already encoded in the `SERVICE_URL_<SERVICE>_<PORT>` variable names, so Coolify
+   routes traffic to the right container port by itself. Don't add `ports:` to the compose file:
+   everything goes through the Coolify proxy with a Let's Encrypt certificate.
+4. **Deploy.** Coolify generates the passwords (`SERVICE_USER_POSTGRES`, `SERVICE_PASSWORD_POSTGRES`,
+   `SERVICE_PASSWORD_N8NRUNNERS`, `SERVICE_PASSWORD_64_N8NKEY`) on the first deployment and keeps them
+   under Environment Variables.
 
-> **Klucz szyfrowania n8n** (`SERVICE_PASSWORD_64_N8NKEY`) szyfruje zapisane w n8n poświadczenia.
-> Zrób jego kopię. Po zmianie albo utracie klucza n8n nie odczyta zapisanych credentiali.
+> **The n8n encryption key** (`SERVICE_PASSWORD_64_N8NKEY`) encrypts the credentials stored in n8n.
+> Back it up. If the key changes or is lost, n8n can no longer read its saved credentials.
 
-Wolumeny `n8n-data`, `postgres-data` i `figcraft-data` są trwałe i widać je w Coolify w
-**Persistent Storage**. Warto włączyć w Coolify backup bazy albo całego serwera.
+The `n8n-data`, `postgres-data` and `figcraft-data` volumes are persistent and show up in Coolify under
+**Persistent Storage**. Turning on database or full-server backups in Coolify is a good idea.
 
 ## FigCraft
 
-- Obraz `figcraft` pobiera **oficjalny** build `figcraft-web-0.18.1.zip` z
-  [releasów FigCraft](https://github.com/storytold/figcraft/releases) i sprawdza jego SHA-256.
-  Obraz `figcraft-server` robi to samo z `figcraft-server-0.18.1-linux-<arch>.tar.gz`
-  (amd64 i arm64).
-- Przy starcie kontener `figcraft` wpisuje do `index.html`
-  `<meta name="figcraft-server" content="wss://<domena-figcraft>/sync/">`, więc aplikacja w
-  przeglądarce od razu zna serwer współpracy (Home ▸ Online, udostępnianie, kody dołączania).
-- FigCraft jest we wczesnej fazie rozwoju (alpha). W przeglądarce pliki trzymane są lokalnie;
-  żeby pracować wspólnie, publikuje się je na serwer.
+- The `figcraft` image downloads the **official** `figcraft-web-0.18.1.zip` build from the
+  [FigCraft releases](https://github.com/storytold/figcraft/releases) and checks its SHA-256.
+  The `figcraft-server` image does the same with `figcraft-server-0.18.1-linux-<arch>.tar.gz`
+  (amd64 and arm64).
+- On start, the `figcraft` container writes
+  `<meta name="figcraft-server" content="wss://<figcraft-domain>/sync/">` into `index.html`, so the
+  browser app knows the collaboration server right away (Home ▸ Online, sharing, join codes).
+- FigCraft is at an early stage (alpha). In the browser, files are stored locally;
+  to work together, you publish them to the server.
 
-### Publikowanie plików na serwer
+### Publishing files to the server
 
-Domyślnie (`FIGCRAFT_OPEN_PUBLISH=false`) pliki może publikować tylko ktoś, kto zna **klucz
-serwera**. Adres z kluczem wypisuje polecenie uruchomione w kontenerze `figcraft-server`
-(w Coolify: zakładka **Terminal** tej usługi):
+By default (`FIGCRAFT_OPEN_PUBLISH=false`) only someone who knows the **server key** can publish files.
+This command, run in the `figcraft-server` container (in Coolify: that service's **Terminal** tab),
+prints the URL with the key:
 
 ```sh
 figcraft-server --config /etc/figcraft-server/server.toml key
 ```
 
-Ten adres wklejasz w FigCraft w Preferences jako serwer albo używasz go w Share ▸ Publish to server.
-Traktuj go jak hasło.
+Paste that URL into FigCraft under Preferences as the server, or use it in Share ▸ Publish to server.
+Treat it like a password.
 
-Ustawienia serwera (zmienne środowiskowe usługi `figcraft-server`):
+Server settings (environment variables of the `figcraft-server` service):
 
-| Zmienna | Domyślnie | Znaczenie |
+| Variable | Default | Meaning |
 |---|---|---|
-| `FIGCRAFT_OPEN_PUBLISH` | `false` | `true` pozwala publikować każdemu, bez klucza (serwer publiczny) |
-| `FIGCRAFT_TEAM_FILES` | pusta (wyłączona) | Lista plików zespołu: `edit`, `comment` albo `view`. Widzi ją **każdy**, kto dotrze do serwera, więc na publicznej domenie włączaj ją świadomie |
-| `FIGCRAFT_MAX_FILE_MB` | `64` | Największy plik w MiB |
+| `FIGCRAFT_OPEN_PUBLISH` | `false` | `true` lets anyone publish without a key (public server) |
+| `FIGCRAFT_TEAM_FILES` | empty (off) | Team file list: `edit`, `comment` or `view`. **Anyone** who can reach the server sees it, so turn it on deliberately on a public domain |
+| `FIGCRAFT_MAX_FILE_MB` | `64` | Largest file in MiB |
 
-### Podbicie wersji FigCraft
+### Upgrading FigCraft
 
-W `figcraft/web/Dockerfile` i `figcraft/server/Dockerfile` zmień `FIGCRAFT_VERSION` i sumy
-SHA-256 na wartości z pliku `SHA256SUMS.txt` nowego releasu.
+In `figcraft/web/Dockerfile` and `figcraft/server/Dockerfile`, change `FIGCRAFT_VERSION` and the
+SHA-256 checksums to the values from the new release's `SHA256SUMS.txt`.
 
 ## n8n
 
-- Konfiguracja wzorowana na oficjalnym szablonie Coolify „n8n with PostgreSQL”: Postgres,
-  zewnętrzne task runnery (`n8nio/runners`), `N8N_PROXY_HOPS=1` za proxy Coolify.
-- Webhooki są dostępne pod `https://<domena-n8n>/webhook/...`.
-- Obraz budowany z `n8n/Dockerfile` ma wbudowane węzły **Offer Studio** i **Offer Studio Trigger**.
-  Operacje czytają na żywo z `/api/openapi.json` ofertownika, więc nowe endpointy Offer Studio
-  pojawiają się w n8n bez przebudowy. Poświadczenie „Offer Studio API” n8n wypełnia sam
-  (adres i `SERVICE_PASSWORD_64_STUDIOAPI`). Szczegóły: [n8n/README.md](n8n/README.md).
-- Aktualizacja: zmień `N8N_VERSION` (argument builda usługi `n8n`) i tag `n8nio/runners` (zawsze ta
-  sama wersja) i zrób redeploy.
+- The setup follows the official Coolify "n8n with PostgreSQL" template: Postgres,
+  external task runners (`n8nio/runners`), `N8N_PROXY_HOPS=1` behind the Coolify proxy.
+- Webhooks are available at `https://<n8n-domain>/webhook/...`.
+- The image built from `n8n/Dockerfile` ships the **Offer Studio** and **Offer Studio Trigger** nodes.
+  Operations are read live from Offer Studio's `/api/openapi.json`, so new Offer Studio endpoints
+  show up in n8n without a rebuild. n8n fills in the "Offer Studio API" credential by itself
+  (URL and `SERVICE_PASSWORD_64_STUDIOAPI`). Details: [n8n/README.md](n8n/README.md).
+- Upgrading: change `N8N_VERSION` (build argument of the `n8n` service) and the `n8nio/runners` tag
+  (always the same version), then redeploy.

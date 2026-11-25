@@ -1,4 +1,4 @@
-// Treści landingu (generator ofert Gaius-Lex), wspólne dla HTML i skryptu w przeglądarce.
+// Landing page content (Gaius-Lex offer generator), shared by the HTML and the browser script.
 import type { IconName } from './icons';
 
 export interface Role {
@@ -73,12 +73,12 @@ export const sources: Source[] = [
 
 export const defaultSource = 'fireflies';
 
-/** Węzły workflow n8n; pierwszy węzeł zależy od wybranego źródła. */
+/** n8n workflow nodes; the first node depends on the selected source. */
 export const flowNodes: { app: string; icon: IconName; label: string; mock?: boolean }[] = [
   { app: 'GAIUS', icon: 'eye', label: 'Work out who they are and what they need' },
   { app: 'GAIUS', icon: 'workflow', label: 'Match role and concerns to offer modules' },
   { app: 'GAIUS', icon: 'spark', label: 'Write the offer, check every claim against its source' },
-  { app: 'CRM', icon: 'db', label: 'Create opportunity, move to stage Oferta, attach PDF', mock: true },
+  { app: 'CRM', icon: 'db', label: 'Create opportunity, move to stage Offer, attach PDF', mock: true },
   { app: 'DISCORD', icon: 'chat', label: 'Post an alert to #sales', mock: true },
 ];
 

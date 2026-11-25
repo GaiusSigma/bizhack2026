@@ -1,10 +1,10 @@
 #!/bin/sh
-# Domyślne poświadczenie „Offer Studio API” dla całego n8n.
+# Default "Offer Studio API" credential for the whole n8n instance.
 #
-# Z OFFER_STUDIO_URL i OFFER_STUDIO_API_TOKEN składamy CREDENTIALS_OVERWRITE_DATA. n8n wpisuje te
-# wartości w puste pola poświadczenia i ukrywa je w edytorze, więc w n8n wystarczy raz utworzyć
-# poświadczenie „Offer Studio API” i zapisać je bez wpisywania czegokolwiek.
-# Własne CREDENTIALS_OVERWRITE_DATA (dla innych usług) jest zachowane: dopisujemy tylko offerStudioApi.
+# Builds CREDENTIALS_OVERWRITE_DATA from OFFER_STUDIO_URL and OFFER_STUDIO_API_TOKEN. n8n puts these
+# values into the empty credential fields and hides them in the editor, so in n8n you only need to
+# create an "Offer Studio API" credential once and save it without typing anything.
+# An existing CREDENTIALS_OVERWRITE_DATA (for other services) is kept: only offerStudioApi is added.
 set -e
 
 if [ -n "${OFFER_STUDIO_API_TOKEN:-}" ] || [ -n "${OFFER_STUDIO_URL:-}" ]; then

@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-offer-studio",
   "version": "0.1.0",
-  "description": "Węzły n8n do Offer Studio: wszystkie operacje API (czytane na żywo z /api/openapi.json) i trigger na zmiany",
+  "description": "n8n nodes for Offer Studio: every API operation (read live from /api/openapi.json) and a trigger on changes",
   "private": true,
   "license": "UNLICENSED",
   "keywords": [

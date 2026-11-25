@@ -1,6 +1,6 @@
-// Dane startowe, wczytywane tylko do PUSTEJ bazy. Treść pochodzi z gaius-offer.figcraft,
-// a szablon (seed/gaius-template.figcraft) to ten sam plik z polami {{…}} w nazwach warstw.
-// Format jak eksport z /api/export; plik szablonu dokłada serwer.
+// Starter data, loaded into an EMPTY database only. The content comes from gaius-offer.figcraft,
+// and the template (seed/gaius-template.figcraft) is the same file with {{…}} fields in its layer names.
+// Same format as an /api/export dump; the server adds the template file itself.
 const ts = '2026-11-25T00:00:00.000Z';
 const tags = ['vault'];
 
@@ -8,195 +8,195 @@ const block = (id, type, title, body, data = {}, extraTags = []) => ({
   id, type, title, body, data, tags: [...tags, ...extraTags], created_at: ts, updated_at: ts,
 });
 
-// ------------------------------------------------------------------ bloki wiedzy
+// ------------------------------------------------------------------ knowledge blocks
 const blocks = [
-  // Use case'y: „Vault w codziennej praktyce”
-  block('uc-pilne-pismo', 'use_case', 'Pilne pismo lub roszczenie', 'Gaius wyciąga tezy, luki, kontrargumenty i źródła do weryfikacji.', { effect: 'szybsza reakcja i większa kontrola ryzyka.' }, ['dzial-prawny']),
-  block('uc-zmiana-prawa', 'use_case', 'Zmiana prawa lub procedury', 'Gaius wskazuje dokumenty, wzory i procedury wymagające aktualizacji.', { effect: 'większa kontrola compliance i mniej reaktywnego działania.' }, ['dzial-prawny', 'compliance']),
-  block('uc-dokument-przed-wysylka', 'use_case', 'Dokument przed wysyłką', 'Gaius sprawdza cytowania, sygnatury, dane i zgodność z przyjętym standardem.', { effect: 'mniejsze ryzyko błędu przed wysłaniem dokumentu do klienta, kontrahenta, sądu albo zarządu.' }, ['dzial-prawny', 'kancelaria']),
-  block('uc-umowa-do-podpisu', 'use_case', 'Umowa do podpisu', 'Gaius wskazuje ryzyka, braki, niespójności i punkty negocjacyjne.', { effect: 'krótszy czas akceptacji: podpisać, negocjować albo eskalować.' }, ['dzial-prawny']),
-  block('uc-powracajacy-temat', 'use_case', 'Powracający temat', 'Gaius odnajduje wcześniejsze opinie, wzory, klauzule i argumenty.', { effect: 'mniej pracy od zera i lepsze wykorzystanie know-how organizacji.' }, ['dzial-prawny', 'kancelaria']),
-  block('uc-pytanie-od-biznesu', 'use_case', 'Pytanie od biznesu', 'Gaius tworzy robocze memo: odpowiedź, podstawa, ryzyka, warianty i rekomendacja.', { effect: 'mniej czekania na decyzję i bardziej przejrzysta komunikacja prawna.' }, ['dzial-prawny']),
+  // Use cases: "Vault in everyday practice"
+  block('uc-urgent-letter', 'use_case', 'Urgent letter or claim', 'Gaius extracts the key points, gaps, counter-arguments and sources to verify.', { effect: 'faster response and tighter risk control.' }, ['legal-dept']),
+  block('uc-law-change', 'use_case', 'A change in law or procedure', 'Gaius points out the documents, templates and procedures that need updating.', { effect: 'stronger compliance control and less firefighting.' }, ['legal-dept', 'compliance']),
+  block('uc-document-check', 'use_case', 'A document before it goes out', 'Gaius checks citations, case numbers, data and consistency with your standard.', { effect: 'lower risk of errors before a document reaches a client, counterparty, court or the board.' }, ['legal-dept', 'law-firm']),
+  block('uc-contract-to-sign', 'use_case', 'A contract to sign', 'Gaius flags risks, gaps, inconsistencies and negotiation points.', { effect: 'faster approval: sign, negotiate or escalate.' }, ['legal-dept']),
+  block('uc-recurring-topic', 'use_case', 'A recurring topic', 'Gaius finds earlier opinions, templates, clauses and arguments.', { effect: 'less work from scratch and better use of in-house know-how.' }, ['legal-dept', 'law-firm']),
+  block('uc-business-question', 'use_case', 'A question from the business', 'Gaius drafts a working memo: answer, legal basis, risks, options and recommendation.', { effect: 'less waiting for decisions and clearer legal communication.' }, ['legal-dept']),
 
-  // Problemy: „Gdzie ucieka czas działu prawnego?”
-  block('pr-research-od-nowa', 'problem', 'Research zaczynany od nowa', 'Źródła, argumenty i podstawy prawne są odtwarzane za każdym razem.'),
-  block('pr-analizy-powtarzane', 'problem', 'Analizy powtarzane przez różne osoby', 'Podobne pytania wracają, ale odpowiedzi nie zawsze korzystają z wcześniejszej pracy.'),
-  block('pr-know-how-ukryte', 'problem', 'Know-how ukryte w folderach i mailach', 'Opinie, wzory i klauzule istnieją, ale nie są aktywnie wykorzystywane.'),
-  block('pr-praca-odtworcza', 'problem', 'Eksperci zajęci pracą odtwórczą', 'Czas seniorów trafia na zadania, które można ustandaryzować.'),
-  block('pr-ai-bez-zasad', 'problem', 'AI używane bez wspólnych zasad', 'Brakuje jednego standardu promptów, źródeł, weryfikacji i odpowiedzialności.'),
+  // Problems: "Where is the legal team's time leaking?"
+  block('pr-research-from-scratch', 'problem', 'Research started from scratch', 'Sources, arguments and legal grounds are rebuilt every single time.'),
+  block('pr-repeated-analyses', 'problem', 'The same analysis done by different people', 'Similar questions come back, but answers rarely build on earlier work.'),
+  block('pr-hidden-know-how', 'problem', 'Know-how buried in folders and emails', 'Opinions, templates and clauses exist, but nobody actively reuses them.'),
+  block('pr-repetitive-work', 'problem', 'Experts stuck on repetitive work', 'Senior lawyers spend time on tasks that could be standardised.'),
+  block('pr-ai-without-rules', 'problem', 'AI used without shared rules', 'There is no common standard for prompts, sources, verification and accountability.'),
 
-  // Filary: „Czym jest Vault?”
-  block('pl-prywatne-srodowisko', 'pillar', 'Prywatne środowisko pracy', 'Vault działa w środowisku kontrolowanym przez organizację — bez traktowania dokumentów prawnych jak materiału dla publicznego chatbota.'),
-  block('pl-odpowiedzi-ze-zrodlami', 'pillar', 'Odpowiedzi ze źródłami', 'Odpowiedzi prowadzą do podstaw: przepisów, orzeczeń, cytatów, sygnatur i dokumentów, które prawnik może zweryfikować.'),
-  block('pl-standard-pracy', 'pillar', 'Standard pracy zespołu', 'Powtarzalne zadania zamieniamy w rutyny, checklisty i workflowy, z których korzysta cały zespół.'),
+  // Pillars: "What is Vault?"
+  block('pl-private-environment', 'pillar', 'A private workspace', 'Vault runs in an environment your organisation controls, so legal documents never become material for a public chatbot.'),
+  block('pl-sourced-answers', 'pillar', 'Answers with sources', 'Every answer leads to its basis: statutes, rulings, quotes, case numbers and documents a lawyer can verify.'),
+  block('pl-team-standard', 'pillar', 'A shared team standard', 'We turn repetitive tasks into routines, checklists and workflows the whole team uses.'),
 
-  // Wyróżniki: „Dlaczego Vault?”
-  block('df-prywatne-legal-ai', 'differentiator', 'Prywatne Legal AI na realnych dokumentach', 'Vault może działać lokalnie i pod kontrolą organizacji, zgodnie z wymaganiami IT, compliance i zespołu prawnego.'),
-  block('df-jedno-srodowisko', 'differentiator', 'Prawo, orzecznictwo i dokumenty w jednym środowisku', 'Gaius Vault łączy źródła prawne z dokumentami organizacji, dzięki czemu AI pracuje na rzeczywistym kontekście spraw.'),
-  block('df-wdrozenie-rutyna', 'differentiator', 'Wdrożenie, które kończy się rutyną pracy', 'Vault nie kończy się na uruchomieniu dostępu. Warsztaty i Legal Engineering zamieniają procesy w workflowy, checklisty i rutyny.'),
-  block('df-bez-blokady', 'differentiator', 'Skalowanie bez blokady licencyjnej', 'Organizacja nie płaci osobno za każdego użytkownika ani każdą przestrzeń roboczą. Parametry techniczne środowiska dobieramy do skali wdrożenia.'),
-  block('df-jedna-usluga', 'differentiator', 'Jedna usługa', 'W ramach jednej licencji organizacja otrzymuje technologię, źródła, pracę na dokumentach, warsztaty, Legal Engineering i rozwój standardu pracy.'),
-  block('df-bezpieczny-start', 'differentiator', 'Bezpieczny model startu', 'Stały koszt miesięczny, gwarancja ceny i opcjonalny 3-miesięczny POC z możliwością rezygnacji ograniczają ryzyko decyzji.'),
+  // Differentiators: "Why Vault?"
+  block('df-private-legal-ai', 'differentiator', 'Private Legal AI on real documents', 'Vault can run on-premise under your control, in line with IT, compliance and legal team requirements.'),
+  block('df-one-environment', 'differentiator', 'Law, case law and documents in one environment', 'Gaius Vault connects legal sources with your documents, so the AI works with the real context of each matter.'),
+  block('df-rollout-routine', 'differentiator', 'A rollout that ends in daily routine', 'Vault does not stop at handing out logins. Workshops and Legal Engineering turn processes into workflows, checklists and routines.'),
+  block('df-no-lock-in', 'differentiator', 'Scale without licence lock-in', 'No fee per user or per workspace. We size the environment to the scale of your rollout.'),
+  block('df-one-service', 'differentiator', 'One service', 'One licence covers the technology, legal sources, document work, workshops, Legal Engineering and an evolving work standard.'),
+  block('df-safe-start', 'differentiator', 'A safe way to start', 'A fixed monthly fee, a price guarantee and an optional 3-month POC you can walk away from keep the decision low-risk.'),
 
-  // Sygnały gotowości
-  block('sg-szybsze-odpowiedzi', 'signal', 'Szybsze odpowiedzi dla biznesu', 'Dział prawny ma wspierać decyzje szybciej, bez obniżania jakości.'),
-  block('sg-wiecej-dokumentow', 'signal', 'Więcej dokumentów i źródeł', 'Umowy, pisma i materiały prawne wymagają coraz więcej selekcji i analizy.'),
-  block('sg-wiedza-trudna', 'signal', 'Wiedza trudna do ponownego użycia', 'Poprzednie opinie i wzory istnieją, ale nie zawsze łatwo je wykorzystać w kolejnych sprawach.'),
-  block('sg-powtarzalne-zadania', 'signal', 'Powtarzalne zadania zabierają czas ekspertów', 'Te same typy analiz, researchu i kontroli wracają w kolejnych sprawach.'),
+  // Readiness signals
+  block('sg-faster-answers', 'signal', 'Faster answers for the business', 'Legal has to support decisions faster, without lowering quality.'),
+  block('sg-more-documents', 'signal', 'More documents and sources', 'Contracts, letters and legal materials need ever more triage and analysis.'),
+  block('sg-hard-to-reuse', 'signal', 'Knowledge that is hard to reuse', 'Past opinions and templates exist, but they are hard to reuse in the next matter.'),
+  block('sg-repetitive-tasks', 'signal', 'Repetitive tasks eat up experts’ time', 'The same kinds of analysis, research and checks come back in matter after matter.'),
 
-  // Kroki wdrożenia
-  block('st-procesy', 'step', 'Wybieramy procesy o największym wpływie', 'Identyfikujemy pytania, dokumenty i analizy, które wracają najczęściej.'),
-  block('st-realne-sprawy', 'step', 'Pracujemy na realnych sprawach', 'Warsztat opieramy na dokumentach, pytaniach i standardach zespołu.'),
-  block('st-rutyny', 'step', 'Budujemy rutyny', 'Zamieniamy procesy w workflowy, checklisty, prompty i wzorce odpowiedzi.'),
-  block('st-weryfikacja', 'step', 'Ustalamy zasady weryfikacji', 'Określamy, jak sprawdzane są źródła, cytaty, ryzyka i odpowiedzialność.'),
-  block('st-adopcja', 'step', 'Mierzymy adopcję i skalujemy', 'Sprawdzamy użycie, zbieramy feedback i wybieramy kolejne procesy.'),
+  // Rollout steps
+  block('st-processes', 'step', 'We pick the highest-impact processes', 'We identify the questions, documents and analyses that come back most often.'),
+  block('st-real-matters', 'step', 'We work on real matters', 'Workshops are built on your documents, questions and team standards.'),
+  block('st-routines', 'step', 'We build routines', 'We turn processes into workflows, checklists, prompts and answer patterns.'),
+  block('st-verification', 'step', 'We set verification rules', 'We define how sources, quotes, risks and accountability are checked.'),
+  block('st-adoption', 'step', 'We measure adoption and scale', 'We track usage, collect feedback and pick the next processes.'),
 
-  // Porównanie: kilka narzędzi vs Gaius Vault
-  block('cmp-dane', 'comparison', 'Dane i dokumenty', '', { them: 'wymagają polityk, integracji i ograniczeń użycia', us: 'prywatne środowisko do pracy na dokumentach prawnych' }),
-  block('cmp-zrodla', 'comparison', 'Źródła prawne', '', { them: 'często osobno od AI i dokumentów klienta', us: 'prawo, orzecznictwo i dokumenty w jednym miejscu' }),
-  block('cmp-weryfikacja', 'comparison', 'Weryfikacja', '', { them: 'kontrola cytowań i podstaw zostaje po stronie użytkownika', us: 'odpowiedzi prowadzą do źródeł, sygnatur i dokumentów' }),
-  block('cmp-wiedza', 'comparison', 'Wiedza organizacji', '', { them: 'foldery, DMS, SharePoint, maile', us: 'aktywna baza opinii, pism, wzorów i analiz' }),
-  block('cmp-wdrozenie', 'comparison', 'Wdrożenie', '', { them: 'szkolenia i adopcja po stronie klienta', us: 'warsztaty + Legal Engineer + rutyny pracy' }),
-  block('cmp-skalowanie', 'comparison', 'Skalowanie', '', { them: 'kolejne licencje, moduły i integracje', us: 'jedna licencja, brak limitów po stronie użytkowników i plików' }),
-  block('cmp-word', 'comparison', 'Wtyczka do Word', '', { them: 'kolejna licencja', us: 'w cenie' }),
+  // Comparison: several tools vs Gaius Vault
+  block('cmp-data', 'comparison', 'Data and documents', '', { them: 'need policies, integrations and usage limits', us: 'a private environment for work on legal documents' }),
+  block('cmp-sources', 'comparison', 'Legal sources', '', { them: 'often separate from the AI and client documents', us: 'law, case law and documents in one place' }),
+  block('cmp-verification', 'comparison', 'Verification', '', { them: 'checking citations and sources is left to the user', us: 'answers link to sources, case numbers and documents' }),
+  block('cmp-knowledge', 'comparison', 'Organisational knowledge', '', { them: 'folders, DMS, SharePoint, emails', us: 'a living base of opinions, letters, templates and analyses' }),
+  block('cmp-rollout', 'comparison', 'Rollout', '', { them: 'training and adoption left to the client', us: 'workshops + Legal Engineer + work routines' }),
+  block('cmp-scaling', 'comparison', 'Scaling', '', { them: 'more licences, modules and integrations', us: 'one licence, no limits on users or files' }),
+  block('cmp-word', 'comparison', 'Word add-in', '', { them: 'another licence', us: 'included' }),
 
-  // Składniki pakietu (slajd cenowy)
-  block('pkg-technologia', 'package', 'Technologia Gaius-Lex', '- research prawny\n- analiza dokumentów\n- źródła i cytowania\n- baza wiedzy\n- rutyny pracy\n- aktualne prawo i orzecznictwo'),
-  block('pkg-srodowisko', 'package', 'Prywatne środowisko Vault', '- lokalne i kontrolowane środowisko pracy\n- brak limitu po stronie licencji\n- sprzęt i konfiguracja środowiska u klienta\n- dostosowanie do potrzeb wdrożenia'),
-  block('pkg-legal-engineering', 'package', 'Legal Engineering i adopcja', '- 5 h warsztatów miesięcznie\n- 10 h pracy Legal Engineera miesięcznie\n- rozwój rutyn i standardów pracy\n- rekomendacje kolejnych procesów'),
+  // Package components (pricing slide)
+  block('pkg-technology', 'package', 'Gaius-Lex technology', '- legal research\n- document analysis\n- sources and citations\n- knowledge base\n- work routines\n- up-to-date law and case law'),
+  block('pkg-environment', 'package', 'Private Vault environment', '- on-premise, controlled workspace\n- no licence limits\n- hardware and setup at the client\n- tailored to your rollout'),
+  block('pkg-legal-engineering', 'package', 'Legal Engineering and adoption', '- 5 h of workshops per month\n- 10 h of Legal Engineer time per month\n- evolving routines and work standards\n- recommendations for next processes'),
 
-  // Osoby kontaktowe
-  block('person-janusz', 'person', 'Janusz Marszałek', '', { role: 'Co-founder & Dyrektor Operacyjny', email: 'januszmarszalek@gaius-lex.pl', phone: '+48 579 122 689' }),
+  // Contact people
+  block('person-janusz', 'person', 'Janusz Marszałek', '', { role: 'Co-founder & COO', email: 'januszmarszalek@gaius-lex.pl', phone: '+48 579 122 689' }),
 ];
 
-// ------------------------------------------------------------------ oferta bazowa
-// `frame` to nazwa slajdu (ramki) w szablonie, `data` wypełnia pola {{data.*}}.
-const OFFER = 'gaius-vault-bazowa';
+// ------------------------------------------------------------------ base offer
+// `frame` is the slide (frame) name in the template, `data` fills the {{data.*}} fields.
+const OFFER = 'gaius-vault-base';
 const slide = (id, position, frame, data, block_ids = [], picks = {}) => ({
   id, offer_id: OFFER, position, frame, data, block_ids, query: null, picks, hidden: false, created_at: ts, updated_at: ts,
 });
 const ids = (type) => blocks.filter((b) => b.type === type).map((b) => b.id);
 
 export const slides = [
-  slide('s-okladka', 0, 'okladka', {
+  slide('s-cover', 0, 'cover', {
     title: 'Gaius Vault',
-    subtitle: 'Legal AI, które możesz dopuścić **do realnej pracy prawnej**',
-    lead: 'Prywatne Legal AI do pracy na realnych dokumentach - lokalnie, w jednej licencji, pod kontrolą organizacji.',
+    subtitle: 'Legal AI you can trust **with real legal work**',
+    lead: 'Private Legal AI for work on real documents: on-premise, under one licence, under your organisation’s control.',
   }),
-  slide('s-problem', 1, 'problemy', {
-    title: 'Gdzie **ucieka** czas działu prawnego?',
-    lead: 'Najwięcej kosztuje nie sama analiza, ale każdorazowe odtwarzanie drogi do odpowiedzi.',
-    note: 'Problemem nie jest liczba spraw. Problemem jest powtarzanie tej samej drogi do odpowiedzi.',
+  slide('s-problem', 1, 'problems', {
+    title: 'Where is the legal team’s time **leaking**?',
+    lead: 'What costs the most is not the analysis itself, but rebuilding the path to the answer every time.',
+    note: 'The problem is not the number of matters. It is walking the same road to every answer.',
   }, ids('problem')),
-  slide('s-czym-jest', 2, 'czym-jest', {
-    title: 'Czym jest ',
+  slide('s-what-is', 2, 'what-is', {
+    title: 'What is ',
     title_accent: 'Vault?',
-    lead: 'Prywatne środowisko Legal AI, które łączy źródła prawne, dokumenty organizacji i standard pracy zespołu.',
+    lead: 'A private Legal AI environment that brings together legal sources, your documents and your team’s way of working.',
   }, ids('pillar')),
-  slide('s-dlaczego', 3, 'dlaczego', {
-    title: 'Dlaczego ',
+  slide('s-why', 3, 'why', {
+    title: 'Why ',
     title_accent: 'Vault?',
-    lead: 'Gaius Vault łączy technologię, źródła, dokumenty, wdrożenie i adopcję w jednym modelu.',
+    lead: 'Gaius Vault combines technology, sources, documents, rollout and adoption in one model.',
   }, [], {
-    dlaczego: ['prywatne-legal-ai', 'jedno-srodowisko', 'wdrozenie-rutyna-wyroznienie', 'bez-blokady', 'jedna-usluga', 'bezpieczny-start']
-      .map((k) => ({ component: `dlaczego/${k}` })),
+    why: ['private-legal-ai', 'one-environment', 'rollout-routine-highlight', 'no-lock-in', 'one-service', 'safe-start']
+      .map((k) => ({ component: `why/${k}` })),
   }),
-  slide('s-sygnaly', 4, 'sygnaly', {
-    title: 'Sygnał, że dział prawny jest',
-    title_2: 'gotowy na',
+  slide('s-signals', 4, 'signals', {
+    title: 'Signs your legal team is',
+    title_2: 'ready for',
     title_accent: 'Vault?',
-    lead: 'Nie chodzi o samą technologię. Chodzi o moment, w którym Legal AI powinno stać się standardem pracy zespołu.',
-    note: 'Gaius Vault pomaga zamienić te sygnały w plan wdrożenia: procesy, rutyny i mierzalny efekt.',
+    lead: 'It is not about the technology itself. It is about the moment Legal AI should become how your team works.',
+    note: 'Gaius Vault helps turn these signals into a rollout plan: processes, routines and measurable impact.',
   }, ids('signal')),
-  slide('s-wdrozenie', 5, 'wdrozenie', {
-    quote: 'Nie wdrażamy dostępu.\nWdrażamy sposób pracy.',
-    quote_lead: 'Dlatego Vault obejmuje nie tylko technologię, ale też proces, rutyny i zasady odpowiedzialności.',
+  slide('s-rollout', 5, 'rollout', {
+    quote: 'We don’t roll out access.\nWe roll out a way of working.',
+    quote_lead: 'That is why Vault covers not just the technology, but also the process, routines and accountability rules.',
   }, ids('step')),
   slide('s-use-case', 6, 'use-case', {
-    title: 'Vault w codziennej praktyce',
-    lead: 'Gaius Vault zamienia najczęstsze punkty styku biznesu z działem prawnym w powtarzalne rutyny: od akceptacji umów, przez reakcję na spór, po wykorzystanie wcześniejszych opinii i standardów.',
+    title: 'Vault in everyday practice',
+    lead: 'Gaius Vault turns the most common touchpoints between the business and legal into repeatable routines: from contract approval and dispute response to reusing past opinions and standards.',
   }, ids('use_case')),
-  slide('s-cennik', 7, 'cennik', {
-    title: 'Co wchodzi w skład',
+  slide('s-pricing', 7, 'pricing', {
+    title: 'What’s included in',
     title_accent: 'Vault?',
-    lead: 'Organizacja kupuje nie tylko narzędzie AI, ale wdrożony standard pracy: technologię, środowisko, rutyny i wsparcie adopcji.',
-    price_label: 'Koszt abonamentu',
-    price_note: 'netto',
-    lines: 'Koszt realizacji warsztatów | w cenie abonamentu\nKoszt szkolenia | w cenie abonamentu\nKoszt sprzętu | w cenie abonamentu',
-  }, ['pkg-technologia', 'pkg-srodowisko', 'pkg-legal-engineering']),
-  slide('s-architektura', 8, 'architektura', {}),
-  slide('s-porownanie', 9, 'porownanie', {
-    title: 'Gaius vs składanie Legal AI z kilku narzędzi',
-    lead: 'Większość rozwiązań rozwiązuje jeden fragment problemu. Gaius Vault dostarcza kompletny standard pracy prawnej z AI — w ramach jednej licencji.',
-    col_area: 'Obszar', col_them: 'Kilka narzędzi AI / LegalTech', col_us: 'Gaius Vault',
+    lead: 'You are not just buying an AI tool, but a working standard that is rolled out: technology, environment, routines and adoption support.',
+    price_label: 'Subscription fee',
+    price_note: 'net',
+    lines: 'Workshops | included in subscription\nTraining | included in subscription\nHardware | included in subscription',
+  }, ['pkg-technology', 'pkg-environment', 'pkg-legal-engineering']),
+  slide('s-architecture', 8, 'architecture', {}),
+  slide('s-comparison', 9, 'comparison', {
+    title: 'Gaius vs. a patchwork of Legal AI tools',
+    lead: 'Most tools solve one piece of the problem. Gaius Vault delivers a complete standard for legal work with AI, under one licence.',
+    col_area: 'Area', col_them: 'Several AI / LegalTech tools', col_us: 'Gaius Vault',
   }, ids('comparison')),
-  slide('s-kontakt', 10, 'kontakt', {
-    kicker: 'ZACZNIJMY WSPÓŁPRACĘ',
-    title: 'Bezpieczne Legal AI w Twojej organizacji',
-    text: 'Jeśli chcesz przyspieszyć research prawny, lepiej kontrolować ryzyka i bezpiecznie wykorzystać AI w swojej firmie, zostaw nam kontakt. Krótka rozmowa wystarczy, żebyśmy zrozumieli specyfikę Twojej organizacji i zaproponowali sensowny zakres pilotażu — od bezpiecznego wdrożenia testowego po pełne wdrożenie on-premise lub model hybrydowy.',
+  slide('s-contact', 10, 'contact', {
+    kicker: 'LET’S WORK TOGETHER',
+    title: 'Secure Legal AI in your organisation',
+    text: 'If you want faster legal research, tighter risk control and a safe way to use AI in your company, get in touch. A short call is enough for us to understand your organisation and propose a sensible pilot scope, from a safe test rollout to a full on-premise or hybrid deployment.',
   }, ['person-janusz']),
 ];
 
-// ------------------------------------------------------------------ komponenty (karty z zestawu @dlaczego)
-// Karty rysuje się w FigCraft (seed/build-components.mjs zrobił je z kart slajdu „dlaczego”).
-// Tu jest to, czego nie widać na rysunku: kiedy AI ma którą kartę wybrać.
-// Warianty: zwykla (beżowa) i wyroznienie (zielona, jedna na slajd), liczba (duża liczba zamiast ikony).
+// ------------------------------------------------------------------ components (cards in the @why set)
+// The cards are drawn in FigCraft (seed/build-components.mjs made them from the cards on the "why" slide).
+// This is what the drawing cannot show: when the AI should pick which card.
+// Variants: regular (beige), highlight (green, one per slide), stat (a big number instead of an icon).
 const comp = (key, topic, variant, title, description, use_when, avoid_when = '', tags = []) => ({
-  id: `dlaczego/${key}`, set_name: 'dlaczego', key, source: 'gaius', title, description, use_when, avoid_when, topic, variant,
+  id: `why/${key}`, set_name: 'why', key, source: 'gaius', title, description, use_when, avoid_when, topic, variant,
   tags, data: {}, figma_text: '', fields: [], missing: false, created_at: ts, updated_at: ts,
 });
 const TOPICS = [
-  ['prywatne-legal-ai', 'Prywatne Legal AI na realnych dokumentach',
-    'Bezpieczeństwo i kontrola: Vault działa lokalnie, pod kontrolą IT i compliance. Ikona: baza danych z kłódką.',
-    'Klient pracuje na poufnych dokumentach (tajemnica adwokacka, dane osobowe, M&A), ma wymagający dział IT/bezpieczeństwa albo boi się publicznych chatbotów.',
-    'Klient ma już jasno ustalone wdrożenie on-premise: wtedy lepsza jest karta on-premise.', ['bezpieczenstwo', 'compliance']],
-  ['jedno-srodowisko', 'Prawo, orzecznictwo i dokumenty w jednym środowisku',
-    'Źródła prawne i dokumenty organizacji w jednym miejscu, AI pracuje na kontekście spraw. Ikona: folder z lupą.',
-    'Klient dziś skacze między LEX/Legalis, DMS-em i ChatGPT; dużo researchu i pracy na własnych dokumentach.',
+  ['private-legal-ai', 'Private Legal AI on real documents',
+    'Security and control: Vault runs on-premise, under IT and compliance control. Icon: database with a padlock.',
+    'The client works on confidential documents (legal privilege, personal data, M&A), has a demanding IT/security team, or is wary of public chatbots.',
+    'The client has already settled on an on-premise deployment: the on-premise card fits better.', ['security', 'compliance']],
+  ['one-environment', 'Law, case law and documents in one environment',
+    'Legal sources and the organisation’s documents in one place; the AI works with the context of each matter. Icon: folder with a magnifier.',
+    'Today the client jumps between legal databases, a DMS and ChatGPT; lots of research and work on their own documents.',
     '', ['research']],
-  ['wdrozenie-rutyna', 'Wdrożenie, które kończy się rutyną pracy',
-    'Adopcja: warsztaty i Legal Engineering zamieniają procesy w workflowy i checklisty. Ikona: warstwy.',
-    'Klient miał już nieudane wdrożenie narzędzia AI, zespół jest sceptyczny albo zarząd pyta o realne wykorzystanie.',
-    '', ['adopcja', 'wdrozenie']],
-  ['bez-blokady', 'Skalowanie bez blokady licencyjnej',
-    'Brak opłat za użytkownika i przestrzeń roboczą. Ikona: osoba z plusem.',
-    'Duży zespół (kilkadziesiąt+ prawników), plan rozszerzenia na kolejne działy, porównanie z narzędziami licencjonowanymi per seat.',
-    'Mała kancelaria (kilka osób): argument licencyjny jest słaby.', ['cena', 'skalowanie']],
-  ['jedna-usluga', 'Jedna usługa',
-    'Jedna licencja obejmuje technologię, źródła, warsztaty, Legal Engineering i rozwój standardu. Ikona: schowek z ptaszkiem.',
-    'Klient nie chce składać rozwiązania z wielu dostawców, ma ograniczony zespół IT albo zakupy wolą jedną umowę.',
-    '', ['zakupy', 'prostota']],
-  ['bezpieczny-start', 'Bezpieczny model startu',
-    'Stały koszt miesięczny, gwarancja ceny i opcjonalny 3-miesięczny POC z możliwością rezygnacji. Ikona: kalkulator.',
-    'Klient waha się, ma ograniczony budżet albo decyzję podejmuje zarząd/finanse.',
-    'Na slajdzie jest już karta „Pilotaż bez ryzyka” (ten sam argument).', ['cena', 'ryzyko']],
-  ['odpowiedzi-ze-zrodlami', 'Odpowiedzi, które da się sprawdzić',
-    'Weryfikowalność: każda odpowiedź prowadzi do przepisu, orzeczenia, cytatu albo dokumentu. Ikona: folder z lupą.',
-    'Kancelaria procesowa, sporo pism do sądu, klient boi się halucynacji AI albo pyta o odpowiedzialność za błędy.',
-    '', ['jakosc', 'kancelaria']],
-  ['know-how-organizacji', 'Know-how pracuje przy każdej sprawie',
-    'Wykorzystanie wcześniejszych opinii, pism i wzorów. Ikona: warstwy.',
-    'Duża kancelaria albo dział prawny z latami archiwum; problem „wynajdujemy koło na nowo”, rotacja prawników.',
-    'Młoda organizacja bez archiwum dokumentów.', ['wiedza', 'kancelaria', 'dzial-prawny']],
-  ['on-premise', 'On-premise albo model hybrydowy',
-    'Środowisko w infrastrukturze klienta, bez publicznej chmury. Ikona: baza danych z kłódką.',
-    'Bank, ubezpieczyciel, sektor publiczny, energetyka, klient regulowany (KNF, KSC/NIS2) albo z zakazem chmury.',
-    'Klient nie ma własnej infrastruktury i woli usługę zarządzaną.', ['bezpieczenstwo', 'regulowany']],
+  ['rollout-routine', 'A rollout that ends in daily routine',
+    'Adoption: workshops and Legal Engineering turn processes into workflows and checklists. Icon: layers.',
+    'The client has had a failed AI tool rollout before, the team is sceptical, or the board asks about real usage.',
+    '', ['adoption', 'rollout']],
+  ['no-lock-in', 'Scale without licence lock-in',
+    'No fees per user or per workspace. Icon: person with a plus.',
+    'A large team (dozens of lawyers or more), plans to expand to other departments, comparison with per-seat licensed tools.',
+    'A small firm (a few people): the licensing argument is weak.', ['price', 'scaling']],
+  ['one-service', 'One service',
+    'One licence covers the technology, sources, workshops, Legal Engineering and an evolving standard. Icon: clipboard with a tick.',
+    'The client does not want to assemble a solution from many vendors, has a small IT team, or procurement prefers a single contract.',
+    '', ['procurement', 'simplicity']],
+  ['safe-start', 'A safe way to start',
+    'Fixed monthly fee, price guarantee and an optional 3-month POC you can walk away from. Icon: calculator.',
+    'The client hesitates, has a limited budget, or the decision is made by the board/finance.',
+    'The slide already has the "A risk-free pilot" card (same argument).', ['price', 'risk']],
+  ['sourced-answers', 'Answers you can check',
+    'Verifiability: every answer links to a statute, ruling, quote or document. Icon: folder with a magnifier.',
+    'A litigation firm with many court filings, a client afraid of AI hallucinations or asking who is liable for mistakes.',
+    '', ['quality', 'law-firm']],
+  ['organization-know-how', 'Know-how at work on every matter',
+    'Reuse of past opinions, letters and templates. Icon: layers.',
+    'A large firm or legal department with years of archives; a "reinventing the wheel" problem, lawyer turnover.',
+    'A young organisation with no document archive.', ['knowledge', 'law-firm', 'legal-dept']],
+  ['on-premise', 'On-premise or hybrid',
+    'Runs on the client’s infrastructure, no public cloud. Icon: database with a padlock.',
+    'A bank, insurer, public sector body, energy company, a regulated client (financial supervisor, NIS2) or one with a cloud ban.',
+    'The client has no infrastructure of its own and prefers a managed service.', ['security', 'regulated']],
 ];
 export const components = [
-  ...TOPICS.map(([key, title, desc, use, avoid, tags]) => comp(key, key, 'zwykla', title, desc, use, avoid, tags)),
-  ...TOPICS.map(([key, title, desc, use, avoid, tags]) => comp(`${key}-wyroznienie`, key, 'wyroznienie', `${title} (wyróżnienie)`,
-    `Zielona, wyróżniona wersja karty. ${desc}`,
-    `Najważniejszy argument dla tego klienta. ${use}`, avoid, tags)),
-  comp('pilotaz-3-miesiace', 'bezpieczny-start', 'liczba', 'Pilotaż bez ryzyka (3 mies.)',
-    'Karta z dużą liczbą „3 mies.” zamiast ikony: pilotaż na realnych sprawach z możliwością rezygnacji.',
-    'Klient chce najpierw sprawdzić narzędzie, rozmowa jest na etapie pilotażu, decyzja wymaga dowodu efektów.',
-    'Na slajdzie jest już karta „Bezpieczny model startu” (ten sam temat).', ['ryzyko', 'poc']),
+  ...TOPICS.map(([key, title, desc, use, avoid, tags]) => comp(key, key, 'regular', title, desc, use, avoid, tags)),
+  ...TOPICS.map(([key, title, desc, use, avoid, tags]) => comp(`${key}-highlight`, key, 'highlight', `${title} (highlight)`,
+    `Green, highlighted version of the card. ${desc}`,
+    `The most important argument for this client. ${use}`, avoid, tags)),
+  comp('pilot-3-months', 'safe-start', 'stat', 'A risk-free pilot (3 mo.)',
+    'Card with a big "3 mo." instead of an icon: a pilot on real matters with the option to walk away.',
+    'The client wants to try the tool first, the conversation is at the pilot stage, the decision needs proof of results.',
+    'The slide already has the "A safe way to start" card (same topic).', ['risk', 'poc']),
 ];
 export const componentSets = [{
-  id: 'dlaczego',
-  title: 'Dlaczego Vault? (6 kart)',
-  rules: 'Dokładnie 6 kart. Dokładnie jedna karta w wariancie „wyroznienie” (zielona): najważniejszy argument dla klienta. Najwyżej jedna karta z danego tematu. Karta „liczba” najwyżej jedna. Pierwszy wiersz (karty 1–3) to argumenty najmocniejsze dla klienta.',
+  id: 'why',
+  title: 'Why Vault? (6 cards)',
+  rules: 'Exactly 6 cards. Exactly one card in the "highlight" variant (green): the most important argument for the client. At most one card per topic. At most one "stat" card. The first row (cards 1–3) holds the strongest arguments for the client.',
   created_at: ts, updated_at: ts,
 }];
 
@@ -208,7 +208,7 @@ export default {
   exported_at: ts,
   blocks,
   templates: [],
-  offers: [{ id: OFFER, name: 'Gaius Vault – oferta bazowa', template_id: TEMPLATE.id, data: { client: '', price: '------' }, created_at: ts, updated_at: ts }],
+  offers: [{ id: OFFER, name: 'Gaius Vault – base offer', template_id: TEMPLATE.id, data: { client: '', price: '------' }, created_at: ts, updated_at: ts }],
   slides,
   components,
   component_sets: componentSets,
