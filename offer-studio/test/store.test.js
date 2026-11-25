@@ -278,3 +278,111 @@ test('render: picked components replace #pick slots in order, with overridden te
 test('an unsupported file format is rejected', async () => {
   await assert.rejects(normalizeUpload(Buffer.from('x'), 'notes.txt'), /Unsupported file/);
 });
+
+// ------------------------------------------------------------------ v4: kafelki i scenariusze
+const tileFree = () => ({
+  ...seed,
+  tiles: undefined,
+  scenarios: undefined,
+  blocks: seed.blocks.filter((b) => b.type !== 'solution').map((b) => {
+    const { order: _o, ...data } = b.data;
+    return { ...b, data, tags: b.tags.filter((t) => !t.includes(':')) };
+  }),
+  components: seed.components.map((c) => ({ ...c, tags: c.tags.filter((t) => !t.includes(':')) })),
+});
+
+test('v4: a v3 database from the volume gets tiles and the base offer survives', () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'studio-')), 'v3.db');
+  const a = openDb(path);
+  a.importAll(tileFree(), 'merge');
+  a.db.exec('DROP TABLE tiles; DROP TABLE scenarios; ALTER TABLE slides DROP COLUMN origin; ALTER TABLE slides DROP COLUMN locked; PRAGMA user_version = 3');
+  a.db.close();
+
+  const b = openDb(path);
+  assert.equal(b.db.prepare('PRAGMA user_version').get().user_version, 4);
+  const cols = b.db.prepare('PRAGMA table_info(slides)').all().map((c) => c.name);
+  assert.ok(cols.includes('origin') && cols.includes('locked'));
+  assert.equal(b.getOffer('gaius-vault-base').slides.length, 11);
+  assert.equal(b.getOffer('gaius-vault-base').slides[0].locked, false);
+
+  const first = b.ensureTiles(seed);
+  assert.equal(first.tiles, seed.tiles.length);
+  assert.equal(first.blocks, seed.solutionBlocks.length);
+  assert.ok(first.tagged > 0);
+  assert.deepEqual(b.ensureTiles(seed), { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 });
+
+  const tags = b.get('blocks', 'uc-urgent-letter').tags;
+  assert.deepEqual(tags, [...new Set(tags)], 'powtórzone tagi');
+  assert.ok(tags.includes('legal-dept'), 'stary tag zniknął');
+  for (const t of seed.tileTags['uc-urgent-letter']) assert.ok(tags.includes(t), t);
+  assert.ok(b.get('components', 'why/on-premise').tags.includes('product:on-prem'));
+  // rollout steps get their order from the seed (the generator picks them in this order)
+  assert.deepEqual(['st-processes', 'st-real-matters', 'st-routines', 'st-verification', 'st-adoption'].map((id) => b.get('blocks', id).data.order), [0, 1, 2, 3, 4]);
+});
+
+test('tiles: invalid ids rejected (400)', () => {
+  const s = openDb(':memory:');
+  for (const id of ['color:green', 'pain:Bad', 'poufnosc']) {
+    assert.throws(() => s.insert('tiles', { id, category: 'pain', label: 'x', status: 'active' }), (e) => e.status === 400, id);
+  }
+  assert.throws(() => s.insert('scenarios', { id: 'pain:confidentiality', name: 'x', steps: [] }), (e) => e.status === 400);
+  const t = s.insert('tiles', { id: 'pain:test', category: 'pain', label: 'Test', status: 'active', quotes: ['a'] });
+  assert.deepEqual(t.quotes, ['a']);
+});
+
+test('export v4 -> import replace restores tiles and scenarios', () => {
+  const a = fresh();
+  a.update('scenarios', 'role:board', { steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
+  const dump = JSON.parse(JSON.stringify(a.exportAll()));
+  assert.equal(dump.version, 4);
+  assert.equal(dump.tiles.length, seed.tiles.length);
+  const b = openDb(':memory:');
+  const counts = b.importAll(dump, 'replace');
+  assert.equal(counts.tiles, seed.tiles.length);
+  assert.equal(counts.scenarios, seed.scenarios.length);
+  assert.deepEqual(b.list('tiles'), a.list('tiles'));
+  assert.deepEqual(b.get('scenarios', 'role:board').steps[0].fill, { kind: 'none' });
+});
+
+test('applyRecompute: creates, hides and orders slides in one transaction, leaves locked alone', () => {
+  const s = openDb(':memory:');
+  s.insert('offers', { id: 'o1', name: 'O1', data: {} });
+  const locked = s.addSlide('o1', { frame: 'architektura', data: { a: 1 }, origin: { step: 'architektura', matched: {} }, locked: true });
+  const auto = s.addSlide('o1', { frame: 'okladka', data: {}, origin: { step: 'okladka', matched: {} } });
+  const created = { frame: 'okladka', data: { title: 'Nowa' }, block_ids: [], picks: {}, hidden: false, locked: false, origin: { step: 'okladka', label: 'Okładka', matched: {} } };
+  const o = s.applyRecompute('o1', { keep: [locked], create: [created], remove: [auto.id], hide: [locked.id], order: [{ create: 0 }, locked.id] });
+  assert.equal(o.slides.length, 2);
+  assert.equal(o.slides[0].data.title, 'Nowa');
+  assert.deepEqual(o.slides[0].origin, created.origin);
+  assert.equal(o.slides[0].locked, false);
+  assert.equal(o.slides[1].id, locked.id);
+  assert.equal(o.slides[1].hidden, true);
+  assert.equal(o.slides[1].locked, true);
+  assert.deepEqual(o.slides[1].data, { a: 1 });
+  assert.equal(s.get('slides', auto.id), undefined);
+});
+
+test('applyRecompute: hide sets origin.auto_hidden, unhide shows the slide and clears the marker', () => {
+  const s = openDb(':memory:');
+  s.insert('offers', { id: 'o2', name: 'O2', data: {} });
+  const a = s.addSlide('o2', { frame: 'architektura', data: {}, origin: { step: 'architektura', matched: {} }, locked: true });
+  let o = s.applyRecompute('o2', { hide: [a.id], order: [a.id] });
+  assert.equal(o.slides[0].hidden, true);
+  assert.equal(o.slides[0].origin.auto_hidden, true);
+  o = s.applyRecompute('o2', { unhide: [a.id], order: [a.id] });
+  assert.equal(o.slides[0].hidden, false);
+  assert.equal(o.slides[0].origin.auto_hidden, undefined);
+  assert.equal(o.slides[0].locked, true);
+});
+
+test('tx: a nested transaction works, and an error inside rolls everything back', () => {
+  const s = openDb(':memory:');
+  s.insert('offers', { id: 'o3', name: 'przed', data: {} });
+  s.tx(() => s.tx(() => s.update('offers', 'o3', { name: 'w środku' })));
+  assert.equal(s.get('offers', 'o3').name, 'w środku');
+  assert.throws(() => s.tx(() => {
+    s.update('offers', 'o3', { name: 'zewnętrzna' });
+    s.tx(() => { throw new Error('boom'); });
+  }), /boom/);
+  assert.equal(s.get('offers', 'o3').name, 'w środku');
+});

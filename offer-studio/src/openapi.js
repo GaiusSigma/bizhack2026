@@ -38,6 +38,7 @@ const replaceParam = {
 
 const TAGS = [
   { name: 'Offers', description: 'Offers: variables, slides, PDF and .figcraft file' },
+  { name: 'Tiles', description: 'Tiles (role, segment, pain, product), role scenarios and offers generated from tiles' },
   { name: 'Slides', description: 'Offer slides' },
   { name: 'Knowledge blocks', description: 'Use cases, problems, arguments and other blocks' },
   { name: 'Templates', description: 'Slide library: FigCraft files, every top-level frame = a slide' },
@@ -61,7 +62,17 @@ const slideFields = {
   picks: { type: 'object', description: 'Cards in #pick slots: {"why": [{"component": "why/on-premise", "data": {"title": "..."}}]}' },
   position: { type: 'number', description: 'Position in the slide list (from 0)' },
   hidden: { type: 'boolean', description: 'Hidden slide (skipped in the PDF)' },
+  locked: { type: 'boolean', description: 'Edited by hand: recompute leaves it alone. Any change sets true; {"locked": false} restores the automatic content' },
 };
+const tileFields = {
+  label: { type: 'string', description: 'Name, e.g. "Confidentiality"' },
+  description: { type: 'string', description: 'What the tile means' },
+  quotes: { type: 'array', items: { type: 'string' }, description: 'Client quotes' },
+  status: { type: 'string', enum: ['active', 'soon'], description: 'soon = visible but cannot be selected' },
+  position: { type: 'number', description: 'Order within the category' },
+  data: { type: 'object', description: 'Extra fields, e.g. {"price": "12,000 PLN"} for a product' },
+};
+const tilesList = { type: 'array', items: { type: 'string' }, description: 'Tile ids: exactly one role, one segment, one product and 1–5 pains, e.g. ["role:board", "segment:law-firm", "product:vault", "pain:confidentiality"]', 'x-n8n-list': '/api/tiles' };
 const componentFields = {
   title: { type: 'string', description: 'Short card name' },
   description: { type: 'string', description: 'What the card shows (content, look)' },
@@ -115,6 +126,18 @@ const SCHEMAS = {
       fields: { type: 'array', items: { type: 'string' }, description: 'The card\'s {{…}} fields' },
       missing: { type: 'boolean', description: 'The card is no longer in the library' },
       thumb: { type: 'string' }, created_at: { type: 'string' }, updated_at: { type: 'string' },
+    },
+  },
+  Tile: {
+    type: 'object',
+    properties: { id: { type: 'string', description: 'category:slug, e.g. pain:confidentiality' }, category: { type: 'string', enum: ['role', 'segment', 'pain', 'product'] }, ...tileFields, created_at: { type: 'string' }, updated_at: { type: 'string' } },
+  },
+  Scenario: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', description: 'Role tile id, e.g. role:board' }, name: { type: 'string' },
+      steps: { type: 'array', items: anyObject, description: 'Steps: [{key, label, frame, data, data_by_product, fill: {kind: none|pains|blocks|picks, type, min, max, set}, when: {any: [tiles]}}]' },
+      created_at: { type: 'string' }, updated_at: { type: 'string' },
     },
   },
   ComponentSet: {
@@ -309,6 +332,70 @@ export const DOCS = {
     requestBody: body(slideFields, ['frame']),
     responses: { 201: json(one('Slide'), 'Utworzono') },
   },
+  // ---------------------------------------------------------------- tiles and offers from tiles
+  'GET /api/tiles': {
+    tag: 'Tiles', operationId: 'listTiles', summary: 'List tiles',
+    responses: { 200: json(list('Tile')) },
+  },
+  'POST /api/tiles': {
+    tag: 'Tiles', operationId: 'createTile', summary: 'Add a tile',
+    description: 'The id is built from the category and name (e.g. pain:new-pain) unless you give one',
+    requestBody: body({ id: { type: 'string', description: 'Own id (optional), category:slug' }, category: { type: 'string', enum: ['role', 'segment', 'pain', 'product'] }, ...tileFields }, ['category', 'label']),
+    responses: { 201: json(one('Tile'), 'Created') },
+  },
+  'PATCH /api/tiles/:id': {
+    tag: 'Tiles', operationId: 'updateTile', summary: 'Update a tile',
+    parameters: [idParam('tile', '/api/tiles'), replaceParam],
+    requestBody: body(tileFields),
+    responses: { 200: json(one('Tile')) },
+  },
+  'DELETE /api/tiles/:id': {
+    tag: 'Tiles', operationId: 'deleteTile', summary: 'Delete a tile',
+    description: 'Block tags and offers that use the tile keep it; an offer shows it as deleted',
+    parameters: [idParam('tile', '/api/tiles')],
+    responses: { 204: noContent },
+  },
+  'GET /api/scenarios': {
+    tag: 'Tiles', operationId: 'listScenarios', summary: 'Role scenarios',
+    responses: { 200: json(list('Scenario')) },
+  },
+  'GET /api/scenarios/:id': {
+    tag: 'Tiles', operationId: 'getScenario', summary: 'Get a scenario',
+    parameters: [idParam('scenario (role tile)', '/api/scenarios')],
+    responses: { 200: json(one('Scenario')) },
+  },
+  'PUT /api/scenarios/:id': {
+    tag: 'Tiles', operationId: 'saveScenario', summary: 'Save a scenario',
+    description: 'Existing offers pick up the change when they are recomputed',
+    parameters: [idParam('scenario (role tile)', '/api/scenarios')],
+    requestBody: body({ name: { type: 'string' }, steps: { type: 'array', items: anyObject, description: 'Scenario steps' } }, ['steps']),
+    responses: { 200: json(one('Scenario')) },
+  },
+  'POST /api/offers/generate': {
+    tag: 'Tiles', operationId: 'generateOffer', summary: 'Generate an offer from tiles',
+    description: 'Builds the offer from the role scenario and picks content by tiles. The same tiles give the same offer. The response includes coverage: which pains are solved',
+    requestBody: body({
+      client: { type: 'string', description: 'Client name' },
+      tiles: tilesList,
+      name: { type: 'string', description: 'Offer name (default: client · role)' },
+      price: { type: 'string', description: 'Price (default: the product tile price)' },
+    }, ['client', 'tiles']),
+    responses: { 201: json(one('Offer'), 'Created') },
+  },
+  'PUT /api/offers/:id/tiles': {
+    tag: 'Tiles', operationId: 'setOfferTiles', summary: 'Change offer tiles and recompute',
+    description: 'Slides edited by hand (locked) stay unchanged',
+    parameters: [idParam('offer', '/api/offers')],
+    requestBody: body({ tiles: tilesList }, ['tiles']),
+    responses: { 200: json(one('Offer')) },
+  },
+  'POST /api/offers/:id/recompute': {
+    tag: 'Tiles', operationId: 'recomputeOffer', summary: 'Recompute an offer from tiles',
+    description: 'E.g. after a scenario or content change. Slides edited by hand stay',
+    parameters: [idParam('offer', '/api/offers')],
+    responses: { 200: json(one('Offer')) },
+  },
+
   'GET /api/slides/:id': {
     tag: 'Slides', operationId: 'getSlide', summary: 'Get a slide',
     parameters: [idParam('slide')],
@@ -316,7 +403,7 @@ export const DOCS = {
   },
   'PATCH /api/slides/:id': {
     tag: 'Slides', operationId: 'updateSlide', summary: 'Update a slide',
-    description: 'The data field is merged, unless replace=1',
+    description: 'The data field is merged, unless replace=1. A change marks the slide as edited by hand (locked). {"locked": false} alone restores the automatic content: it recomputes the offer and returns the whole offer (the slide may get a new id)',
     parameters: [idParam('slide'), replaceParam],
     requestBody: body(slideFields),
     responses: { 200: json(one('Slide')) },

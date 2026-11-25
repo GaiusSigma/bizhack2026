@@ -1,159 +1,18 @@
 // Offer Studio: a minimal frontend with no build step. Everything goes through the same REST API
 // that scripts and n8n can use (see /static/api.html). Slides are rendered by FigCraft.
 
-// ------------------------------------------------------------------ utilities
-const $ = (sel, root = document) => root.querySelector(sel);
+import {
+  $, CATEGORY_LABELS, UPLOAD_ACCEPT, api, autosize, debounce, download, go, h, kvEditor, loadAll, modal, saver, slugify, state, tileLabel, toast, ui,
+} from './lib.js';
+import { viewNewOffer } from './views/new-offer.js';
+import { viewOffer, viewOfferList } from './views/offer.js';
+import { viewScenarios } from './views/scenarios.js';
+import { plainTags, tileTagEditor, viewTiles } from './views/tiles.js';
 
-function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v == null || v === false) continue;
-    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else if (k === 'class') el.className = v;
-    else if (k === 'value') el.value = v;
-    else if (k === 'checked') el.checked = !!v;
-    else el.setAttribute(k, v === true ? '' : v);
-  }
-  for (const c of children.flat(Infinity)) if (c != null && c !== false) el.append(c instanceof Node ? c : document.createTextNode(String(c)));
-  return el;
-}
-
-async function api(method, path, body) {
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers: body !== undefined ? { 'content-type': 'application/json' } : {},
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  if (res.status === 204) return null;
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `${res.status} ${res.statusText}`);
-  return data;
-}
-
-let toastTimer;
-function toast(msg, err = false) {
-  const t = $('#toast');
-  t.textContent = msg;
-  t.className = err ? 'err' : '';
-  t.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.hidden = true), err ? 6000 : 2200);
-}
-
-const debounce = (fn, ms = 450) => {
-  let t;
-  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+const BLOCK_TYPE_LABELS = {
+  solution: 'Solutions', use_case: 'Use cases', problem: 'Problems', pillar: 'Pillars', signal: 'Readiness signals', step: 'Rollout steps',
+  comparison: 'Comparison', package: 'Package items', person: 'People', differentiator: 'Differentiators',
 };
-
-// "1 slide", "3 slides".
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-
-// Save status indicator ("saving…", "saved", error).
-function saver(statusEl, fn, ms) {
-  return debounce(async (...a) => {
-    statusEl.textContent = 'saving…';
-    statusEl.className = 'status';
-    try {
-      await fn(...a);
-      statusEl.textContent = 'saved';
-      statusEl.className = 'status ok';
-    } catch (e) {
-      statusEl.textContent = 'error';
-      statusEl.className = 'status err';
-      toast(e.message, true);
-    }
-  }, ms);
-}
-
-function autosize(t) {
-  const fit = () => { t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight + 2, 600)}px`; };
-  t.addEventListener('input', fit);
-  requestAnimationFrame(fit);
-  return t;
-}
-
-// Key → value field editor (for the `data` of blocks, slides and offers).
-// `hints` are keys worth showing right away (e.g. fields read from the template).
-function kvEditor(obj, hints, onChange) {
-  const rows = [];
-  const types = {};
-  const collect = () => {
-    const out = {};
-    for (const r of rows) {
-      const k = r.k.value.trim();
-      if (!k) continue;
-      let v = r.v.value;
-      if (types[k] === 'number' && v.trim() !== '' && !isNaN(Number(v))) v = Number(v);
-      else if (types[k] === 'json') { try { v = JSON.parse(v); } catch { /* keep it as text */ } }
-      else if (types[k] === 'boolean') v = v.trim() === 'true';
-      if (v === '' && !(k in obj)) continue;
-      out[k] = v;
-    }
-    // keys removed from the list -> null (the API deletes them when merging)
-    for (const k of Object.keys(obj)) if (!(k in out)) out[k] = null;
-    return out;
-  };
-  const fire = () => onChange(collect());
-  const list = h('div', { class: 'kv' });
-  const addRow = (k = '', v = '') => {
-    if (v !== null && typeof v === 'object') { types[k] = 'json'; v = JSON.stringify(v, null, 2); }
-    else if (typeof v === 'number') types[k] = 'number';
-    else if (typeof v === 'boolean') types[k] = 'boolean';
-    const r = {
-      k: h('input', { value: k, placeholder: 'key', oninput: fire }),
-      v: autosize(h('textarea', { rows: 1, oninput: fire }, String(v ?? ''))),
-    };
-    const del = h('button', { class: 'icon', title: 'Delete field', onclick: () => { rows.splice(rows.indexOf(r), 1); row.remove(); fire(); } }, '×');
-    const row = h('div', { class: 'r' }, r.k, r.v, del);
-    rows.push(r);
-    list.append(row);
-    return r;
-  };
-  for (const [k, v] of Object.entries(obj)) addRow(k, v);
-  for (const k of hints || []) if (!(k in obj)) addRow(k, '');
-  return h('div', { class: 'kv' }, list, h('div', {}, h('button', { class: 'btn sm', onclick: () => addRow().k.focus() }, '+ field')));
-}
-
-let onModalClose = null;
-function modal(content) {
-  const m = $('#modal');
-  m.replaceChildren(h('div', { class: 'dlg' }, content));
-  m.hidden = false;
-  const close = () => { m.hidden = true; m.replaceChildren(); onModalClose?.(); onModalClose = null; };
-  m.onclick = (e) => { if (e.target === m) close(); };
-  return close;
-}
-addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').hidden) $('#modal').click(); });
-
-async function download(path, fallbackName) {
-  toast('Generating…');
-  try {
-    const res = await fetch(`/api${path}`);
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
-    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || fallbackName;
-    const url = URL.createObjectURL(await res.blob());
-    h('a', { href: url, download: name }).click();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    toast('Done');
-  } catch (e) {
-    toast(e.message, true);
-  }
-}
-
-// ------------------------------------------------------------------ state and routing
-const state = { blocks: [], offers: [], templates: [], library: [], components: [], componentSets: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
-
-async function loadAll() {
-  [state.blocks, state.offers, state.templates, state.library, state.components, state.componentSets, state.meta] = await Promise.all([
-    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/library'),
-    api('GET', '/components?missing=1'), api('GET', '/component-sets'), api('GET', '/meta'),
-  ]);
-}
-
-// Strips accents; \u0142/\u0141 (Polish l with stroke) do not decompose under NFKD, so map them by hand.
-const slugify = (s) => String(s).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\u0142/g, 'l').replace(/\u0141/g, 'L')
-  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
-const UPLOAD_ACCEPT = '.figcraft,.json,.fig,.penpot,.sketch,.svg';
 
 // Upload slide files (every top-level frame = one slide in the library).
 async function uploadSlideFiles(files, { replaceId } = {}) {
@@ -220,22 +79,45 @@ function pickSlide(title = 'Pick a slide from the library') {
         h('div', { class: 'lib-grid' }, slides.map((s) => h('button', { class: 'lib-card', onclick: () => { picked = s.frame; close(); } },
           h('img', { src: s.thumb, alt: s.frame, loading: 'lazy' }), h('span', {}, s.frame)))),
       ])));
-    onModalClose = () => resolve(picked);
+    ui.onModalClose = () => resolve(picked);
   });
 }
 
+const VIEWS = {
+  blocks: (...a) => viewBlocks(...a),
+  templates: (...a) => viewTemplates(...a),
+  components: (...a) => viewComponents(...a),
+  'offer-advanced': (...a) => viewOffers(...a),
+  tiles: (...a) => viewTiles(...a),
+  scenarios: (...a) => viewScenarios(...a),
+};
+
 function route() {
+  ui.refresh = null;
   const [view = 'offers', id = '', sub = ''] = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
-  ({ blocks: viewBlocks, offers: viewOffers, templates: viewTemplates, components: viewComponents }[view] || viewOffers)(id, sub);
+  if (view === 'offers' || !VIEWS[view]) return routeOffers(id, sub);
+  VIEWS[view](id, sub);
 }
-const go = (...parts) => { location.hash = `#/${parts.filter((p) => p != null && p !== '').map(encodeURIComponent).join('/')}`; };
+
+// Offers: the list, a new offer from tiles, the tile-based offer view, or the existing editor (offers built by hand).
+function routeOffers(id, sub) {
+  document.querySelector('#tabs button[data-view="offers"]')?.classList.add('active');
+  if (!id) return viewOfferList();
+  if (id === 'new') return viewNewOffer();
+  const o = state.offers.find((x) => x.id === id);
+  if (o?.data?.scenario_id) return viewOffer(id, sub);
+  Promise.resolve(viewOffers(id, sub)).then(() => {
+    if (!o) return;
+    document.querySelector('.editor.narrow')?.prepend(h('div', { class: 'legacy-note' },
+      'This offer was not built from tiles, so you edit it by hand. ', h('a', { href: '#/offers/new' }, 'New offer from tiles')));
+  });
+}
 document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => go(b.dataset.view)));
 addEventListener('hashchange', route);
 
 // Changes from other tabs / from the API refresh the lists and the preview (editors being typed in are left alone).
 let editingUntil = 0;
-let refreshLists = null;
 document.addEventListener('input', () => (editingUntil = Date.now() + 2500), true);
 const es = new EventSource('/api/events');
 es.onmessage = debounce(async (e) => {
@@ -244,7 +126,7 @@ es.onmessage = debounce(async (e) => {
   await loadAll();
   const inOffers = location.hash.startsWith('#/offers') || location.hash === '';
   if (!inOffers && Date.now() > editingUntil && $('#modal').hidden) route();
-  else refreshLists?.();
+  else ui.refresh?.();
 }, 300);
 
 
@@ -255,7 +137,7 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
     const b = await api('PATCH', `/blocks/${encodeURIComponent(block.id)}`, patch);
     Object.assign(block, b);
   });
-  const tagList = state.meta.tags.map((t) => t.tag).join(', ');
+  const tagList = state.meta.tags.map((t) => t.tag).filter((t) => !t.includes(':')).join(', ');
   return h('div', {},
     h('div', { class: 'bar' },
       h('h2', {}, block.title || '(untitled)'),
@@ -281,13 +163,35 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
     h('input', { value: block.type, list: 'types-dl', oninput: (e) => e.target.value.trim() && save({ type: e.target.value.trim() }) }),
     h('label', { class: 'f' }, 'Title'),
     h('input', { value: block.title, oninput: (e) => save({ title: e.target.value }) }),
-    h('label', { class: 'f' }, 'Body ("- " lists become separate lines, **text** = accent)'),
-    autosize(h('textarea', { rows: 4, oninput: (e) => save({ body: e.target.value }) }, block.body)),
-    h('label', { class: 'f' }, 'Tags (comma-separated)'),
-    h('input', { value: (block.tags || []).join(', '), placeholder: tagList, oninput: (e) => save({ tags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }) }),
-    h('label', { class: 'f' }, 'Extra fields'),
-    kvEditor(block.data || {}, [], (data) => save({ data })),
-    h('div', { class: 'hint' }, 'In a FigCraft template, insert a field by naming a layer after it, e.g. {{effect}}. Changes save automatically.'),
+    block.type === 'solution' ? [
+      h('label', { class: 'f' }, 'Client problem'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { problem: e.target.value } }) }, block.data?.problem || '')),
+      h('label', { class: 'f' }, 'Solution (what Gaius does)'),
+      autosize(h('textarea', { rows: 3, oninput: (e) => save({ body: e.target.value }) }, block.body)),
+      h('label', { class: 'f' }, 'Benefit (goes on the slide)'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { effect: e.target.value } }) }, block.data?.effect || '')),
+      h('label', { class: 'f' }, 'Value'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { value: e.target.value } }) }, block.data?.value || '')),
+    ] : [
+      h('label', { class: 'f' }, 'Body ("- " lists become separate lines, **text** = accent)'),
+      autosize(h('textarea', { rows: 4, oninput: (e) => save({ body: e.target.value }) }, block.body)),
+    ],
+    h('label', { class: 'f' }, 'Tiles: which clients this block is for (click to toggle)'),
+    tileTagEditor(block.tags, (tags) => {
+      const next = [...plainTags(block.tags), ...tags.filter((t) => t.includes(':'))];
+      block.tags = next;
+      save({ tags: next });
+    }),
+    h('details', { class: 'advanced' }, h('summary', {}, 'Advanced: plain tags and template fields'),
+      h('label', { class: 'f' }, 'Plain tags (comma-separated)'),
+      h('input', { value: plainTags(block.tags).join(', '), placeholder: tagList, oninput: (e) => {
+        const next = [...e.target.value.split(',').map((x) => x.trim()).filter(Boolean), ...(block.tags || []).filter((t) => t.includes(':'))];
+        block.tags = next;
+        save({ tags: next });
+      } }),
+      h('label', { class: 'f' }, 'Extra fields'),
+      kvEditor(block.data || {}, [], (data) => save({ data })),
+      h('div', { class: 'hint' }, 'In a FigCraft template, insert a field by naming a layer after it, e.g. {{effect}}. Changes save automatically.')),
   );
 }
 
@@ -302,27 +206,31 @@ function viewBlocks(selectedId) {
     const items = state.blocks.filter((b) =>
       (!f.type || b.type === f.type) &&
       (!f.tag || (b.tags || []).includes(f.tag)) &&
+      (!f.tile || (b.tags || []).includes(f.tile)) &&
       (!q || `${b.title} ${b.body} ${JSON.stringify(b.data)}`.toLowerCase().includes(q)));
     const groups = {};
     for (const b of items) (groups[b.type] ||= []).push(b);
     listEl.replaceChildren(...[
       ...Object.entries(groups).map(([type, bs]) => [
-        h('div', { class: 'group' }, `${type} · ${bs.length}`),
+        h('div', { class: 'group' }, `${BLOCK_TYPE_LABELS[type] || type} · ${bs.length}`),
         bs.map((b) => h('div', { class: `item ${b.id === selectedId ? 'active' : ''}`, onclick: () => go('blocks', b.id) },
           h('div', {}, b.title || '(untitled)'),
-          h('div', { class: 'sub' }, (b.body || '').slice(0, 90) || (b.tags || []).join(', ')))),
+          h('div', { class: 'sub' }, (b.body || '').slice(0, 90)),
+          h('div', { class: 'item-tiles' }, (b.tags || []).filter((t) => t.includes(':')).map((t) => h('span', { class: `chip tile-chip small ${t.split(':')[0]}` }, tileLabel(t)))))),
       ]),
       items.length ? [] : [h('div', { class: 'empty' }, 'No blocks')],
     ].flat(Infinity));
   };
-  refreshLists = renderList;
+  ui.refresh = renderList;
 
   const typeSel = h('select', { onchange: (e) => { f.type = e.target.value; renderList(); } },
     h('option', { value: '' }, 'all types'), state.meta.types.map((t) => h('option', { value: t.type }, `${t.type} (${t.count})`)));
   typeSel.value = f.type;
-  const tagSel = h('select', { onchange: (e) => { f.tag = e.target.value; renderList(); } },
-    h('option', { value: '' }, 'all tags'), state.meta.tags.map((t) => h('option', { value: t.tag }, `${t.tag} (${t.count})`)));
-  tagSel.value = f.tag;
+  const tagSel = h('select', { onchange: (e) => { f.tile = e.target.value; renderList(); } },
+    h('option', { value: '' }, 'all tiles'),
+    Object.entries(CATEGORY_LABELS).map(([cat, title]) => h('optgroup', { label: title },
+      state.tiles.filter((t) => t.category === cat).map((t) => h('option', { value: t.id }, t.label)))));
+  tagSel.value = f.tile || '';
 
   const newBlock = async () => {
     const type = prompt('Type of the new block (e.g. use_case, problem, faq):', f.type || 'use_case');
@@ -359,7 +267,7 @@ async function viewOffers(offerId, slideId) {
     ...state.offers.map((o) => h('div', { class: `item ${o.id === offerId ? 'active' : ''}`, onclick: () => go('offers', o.id) },
       h('div', {}, o.name), h('div', { class: 'sub' }, [o.data?.client, new Date(o.updated_at).toLocaleString('en-GB')].filter(Boolean).join(' · ')))),
   );
-  refreshLists = renderList;
+  ui.refresh = renderList;
   renderList();
 
   const newOffer = async () => {
@@ -513,7 +421,7 @@ async function viewOffers(offerId, slideId) {
   renderSlideEditor();
 
   // Every change (from the UI or the API) -> refresh the slide list and the preview.
-  refreshLists = async () => {
+  ui.refresh = async () => {
     renderList();
     try {
       const fresh = await api('GET', `/offers/${encodeURIComponent(offer.id)}`);
@@ -576,7 +484,7 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
             return h('div', { class: 'p' },
               h('span', {}, b ? b.title : h('s', {}, id), ' ', h('small', {}, b?.type || 'block missing')),
               h('span', {},
-                h('button', { class: 'icon', title: 'Edit block', onclick: () => b && (modal(blockEditor(b, { inModal: true, onDeleted: () => $('#modal').click() })), (onModalClose = () => loadAll().then(() => refreshLists?.()))) }, '✎'),
+                h('button', { class: 'icon', title: 'Edit block', onclick: () => b && (modal(blockEditor(b, { inModal: true, onDeleted: () => $('#modal').click() })), (ui.onModalClose = () => loadAll().then(() => ui.refresh?.()))) }, '✎'),
                 h('button', { class: 'icon', onclick: () => { if (i > 0) { const n = [...ids]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; setIds(n); } } }, '↑'),
                 h('button', { class: 'icon', onclick: () => { if (i < ids.length - 1) { const n = [...ids]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; setIds(n); } } }, '↓'),
                 h('button', { class: 'icon', title: 'Remove from slide', onclick: () => setIds(ids.filter((x) => x !== id)) }, '×')));
@@ -701,7 +609,7 @@ function pickComponent(set, taken = []) {
         h('div', { class: 'body' },
           h('b', {}, c.title), h('div', {}, compChips(c)),
           c.use_when ? h('div', {}, h('span', { class: 'muted' }, 'When: '), c.use_when) : h('div', { class: 'muted' }, 'no description yet: add one in the Components tab')))))));
-    onModalClose = () => resolve(picked);
+    ui.onModalClose = () => resolve(picked);
   });
 }
 
@@ -726,7 +634,7 @@ function editPickText(pick, comp, onSave) {
 
 // ------------------------------------------------------------------ view: Components (card descriptions for the AI)
 function viewComponents(focusSet) {
-  refreshLists = null;
+  ui.refresh = null;
   const sets = [...new Set([...state.componentSets.map((x) => x.id), ...state.components.map((c) => c.set_name)])];
   const view = h('div', { class: 'editor library' },
     h('div', { class: 'bar' }, h('h2', {}, `Components (${state.components.filter((c) => !c.missing).length})`)),
@@ -784,7 +692,7 @@ function componentEditor(c) {
 // ------------------------------------------------------------------ view: Slide library
 // A salesperson designs a slide in FigCraft (a 1920×1080 frame), saves the file or the page JSON and drops it here.
 function viewTemplates(focusId) {
-  refreshLists = null;
+  ui.refresh = null;
   const fileInput = (replaceId) => h('input', { type: 'file', accept: UPLOAD_ACCEPT, multiple: !replaceId, hidden: true, onchange: async (e) => {
     const t = await uploadSlideFiles([...e.target.files], { replaceId });
     e.target.value = '';
