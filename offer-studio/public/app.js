@@ -164,6 +164,7 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
     h('label', { class: 'f' }, 'Title'),
     h('input', { value: block.title, oninput: (e) => save({ title: e.target.value }) }),
     block.type === 'solution' ? [
+      block.data?.source ? h('div', { class: 'hint source' }, `Source: ${block.data.source}`) : null,
       h('label', { class: 'f' }, 'Client problem'),
       autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { problem: e.target.value } }) }, block.data?.problem || '')),
       h('label', { class: 'f' }, 'Solution (what Gaius does)'),

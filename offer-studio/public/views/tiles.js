@@ -1,6 +1,7 @@
 // Tiles: role, segment, pain, product. This is where a tile is described (name, description, quotes, status)
 // and content is pinned to it (knowledge blocks and cards) that the generator builds offers from.
 import { $, CATEGORY_LABELS, api, autosize, go, h, loadAll, saver, state, tileLabel, toast, ui } from '../lib.js';
+import { solutionsFor } from './new-offer.js';
 
 const CATEGORY_SHORT = { role: 'Roles', segment: 'Segments', pain: 'Pains', product: 'Products' };
 const isTile = (t) => /^(role|segment|pain|product):/.test(t);
@@ -35,6 +36,48 @@ export function tileTagEditor(tags, onChange) {
 }
 export const plainTags = (tags) => (tags || []).filter((t) => !isTile(t));
 
+const activeSegments = () => state.tiles.filter((t) => t.category === 'segment' && t.status === 'active');
+const cellClass = (n, typical) => `cov-cell ${n === 0 ? 'none' : n === 1 ? 'thin' : 'ok'} ${typical ? 'typical' : ''}`;
+
+// Pain x segment map: how many solutions each pair has. Typical pairs (from the sales sheet) are bold.
+function coverageMap() {
+  const segs = activeSegments();
+  const pains = state.tiles.filter((t) => t.category === 'pain');
+  return h('div', { class: 'coverage-map' },
+    h('h2', {}, 'Solutions per pain and segment'),
+    h('p', { class: 'hint' }, 'How many solutions each pain has in each segment. Bold: the pain is typical for that segment in the sales sheet. Amber: one solution only. Pick a tile on the left to edit it.'),
+    h('div', { class: 'cov-wrap' }, h('table', { class: 'cov' },
+      h('thead', {}, h('tr', {}, h('th', {}, 'Pain'), segs.map((s) => h('th', {}, s.label)))),
+      h('tbody', {}, pains.map((p) => h('tr', {},
+        h('td', {}, h('a', { href: `#/tiles/${encodeURIComponent(p.id)}` }, p.label)),
+        segs.map((s) => {
+          const n = solutionsFor(p.id, s.id).length;
+          return h('td', { class: cellClass(n, (p.data?.typical_segments || []).includes(s.id)) }, n);
+        })))))));
+}
+
+// For a pain tile: its solutions per active segment, and the segments where it is typical (editable).
+function painCoverage(t, save) {
+  let typical = [...(t.data?.typical_segments || [])];
+  const segs = state.tiles.filter((x) => x.category === 'segment');
+  const chips = h('div', { class: 'tt-chips' });
+  const renderChips = () => chips.replaceChildren(...segs.map((s) => h('button', {
+    class: `chip tile-chip segment toggle ${typical.includes(s.id) ? 'on' : ''}`,
+    onclick: () => { typical = typical.includes(s.id) ? typical.filter((x) => x !== s.id) : [...typical, s.id]; renderChips(); save({ data: { typical_segments: typical } }); },
+  }, s.label)));
+  renderChips();
+  return h('div', { class: 'pain-cov' },
+    h('label', { class: 'f' }, 'Typical for (segments where clients report this pain)'), chips,
+    h('label', { class: 'f' }, 'Solutions by segment'),
+    h('div', { class: 'pc-grid' }, activeSegments().map((s) => {
+      const list = solutionsFor(t.id, s.id);
+      return h('div', { class: `pc-col ${list.length >= 2 ? 'ok' : list.length === 1 ? 'thin' : 'none'}` },
+        h('b', {}, `${s.label} · ${list.length}`),
+        list.length ? h('ul', {}, list.map((b) => h('li', {}, h('a', { href: `#/blocks/${encodeURIComponent(b.id)}` }, b.title))))
+          : h('div', { class: 'hint' }, 'No solution yet'));
+    })));
+}
+
 export function viewTiles(selectedId) {
   const listEl = h('div', { class: 'items' });
   const editor = h('div', { class: 'editor' });
@@ -62,7 +105,7 @@ export function viewTiles(selectedId) {
   const renderEditor = () => {
     const t = state.tiles.find((x) => x.id === selectedId);
     if (!t) {
-      editor.replaceChildren(h('div', { class: 'empty' }, 'Pick a tile. Tiles describe the client in a new offer, and the content pinned to them goes into the deck.'));
+      editor.replaceChildren(coverageMap());
       return;
     }
     const status = h('span', { class: 'status' });
@@ -98,6 +141,11 @@ export function viewTiles(selectedId) {
       autosize(h('textarea', { rows: 2, oninput: (e) => save({ description: e.target.value }) }, t.description)),
       h('label', { class: 'f' }, 'Client quotes (one per line)'),
       autosize(h('textarea', { rows: 3, oninput: (e) => save({ quotes: e.target.value.split('\n').map((x) => x.trim()).filter(Boolean) }) }, (t.quotes || []).join('\n'))),
+      t.category === 'pain' ? painCoverage(t, save) : null,
+      h('label', { class: 'f' }, 'Fits when (the AI model reads this to pick tiles; the salesperson sees it in New offer)'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { pick_when: e.target.value } }) }, t.data?.pick_when || '')),
+      h('label', { class: 'f' }, 'Not when'),
+      autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { avoid_when: e.target.value } }) }, t.data?.avoid_when || '')),
       h('label', { class: 'f' }, 'Status'),
       h('select', { onchange: (e) => save({ status: e.target.value }) },
         h('option', { value: 'active', selected: t.status === 'active' }, 'active: can be selected in an offer'),

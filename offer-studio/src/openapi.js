@@ -71,7 +71,7 @@ const tileFields = {
   quotes: { type: 'array', items: { type: 'string' }, description: 'Client quotes' },
   status: { type: 'string', enum: ['active', 'soon'], description: 'soon = visible but cannot be selected' },
   position: { type: 'number', description: 'Order within the category' },
-  data: { type: 'object', description: 'Extra fields, e.g. {"price": "12,000 PLN"} for a product' },
+  data: { type: 'object', description: 'Extra fields: pick_when and avoid_when (guidance for choosing the tile, e.g. by an AI agent), price for a product' },
 };
 const tilesList = { type: 'array', items: { type: 'string' }, description: 'Tile ids: exactly one role, one segment, one product and 1–5 pains, e.g. ["role:board", "segment:law-firm", "product:vault", "pain:confidentiality"]', 'x-n8n-list': '/api/tiles' };
 const componentFields = {
@@ -374,7 +374,7 @@ export const DOCS = {
   },
   'POST /api/offers/generate': {
     tag: 'Tiles', operationId: 'generateOffer', summary: 'Generate an offer from tiles',
-    description: 'Builds the offer from the role scenario and picks content by tiles. The same tiles give the same offer. The response includes coverage: which pains are solved',
+    description: 'Builds the offer from the role scenario and picks content by tiles. Choose the tiles with GET /api/tiles: each tile has data.pick_when and data.avoid_when. The same tiles give the same offer. The response includes coverage: which pains are solved',
     requestBody: body({
       client: { type: 'string', description: 'Client name' },
       tiles: tilesList,

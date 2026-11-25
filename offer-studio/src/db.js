@@ -14,7 +14,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes } from 'node:crypto';
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS blocks (
@@ -95,6 +95,11 @@ CREATE TABLE IF NOT EXISTS tiles (
   data TEXT NOT NULL DEFAULT '{}',         -- e.g. {price} for a product
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,                    -- e.g. tile_content_rev: which seed content revision the data has
+  value TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS scenarios (
@@ -498,9 +503,23 @@ export class Store {
   // Tiles (v4) for databases that have none yet: tiles, scenarios, solution blocks, and tiles pinned
   // to existing content (appended to tags, nothing is removed). Runs only while the tiles table is empty,
   // so later starts change nothing.
+  getSetting(key) {
+    return this.db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key)?.value ?? null;
+  }
+
+  setSetting(key, value) {
+    this.db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));
+  }
+
   ensureTiles(seed) {
     const counts = { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 };
-    if (this.db.prepare('SELECT 1 FROM tiles LIMIT 1').get()) return counts;
+    const rev = seed.tileUpgrade?.rev ?? 1;
+    if (this.db.prepare('SELECT 1 FROM tiles LIMIT 1').get()) {
+      const have = Number(this.getSetting('tile_content_rev') || 1);
+      if (have < rev) this.tx(() => { this.upgradeTileContent(seed, counts); this.setSetting('tile_content_rev', rev); });
+      return counts;
+    }
+    this.setSetting('tile_content_rev', rev);
     this.tx(() => {
       for (const t of seed.tiles || []) { this.upsert('tiles', t); counts.tiles++; }
       for (const sc of seed.scenarios || []) if (!this.get('scenarios', sc.id)) { this.upsert('scenarios', sc); counts.scenarios++; }
@@ -521,6 +540,31 @@ export class Store {
       }
     });
     return counts;
+  }
+
+  // Brings tile content from an older seed revision up to date (see seed/tiles.js tileUpgrade).
+  upgradeTileContent(seed, counts) {
+    const prev = seed.tileUpgrade?.previousDescriptions || {};
+    for (const b of seed.solutionBlocks || []) {
+      const cur = this.get('blocks', b.id);
+      if (!cur) { this.upsert('blocks', b); counts.blocks++; continue; }
+      const tiles = b.tags.filter((t) => t.includes(':'));
+      const tags = [...cur.tags.filter((t) => !t.includes(':')), ...tiles];
+      const data = cur.data?.source ? {} : { source: b.data.source };
+      if (JSON.stringify(tags) === JSON.stringify(cur.tags) && !Object.keys(data).length) continue;
+      this.update('blocks', b.id, { tags, ...(Object.keys(data).length ? { data } : {}) });
+      counts.tagged++;
+    }
+    for (const t of seed.tiles || []) {
+      const cur = this.get('tiles', t.id);
+      if (!cur) { this.upsert('tiles', t); counts.tiles++; continue; }
+      const patch = {};
+      const data = {};
+      for (const k of ['pick_when', 'avoid_when']) if (!cur.data?.[k] && t.data?.[k]) data[k] = t.data[k];
+      if (Object.keys(data).length) patch.data = data;
+      if (prev[t.id] != null && cur.description === prev[t.id] && t.description !== cur.description) patch.description = t.description;
+      if (Object.keys(patch).length) this.update('tiles', t.id, patch);
+    }
   }
 
   isEmpty() {

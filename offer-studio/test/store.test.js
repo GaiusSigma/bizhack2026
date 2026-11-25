@@ -326,7 +326,7 @@ test('v4: a v3 database from the volume gets tiles and the base offer survives',
   a.db.close();
 
   const b = openDb(path);
-  assert.equal(b.db.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(b.db.prepare('PRAGMA user_version').get().user_version, 5);
   const cols = b.db.prepare('PRAGMA table_info(slides)').all().map((c) => c.name);
   assert.ok(cols.includes('origin') && cols.includes('locked'));
   assert.equal(b.getOffer('gaius-vault-base').slides.length, 11);
@@ -412,4 +412,29 @@ test('tx: a nested transaction works, and an error inside rolls everything back'
     s.tx(() => { throw new Error('boom'); });
   }), /boom/);
   assert.equal(s.get('offers', 'o3').name, 'w środku');
+});
+
+test('tile content update: a database seeded with revision 1 gets the new solutions, pins and guidance once', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  // simulate revision 1: no new solutions, old pins, no guidance, old description, a description edited by hand
+  for (const id of ['sol-private-vault', 'sol-word-review']) s.remove('blocks', id);
+  s.update('blocks', 'sol-nda-review', { tags: ['pain:repetitive-documents', 'custom-tag'] });
+  s.update('tiles', 'pain:shadow-ai', { data: { pick_when: null, avoid_when: null } });
+  s.update('tiles', 'segment:law-firm', { description: seed.tileUpgrade.previousDescriptions['segment:law-firm'] });
+  s.update('tiles', 'role:board', { description: 'Our own wording' });
+  s.setSetting('tile_content_rev', '1');
+
+  const counts = s.ensureTiles(seed);
+  assert.equal(counts.blocks, 2);
+  assert.ok(s.get('blocks', 'sol-private-vault'));
+  const nda = s.get('blocks', 'sol-nda-review').tags;
+  assert.ok(nda.includes('custom-tag'), 'plain tags are kept');
+  assert.deepEqual(nda.filter((t) => t.includes(':')).sort(), seed.solutionBlocks.find((b) => b.id === 'sol-nda-review').tags.slice().sort());
+  assert.ok(s.get('tiles', 'pain:shadow-ai').data.pick_when.length > 20);
+  assert.equal(s.get('tiles', 'segment:law-firm').description, seed.tiles.find((t) => t.id === 'segment:law-firm').description);
+  assert.equal(s.get('tiles', 'role:board').description, 'Our own wording', 'a description edited by hand stays');
+  assert.equal(s.getSetting('tile_content_rev'), String(seed.tileUpgrade.rev));
+  assert.deepEqual(s.ensureTiles(seed), { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 }, 'second run changes nothing');
 });

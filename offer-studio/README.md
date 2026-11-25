@@ -46,7 +46,11 @@ applies again. "Restore automatic" discards a slide's edits. Offers made before 
 
 **Pinning content.** The Tiles tab: a tile's description and quotes, and its pinned content ("Pin content"
 searches blocks and cards). Pains without a pinned solution are flagged in the list. In Knowledge, a block's
-tiles are toggled with a click. The starting pins (27 solutions from the sheet's PRKW tab) are a proposal to review.
+tiles are toggled with a click. The starting pins (27 solutions from the sheet's PRKW tab and 5 from its
+product sentences, each with its source) are a proposal to review. A solution is pinned only where it truly fits;
+nothing is pinned to raise a count. The Tiles tab opens on a coverage map (solutions per pain and segment): bold
+pairs are where the sales sheet reports the pain, amber pairs have one solution only. In New offer, every pain
+shows how many solutions it has for the selected segment and whether it is less common there.
 
 **Scenarios.** The Scenarios tab: steps with a slide thumbnail, a fill rule ("2–3 solutions that best fit
 the client's tiles") and a condition ("only with: Vault or On-premise"). Offers pick up changes after
