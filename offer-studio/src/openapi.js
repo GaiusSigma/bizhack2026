@@ -171,6 +171,11 @@ export const DOCS = {
   },
 
   // ---------------------------------------------------------------- knowledge blocks
+  'GET /api/legacy-backup': {
+    tag: 'Database', operationId: 'getLegacyBackup', summary: 'Download the backup made before the Polish-to-English migration',
+    description: 'Full export of the database as it was before its Polish seed content was replaced with English. 404 if the database was never migrated',
+    responses: { 200: json(anyObject, 'Export file') },
+  },
   'GET /api/blocks': {
     tag: 'Knowledge blocks', operationId: 'listBlocks', summary: 'List blocks',
     parameters: [

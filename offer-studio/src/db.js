@@ -182,6 +182,11 @@ export class HttpError extends Error {
 
 const now = () => new Date().toISOString();
 
+// JSON with sorted keys: compares records regardless of key order.
+const stableJson = (v) => (Array.isArray(v) ? `[${v.map(stableJson).join(',')}]`
+  : v && typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stableJson(v[k])}`).join(',')}}`
+    : JSON.stringify(v ?? null));
+
 export function newId(prefix = '') {
   const rnd = randomBytes(5).toString('hex');
   return prefix ? `${slugify(prefix).slice(0, 24)}-${rnd}` : rnd;
@@ -540,6 +545,92 @@ export class Store {
       }
     });
     return counts;
+  }
+
+  // Databases created by the first, Polish version keep Polish seed records under Polish ids after the
+  // English translation (seed data only loads into an empty database). This replaces them with their
+  // English counterparts (seed/legacy-pl.js maps the ids) and re-points every offer to them:
+  // - a full export of the database is saved first (setting legacy_pl_backup), so nothing is lost;
+  // - seed blocks, cards, the card set and the base offer are swapped for the English versions;
+  // - slides in every offer get the new frame names, block and card ids; slide copy that is still the
+  //   Polish default becomes the English default, copy written for a client stays as it is;
+  // - the report (setting legacy_pl_report) lists seed records edited by hand before the switch,
+  //   whose edited text lives only in the backup.
+  // Returns null when there is nothing Polish to migrate. The template file is swapped in src/server.js.
+  migrateLegacyPolish(legacy, seed) {
+    const renamedFrames = Object.entries(legacy.frames).filter(([pl, en]) => pl !== en).map(([pl]) => pl);
+    if (this.getSetting('legacy_pl_report')) return null;
+    const hasLegacy = legacy.blocks.some((b) => b.id !== b.en && this.get('blocks', b.id))
+      || legacy.components.some((c) => c.id !== c.en && this.get('components', c.id))
+      || Object.keys(legacy.componentSets).some((id) => this.get('component_sets', id))
+      || Object.keys(legacy.offers).some((id) => this.get('offers', id))
+      || !!this.db.prepare(`SELECT 1 FROM slides WHERE frame IN (${renamedFrames.map(() => '?').join(', ')}) LIMIT 1`).get(...renamedFrames);
+    if (!hasLegacy) return null;
+
+    const same = (a, b) => stableJson(a) === stableJson(b);
+    const withoutOrder = ({ order: _o, ...rest } = {}) => rest;
+    const blockMap = Object.fromEntries(legacy.blocks.map((b) => [b.id, b.en]));
+    const compMap = Object.fromEntries(legacy.components.map((c) => [c.id, c.en]));
+    const seedBlocks = Object.fromEntries((seed.blocks || []).map((b) => [b.id, b]));
+    const seedComps = Object.fromEntries((seed.components || []).map((c) => [c.id, c]));
+    const seedSets = Object.fromEntries((seed.component_sets || []).map((c) => [c.id, c]));
+    const plDefault = Object.fromEntries(legacy.slides.map((s) => [s.frame, s.data]));
+    const enDefault = Object.fromEntries((seed.slides || []).map((s) => [s.frame, s.data]));
+    const report = { migratedAt: now(), editedBlocks: [], editedCards: [], keptOfferCopy: [] };
+    const backup = JSON.stringify(this.exportAll());
+
+    this.tx(() => {
+      this.setSetting('legacy_pl_backup', backup);
+      for (const b of legacy.blocks) {
+        const cur = this.get('blocks', b.id);
+        if (!cur) continue;
+        if (cur.title !== b.title || cur.body !== b.body || !same(withoutOrder(cur.data), withoutOrder(b.data))) report.editedBlocks.push(b.id);
+        // same id in both versions (e.g. cmp-word): the record stays and gets the English content
+        if (b.id === b.en) { if (seedBlocks[b.en]) this.upsert('blocks', { ...seedBlocks[b.en], tags: [...new Set([...cur.tags, ...seedBlocks[b.en].tags])] }); continue; }
+        if (!this.get('blocks', b.en) && seedBlocks[b.en]) this.upsert('blocks', seedBlocks[b.en]);
+        this.db.prepare('DELETE FROM blocks WHERE id = ?').run(b.id);
+      }
+      for (const c of legacy.components) {
+        const cur = this.get('components', c.id);
+        if (!cur) continue;
+        if (['title', 'description', 'use_when', 'avoid_when'].some((k) => (cur[k] || '') !== (c[k] || ''))) report.editedCards.push(c.id);
+        if (c.id === c.en) { if (seedComps[c.en]) this.upsert('components', seedComps[c.en]); continue; }
+        if (!this.get('components', c.en) && seedComps[c.en]) this.upsert('components', seedComps[c.en]);
+        this.db.prepare('DELETE FROM components WHERE id = ?').run(c.id);
+      }
+      for (const [pl, en] of Object.entries(legacy.componentSets)) {
+        if (!this.get('component_sets', pl)) continue;
+        if (!this.get('component_sets', en) && seedSets[en]) this.upsert('component_sets', seedSets[en]);
+        this.db.prepare('DELETE FROM component_sets WHERE id = ?').run(pl);
+      }
+      for (const [pl, en] of Object.entries(legacy.offers)) {
+        if (!this.get('offers', pl)) continue;
+        if (!this.get('offers', en)) {
+          const offer = (seed.offers || []).find((o) => o.id === en);
+          if (offer) {
+            this.upsert('offers', offer);
+            for (const s of seed.slides || []) this.upsert('slides', { ...s, offer_id: en });
+          }
+        }
+        this.db.prepare('DELETE FROM slides WHERE offer_id = ?').run(pl);
+        this.db.prepare('DELETE FROM offers WHERE id = ?').run(pl);
+      }
+      for (const s of this.list('slides')) {
+        const frame = legacy.frames[s.frame] || s.frame;
+        const block_ids = (s.block_ids || []).map((id) => blockMap[id] || id);
+        const picks = Object.fromEntries(Object.entries(s.picks || {}).map(([set, list]) => [
+          legacy.componentSets[set] || set,
+          (list || []).map((p) => ({ ...p, component: compMap[p.component] || p.component })),
+        ]));
+        let data = s.data || {};
+        if (plDefault[s.frame] && same(data, plDefault[s.frame])) data = enDefault[frame] || {};
+        else if (frame !== s.frame && Object.keys(data).length) report.keptOfferCopy.push(`${s.offer_id}/${s.id}`);
+        const changed = frame !== s.frame || !same(block_ids, s.block_ids) || !same(picks, s.picks) || data !== s.data;
+        if (changed) this.update('slides', s.id, { frame, block_ids, picks, data }, { replaceData: true });
+      }
+      this.setSetting('legacy_pl_report', JSON.stringify(report));
+    });
+    return report;
   }
 
   // Brings tile content from an older seed revision up to date (see seed/tiles.js tileUpgrade).
