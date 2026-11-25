@@ -48,11 +48,11 @@ const blocks = [
   block('sg-powtarzalne-zadania', 'signal', 'Powtarzalne zadania zabierają czas ekspertów', 'Te same typy analiz, researchu i kontroli wracają w kolejnych sprawach.'),
 
   // Kroki wdrożenia
-  block('st-procesy', 'step', 'Wybieramy procesy o największym wpływie', 'Identyfikujemy pytania, dokumenty i analizy, które wracają najczęściej.'),
-  block('st-realne-sprawy', 'step', 'Pracujemy na realnych sprawach', 'Warsztat opieramy na dokumentach, pytaniach i standardach zespołu.'),
-  block('st-rutyny', 'step', 'Budujemy rutyny', 'Zamieniamy procesy w workflowy, checklisty, prompty i wzorce odpowiedzi.'),
-  block('st-weryfikacja', 'step', 'Ustalamy zasady weryfikacji', 'Określamy, jak sprawdzane są źródła, cytaty, ryzyka i odpowiedzialność.'),
-  block('st-adopcja', 'step', 'Mierzymy adopcję i skalujemy', 'Sprawdzamy użycie, zbieramy feedback i wybieramy kolejne procesy.'),
+  block('st-procesy', 'step', 'Wybieramy procesy o największym wpływie', 'Identyfikujemy pytania, dokumenty i analizy, które wracają najczęściej.', { order: 0 }),
+  block('st-realne-sprawy', 'step', 'Pracujemy na realnych sprawach', 'Warsztat opieramy na dokumentach, pytaniach i standardach zespołu.', { order: 1 }),
+  block('st-rutyny', 'step', 'Budujemy rutyny', 'Zamieniamy procesy w workflowy, checklisty, prompty i wzorce odpowiedzi.', { order: 2 }),
+  block('st-weryfikacja', 'step', 'Ustalamy zasady weryfikacji', 'Określamy, jak sprawdzane są źródła, cytaty, ryzyka i odpowiedzialność.', { order: 3 }),
+  block('st-adopcja', 'step', 'Mierzymy adopcję i skalujemy', 'Sprawdzamy użycie, zbieramy feedback i wybieramy kolejne procesy.', { order: 4 }),
 
   // Porównanie: kilka narzędzi vs Gaius Vault
   block('cmp-dane', 'comparison', 'Dane i dokumenty', '', { them: 'wymagają polityk, integracji i ograniczeń użycia', us: 'prywatne środowisko do pracy na dokumentach prawnych' }),

@@ -278,7 +278,10 @@ const tileFree = () => ({
   ...seed,
   tiles: undefined,
   scenarios: undefined,
-  blocks: seed.blocks.filter((b) => b.type !== 'rozwiazanie').map((b) => ({ ...b, tags: b.tags.filter((t) => !t.includes(':')) })),
+  blocks: seed.blocks.filter((b) => b.type !== 'rozwiazanie').map((b) => {
+    const { order: _o, ...data } = b.data;
+    return { ...b, data, tags: b.tags.filter((t) => !t.includes(':')) };
+  }),
   components: seed.components.map((c) => ({ ...c, tags: c.tags.filter((t) => !t.includes(':')) })),
 });
 
@@ -307,6 +310,8 @@ test('v4: baza v3 z wolumenu dostaje kafelki, a oferta bazowa zostaje', () => {
   assert.ok(tags.includes('dzial-prawny'), 'stary tag zniknął');
   for (const t of seed.tileTags['uc-pilne-pismo']) assert.ok(tags.includes(t), t);
   assert.ok(b.get('components', 'dlaczego/on-premise').tags.includes('produkt:on-prem'));
+  // kroki wdrożenia dostają kolejność z seeda (generator dobiera je w tej kolejności)
+  assert.deepEqual(['st-procesy', 'st-realne-sprawy', 'st-rutyny', 'st-weryfikacja', 'st-adopcja'].map((id) => b.get('blocks', id).data.order), [0, 1, 2, 3, 4]);
 });
 
 test('kafelki: złe id odrzucone (400)', () => {
@@ -331,4 +336,22 @@ test('eksport v4 -> import replace odtwarza kafelki i scenariusze', () => {
   assert.equal(counts.scenarios, seed.scenarios.length);
   assert.deepEqual(b.list('tiles'), a.list('tiles'));
   assert.deepEqual(b.get('scenarios', 'rola:zarzad').steps[0].fill, { kind: 'none' });
+});
+
+test('applyRecompute: tworzy, ukrywa i układa slajdy w jednej transakcji, nie rusza locked', () => {
+  const s = openDb(':memory:');
+  s.insert('offers', { id: 'o1', name: 'O1', data: {} });
+  const locked = s.addSlide('o1', { frame: 'architektura', data: { a: 1 }, origin: { step: 'architektura', matched: {} }, locked: true });
+  const auto = s.addSlide('o1', { frame: 'okladka', data: {}, origin: { step: 'okladka', matched: {} } });
+  const created = { frame: 'okladka', data: { title: 'Nowa' }, block_ids: [], picks: {}, hidden: false, locked: false, origin: { step: 'okladka', label: 'Okładka', matched: {} } };
+  const o = s.applyRecompute('o1', { keep: [locked], create: [created], remove: [auto.id], hide: [locked.id], order: [{ create: 0 }, locked.id] });
+  assert.equal(o.slides.length, 2);
+  assert.equal(o.slides[0].data.title, 'Nowa');
+  assert.deepEqual(o.slides[0].origin, created.origin);
+  assert.equal(o.slides[0].locked, false);
+  assert.equal(o.slides[1].id, locked.id);
+  assert.equal(o.slides[1].hidden, true);
+  assert.equal(o.slides[1].locked, true);
+  assert.deepEqual(o.slides[1].data, { a: 1 });
+  assert.equal(s.get('slides', auto.id), undefined);
 });

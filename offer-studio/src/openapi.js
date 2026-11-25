@@ -38,6 +38,7 @@ const replaceParam = {
 
 const TAGS = [
   { name: 'Oferty', description: 'Oferty: zmienne, slajdy, PDF i plik .figcraft' },
+  { name: 'Kafelki', description: 'Kafelki (rola, segment, ból, produkt), scenariusze ról i oferty generowane z kafelków' },
   { name: 'Slajdy', description: 'Slajdy oferty' },
   { name: 'Bloki wiedzy', description: 'Use case\'y, problemy, argumenty i inne bloki' },
   { name: 'Szablony', description: 'Biblioteka slajdów: pliki FigCraft, każda ramka najwyższego poziomu = slajd' },
@@ -61,7 +62,17 @@ const slideFields = {
   picks: { type: 'object', description: 'Karty w slotach #pick: {"dlaczego": [{"component": "dlaczego/on-premise", "data": {"title": "..."}}]}' },
   position: { type: 'number', description: 'Pozycja na liście slajdów (od 0)' },
   hidden: { type: 'boolean', description: 'Ukryty slajd (pomijany w PDF)' },
+  locked: { type: 'boolean', description: 'Poprawiony ręcznie: przeliczenie oferty go nie zmienia. Każda zmiana ustawia true, {"locked": false} przywraca automat' },
 };
+const tileFields = {
+  label: { type: 'string', description: 'Nazwa, np. „Poufność”' },
+  description: { type: 'string', description: 'Co ten kafelek znaczy' },
+  quotes: { type: 'array', items: { type: 'string' }, description: 'Cytaty klientów' },
+  status: { type: 'string', enum: ['active', 'soon'], description: 'soon = widoczny, ale nie do wybrania' },
+  position: { type: 'number', description: 'Kolejność w kategorii' },
+  data: { type: 'object', description: 'Dodatkowe pola, np. {"price": "12 000 zł"} dla produktu' },
+};
+const tilesList = { type: 'array', items: { type: 'string' }, description: 'Id kafelków: dokładnie jedna rola, jeden segment, jeden produkt i 1–5 bólów, np. ["rola:zarzad", "segment:kancelaria", "produkt:vault", "bol:poufnosc"]', 'x-n8n-list': '/api/tiles' };
 const componentFields = {
   title: { type: 'string', description: 'Krótka nazwa karty' },
   description: { type: 'string', description: 'Co karta pokazuje (treść, wygląd)' },
@@ -115,6 +126,18 @@ const SCHEMAS = {
       fields: { type: 'array', items: { type: 'string' }, description: 'Pola {{…}} karty' },
       missing: { type: 'boolean', description: 'Karty nie ma już w bibliotece' },
       thumb: { type: 'string' }, created_at: { type: 'string' }, updated_at: { type: 'string' },
+    },
+  },
+  Tile: {
+    type: 'object',
+    properties: { id: { type: 'string', description: 'kategoria:slug, np. bol:poufnosc' }, category: { type: 'string', enum: ['rola', 'segment', 'bol', 'produkt'] }, ...tileFields, created_at: { type: 'string' }, updated_at: { type: 'string' } },
+  },
+  Scenario: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', description: 'Id kafelka roli, np. rola:zarzad' }, name: { type: 'string' },
+      steps: { type: 'array', items: anyObject, description: 'Kroki: [{key, label, frame, data, data_by_product, fill: {kind: none|pains|blocks|picks, type, min, max, set}, when: {any: [kafelki]}}]' },
+      created_at: { type: 'string' }, updated_at: { type: 'string' },
     },
   },
   ComponentSet: {
@@ -309,6 +332,70 @@ export const DOCS = {
     requestBody: body(slideFields, ['frame']),
     responses: { 201: json(one('Slide'), 'Utworzono') },
   },
+  // ---------------------------------------------------------------- kafelki i oferty z kafelków
+  'GET /api/tiles': {
+    tag: 'Kafelki', operationId: 'listTiles', summary: 'Lista kafelków',
+    responses: { 200: json(list('Tile')) },
+  },
+  'POST /api/tiles': {
+    tag: 'Kafelki', operationId: 'createTile', summary: 'Dodaj kafelek',
+    description: 'Id powstaje z kategorii i nazwy (np. bol:nowy-bol), chyba że podasz własne',
+    requestBody: body({ id: { type: 'string', description: 'Własne id (opcjonalnie), kategoria:slug' }, category: { type: 'string', enum: ['rola', 'segment', 'bol', 'produkt'] }, ...tileFields }, ['category', 'label']),
+    responses: { 201: json(one('Tile'), 'Utworzono') },
+  },
+  'PATCH /api/tiles/:id': {
+    tag: 'Kafelki', operationId: 'updateTile', summary: 'Zmień kafelek',
+    parameters: [idParam('kafelka', '/api/tiles'), replaceParam],
+    requestBody: body(tileFields),
+    responses: { 200: json(one('Tile')) },
+  },
+  'DELETE /api/tiles/:id': {
+    tag: 'Kafelki', operationId: 'deleteTile', summary: 'Usuń kafelek',
+    description: 'Tagi bloków i oferty z tym kafelkiem zostają; w ofercie pokazuje się jako usunięty',
+    parameters: [idParam('kafelka', '/api/tiles')],
+    responses: { 204: noContent },
+  },
+  'GET /api/scenarios': {
+    tag: 'Kafelki', operationId: 'listScenarios', summary: 'Scenariusze ról',
+    responses: { 200: json(list('Scenario')) },
+  },
+  'GET /api/scenarios/:id': {
+    tag: 'Kafelki', operationId: 'getScenario', summary: 'Pobierz scenariusz',
+    parameters: [idParam('scenariusza (kafelek roli)', '/api/scenarios')],
+    responses: { 200: json(one('Scenario')) },
+  },
+  'PUT /api/scenarios/:id': {
+    tag: 'Kafelki', operationId: 'saveScenario', summary: 'Zapisz scenariusz',
+    description: 'Zmiana wchodzi do istniejących ofert przy ich przeliczeniu',
+    parameters: [idParam('scenariusza (kafelek roli)', '/api/scenarios')],
+    requestBody: body({ name: { type: 'string' }, steps: { type: 'array', items: anyObject, description: 'Kroki scenariusza' } }, ['steps']),
+    responses: { 200: json(one('Scenario')) },
+  },
+  'POST /api/offers/generate': {
+    tag: 'Kafelki', operationId: 'generateOffer', summary: 'Wygeneruj ofertę z kafelków',
+    description: 'Składa ofertę według scenariusza roli i dobiera treść do kafelków. Te same kafelki dają tę samą ofertę. Odpowiedź zawiera coverage: które bóle są rozwiązane',
+    requestBody: body({
+      client: { type: 'string', description: 'Nazwa klienta' },
+      tiles: tilesList,
+      name: { type: 'string', description: 'Nazwa oferty (domyślnie: klient · rola)' },
+      price: { type: 'string', description: 'Cena (domyślnie cena z kafelka produktu)' },
+    }, ['client', 'tiles']),
+    responses: { 201: json(one('Offer'), 'Utworzono') },
+  },
+  'PUT /api/offers/:id/tiles': {
+    tag: 'Kafelki', operationId: 'setOfferTiles', summary: 'Zmień kafelki oferty i przelicz',
+    description: 'Slajdy poprawione ręcznie (locked) zostają bez zmian',
+    parameters: [idParam('oferty', '/api/offers')],
+    requestBody: body({ tiles: tilesList }, ['tiles']),
+    responses: { 200: json(one('Offer')) },
+  },
+  'POST /api/offers/:id/recompute': {
+    tag: 'Kafelki', operationId: 'recomputeOffer', summary: 'Przelicz ofertę z kafelków',
+    description: 'Np. po zmianie scenariusza albo treści. Slajdy poprawione ręcznie zostają',
+    parameters: [idParam('oferty', '/api/offers')],
+    responses: { 200: json(one('Offer')) },
+  },
+
   'GET /api/slides/:id': {
     tag: 'Slajdy', operationId: 'getSlide', summary: 'Pobierz slajd',
     parameters: [idParam('slajdu')],

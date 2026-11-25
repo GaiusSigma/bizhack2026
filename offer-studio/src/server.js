@@ -7,7 +7,8 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pickComponents } from './ai.js';
-import { COMPONENT_EDITABLE, HttpError, openDb, slugify } from './db.js';
+import { buildSlides, coverage, mergeRecompute, parseSelection } from './generate.js';
+import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import {
   buildLibrary, describeComponents, describeTemplate, hashOf, normalizeUpload, parseTemplate, renderFigcraft, renderPdf, renderPreview, renderThumbnails, UPLOAD_EXT,
 } from './figcraft.js';
@@ -173,18 +174,34 @@ async function uploadSource({ buf, filename, id, name }) {
 }
 
 // Bloki slajdu: jawna lista `block_ids` (w tej kolejności) albo zapytanie `query` {type, tag, limit}.
-function resolveBlocks(slide) {
+// Id z dwukropkiem to kafelek (np. ból na slajdzie „Problemy klienta”): nazwa jako title, opis jako body.
+// ctx = {role, product}: tekst bloku dla roli (data.by_role) i produktu (data.by_product) nadpisuje domyślny.
+function resolveBlocks(slide, ctx = {}) {
   let blocks = [];
   if (slide.block_ids?.length) {
-    blocks = slide.block_ids.map((id) => store.get('blocks', id)).filter(Boolean);
+    blocks = slide.block_ids.map((id) => {
+      if (!id.includes(':')) return store.get('blocks', id);
+      const t = store.get('tiles', id);
+      return t && { id: t.id, type: 'kafelek', title: t.label, body: t.description, data: { quote: t.quotes[0] || '' } };
+    }).filter(Boolean);
   } else if (slide.query && (slide.query.type || slide.query.tag)) {
     blocks = store.listBlocks({ type: slide.query.type, tag: slide.query.tag });
     blocks.sort((a, b) => (a.data?.order ?? 1e9) - (b.data?.order ?? 1e9) || a.title.localeCompare(b.title, 'pl'));
     if (slide.query.limit) blocks = blocks.slice(0, Number(slide.query.limit));
   }
   // pola z `data` są dostępne wprost: {{effect}} zamiast {{data.effect}}
-  return blocks.map((b) => ({ ...b.data, id: b.id, type: b.type, title: b.title, body: b.body }));
+  return blocks.map((b) => {
+    const { by_role: byRole, by_product: byProduct, ...data } = b.data || {};
+    const base = { ...data, id: b.id, type: b.type, title: b.title, body: b.body };
+    return { ...base, ...(byRole?.[ctx.role] || {}), ...(byProduct?.[ctx.product] || {}) };
+  });
 }
+
+// Rola i produkt oferty z jej kafelków (do tekstów zależnych od roli i produktu).
+const offerCtx = (offer) => {
+  const tiles = offer.data?.tiles || [];
+  return { role: tiles.find((t) => t.startsWith('rola:')), product: tiles.find((t) => t.startsWith('produkt:')) };
+};
 
 // "etykieta | wartość" w każdej linii -> [{title, value, value2…}]
 const lines = (text) =>
@@ -201,6 +218,7 @@ async function renderInput(offerId, { includeHidden }) {
   const comps = Object.fromEntries(lib.parsed.components.map((c) => [c.id, c]));
   const report = [];
   const slides = [];
+  const ctx = offerCtx(offer);
   for (const s of offer.slides) {
     const f = frames[s.frame];
     const entry = { id: s.id, frame: s.frame, hidden: s.hidden };
@@ -208,7 +226,7 @@ async function renderInput(offerId, { includeHidden }) {
     if (!f) { entry.error = `W bibliotece nie ma slajdu "${s.frame}"`; continue; }
     if (s.hidden && !includeHidden) { entry.skipped = true; continue; }
     const items = {};
-    for (const source of f.fields.sources) items[source] = source === 'blocks' ? resolveBlocks(s) : lines(s.data?.[source]);
+    for (const source of f.fields.sources) items[source] = source === 'blocks' ? resolveBlocks(s, ctx) : lines(s.data?.[source]);
     const picks = {};
     for (const [set, chosen] of Object.entries(s.picks || {})) {
       if (!f.fields.picks[set] || !Array.isArray(chosen)) continue;
@@ -293,6 +311,69 @@ try {
   syncComponents();
 } catch (e) {
   console.error('offer-studio: synchronizacja komponentów nie powiodła się:', e.message);
+}
+
+// ------------------------------------------------------------------ oferty z kafelków
+// Treść do doboru: bloki w stałej kolejności (data.order, potem tytuł), karty i liczba slotów z biblioteki.
+function generationData() {
+  const blocks = store.list('blocks').sort((a, b) => (a.data?.order ?? 1e9) - (b.data?.order ?? 1e9) || a.title.localeCompare(b.title, 'pl') || a.id.localeCompare(b.id));
+  const slots = {};
+  for (const f of librarySlides()) for (const [set, n] of Object.entries(f.fields.picks || {})) slots[set] ??= n;
+  return { blocks, components: store.listComponents(), slots };
+}
+
+const blocksById = () => Object.fromEntries(store.list('blocks').map((b) => [b.id, b]));
+
+// Oferta + pełne kafelki (usunięte jako {id, missing}) + pokrycie bólów.
+function offerView(id) {
+  const offer = store.getOffer(id);
+  const ids = offer.data?.tiles;
+  if (!Array.isArray(ids)) return offer;
+  offer.tiles = ids.map((t) => store.get('tiles', t) || { id: t, missing: true });
+  offer.coverage = coverage(offer.slides, ids.filter((t) => t.startsWith('bol:')), blocksById());
+  return offer;
+}
+
+function scenarioFor(sel) {
+  const sc = store.get('scenarios', sel.role);
+  if (!sc) throw new HttpError(400, `Nie ma scenariusza dla roli „${store.get('tiles', sel.role)?.label || sel.role}”`);
+  return sc;
+}
+
+// Przelicza ofertę z jej kafelków: slajdy poprawione ręcznie zostają (zob. mergeRecompute).
+function recompute(offerId) {
+  const offer = store.getOffer(offerId);
+  if (!offer.data?.scenario_id) throw new HttpError(400, 'Ta oferta nie powstała z kafelków');
+  const sel = parseSelection(offer.data.tiles, store.list('tiles'));
+  const fresh = buildSlides(scenarioFor(sel), sel, generationData());
+  store.applyRecompute(offerId, mergeRecompute(offer.slides, fresh));
+  store.update('offers', offerId, { data: { scenario_id: sel.role } });
+  return offerView(offerId);
+}
+
+const FILL_KINDS = ['none', 'pains', 'blocks', 'picks'];
+function validateSteps(steps) {
+  if (!Array.isArray(steps) || !steps.length) throw new HttpError(400, 'Scenariusz musi mieć listę kroków "steps"');
+  const frames = new Set(librarySlides().map((f) => f.frame));
+  const keys = new Set();
+  steps.forEach((st, i) => {
+    const at = `Krok ${i + 1}${st?.label ? ` („${st.label}”)` : ''}`;
+    if (!st || typeof st !== 'object') throw new HttpError(400, `${at}: oczekiwano obiektu`);
+    if (!st.key || typeof st.key !== 'string') throw new HttpError(400, `${at}: brak klucza "key"`);
+    if (keys.has(st.key)) throw new HttpError(400, `${at}: klucz "${st.key}" się powtarza`);
+    keys.add(st.key);
+    if (!frames.has(st.frame)) throw new HttpError(400, `${at}: w bibliotece nie ma slajdu "${st.frame}"`);
+    const fill = st.fill || { kind: 'none' };
+    if (!FILL_KINDS.includes(fill.kind)) throw new HttpError(400, `${at}: nieznane wypełnienie "${fill.kind}"`);
+    if (fill.kind === 'blocks') {
+      if (!fill.type) throw new HttpError(400, `${at}: podaj typ bloków`);
+      if (!(Number.isInteger(fill.min) && Number.isInteger(fill.max) && fill.min >= 0 && fill.min <= fill.max)) {
+        throw new HttpError(400, `${at}: liczba bloków „od” musi być mniejsza albo równa „do”`);
+      }
+    }
+    if (fill.kind === 'picks' && !fill.set) throw new HttpError(400, `${at}: podaj zestaw kart`);
+    if (st.when && !Array.isArray(st.when.any)) throw new HttpError(400, `${at}: warunek "when.any" musi być listą kafelków`);
+  });
 }
 
 const safeEq = (a, b) => {
@@ -455,7 +536,7 @@ api.delete('/templates/:id', (c) => {
 
 // oferty
 api.get('/offers', (c) => c.json(store.list('offers')));
-api.get('/offers/:id', (c) => c.json(store.getOffer(c.req.param('id'))));
+api.get('/offers/:id', (c) => c.json(offerView(c.req.param('id'))));
 api.post('/offers', async (c) => {
   const b = await body(c);
   if (!b.name) throw new HttpError(400, 'Oferta musi mieć "name"');
@@ -489,6 +570,47 @@ api.put('/offers/:id/order', async (c) => {
   const { ids } = await body(c);
   if (!Array.isArray(ids)) throw new HttpError(400, 'Oczekiwano {"ids": [...]}');
   const o = store.reorderSlides(c.req.param('id'), ids);
+  changed('slides', null, { offer_id: o.id });
+  return c.json(o);
+});
+
+// oferty z kafelków
+api.post('/offers/generate', async (c) => {
+  const b = await body(c);
+  if (!b.client || typeof b.client !== 'string') throw new HttpError(400, 'Podaj nazwę klienta ("client")');
+  const all = store.list('tiles');
+  const sel = parseSelection(b.tiles, all);
+  const scenario = scenarioFor(sel);
+  const label = (id) => all.find((t) => t.id === id)?.label || id;
+  const price = b.price ?? all.find((t) => t.id === sel.product)?.data?.price ?? '';
+  const slides = buildSlides(scenario, sel, generationData());
+  const tiles = [sel.role, sel.segment, sel.product, ...sel.pains];
+  const created = store.tx(() => {
+    const o = store.insert('offers', {
+      name: b.name || `${b.client} · ${label(sel.role)}`,
+      template_id: store.list('templates')[0]?.id ?? null,
+      data: { client: b.client, price: String(price), tiles, scenario_id: scenario.id },
+    }, b.client);
+    slides.forEach((s, i) => store.insert('slides', { ...s, offer_id: o.id, position: i }, 'slide'));
+    return o;
+  });
+  changed('offers', created.id, { offer_id: created.id });
+  return c.json(offerView(created.id), 201);
+});
+api.put('/offers/:id/tiles', async (c) => {
+  const id = c.req.param('id');
+  const { tiles } = await body(c);
+  const offer = store.mustGet('offers', id);
+  if (!offer.data?.scenario_id) throw new HttpError(400, 'Ta oferta nie powstała z kafelków');
+  const sel = parseSelection(tiles, store.list('tiles'));
+  scenarioFor(sel);
+  store.update('offers', id, { data: { tiles: [sel.role, sel.segment, sel.product, ...sel.pains] } });
+  const o = recompute(id);
+  changed('slides', null, { offer_id: id });
+  return c.json(o);
+});
+api.post('/offers/:id/recompute', (c) => {
+  const o = recompute(c.req.param('id'));
   changed('slides', null, { offer_id: o.id });
   return c.json(o);
 });
@@ -527,14 +649,22 @@ api.get('/offers/:id/figcraft', async (c) => {
 api.post('/offers/:id/slides', async (c) => {
   const b = await body(c);
   if (!b.frame) throw new HttpError(400, 'Slajd musi mieć "frame" (nazwę slajdu w szablonie)');
-  const s = store.addSlide(c.req.param('id'), b);
+  const s = store.addSlide(c.req.param('id'), { ...b, origin: null, locked: true });
   changed('slides', s.id, { offer_id: s.offer_id });
   return c.json(s, 201);
 });
 api.get('/slides/:id', (c) => c.json(store.mustGet('slides', c.req.param('id'))));
 api.patch('/slides/:id', async (c) => {
-  const { offer_id: _ignored, ...patch } = await body(c);
-  const s = store.update('slides', c.req.param('id'), patch, { replaceData: c.req.query('replace') === '1' });
+  const { offer_id: _ignored, origin: _origin, ...patch } = await body(c);
+  // Każda zmiana z zewnątrz (UI, n8n) oznacza slajd jako poprawiony ręcznie. {"locked": false} przywraca automat.
+  if (patch.locked === false) {
+    const cur = store.update('slides', c.req.param('id'), { locked: false });
+    const offer = store.mustGet('offers', cur.offer_id);
+    if (offer.data?.scenario_id) recompute(offer.id);
+    changed('slides', null, { offer_id: offer.id });
+    return c.json(store.get('slides', cur.id) || cur);
+  }
+  const s = store.update('slides', c.req.param('id'), { ...patch, locked: true }, { replaceData: c.req.query('replace') === '1' });
   store.touch('offers', s.offer_id);
   changed('slides', s.id, { offer_id: s.offer_id });
   return c.json(s);
@@ -580,11 +710,52 @@ api.post('/slides/:id/pick', async (c) => {
   const result = await pickComponents({ offer: ctx.offer, slide: ctx.slide, brief: b.brief, sets: ctx.sets });
   let slide = store.mustGet('slides', ctx.slide.id);
   if (b.apply !== false) {
-    slide = store.update('slides', slide.id, { picks: { ...(slide.picks || {}), ...result.picks } });
+    slide = store.update('slides', slide.id, { picks: { ...(slide.picks || {}), ...result.picks }, locked: true });
     store.touch('offers', slide.offer_id);
     changed('slides', slide.id, { offer_id: slide.offer_id });
   }
   return c.json({ applied: b.apply !== false, ...result, slide });
+});
+
+// kafelki
+api.get('/tiles', (c) => c.json(store.list('tiles')));
+api.post('/tiles', async (c) => {
+  const b = await body(c);
+  if (!TILE_CATEGORIES.includes(b.category)) throw new HttpError(400, `Kategoria kafelka: ${TILE_CATEGORIES.join(', ')}`);
+  if (!b.label) throw new HttpError(400, 'Kafelek musi mieć nazwę ("label")');
+  const id = b.id || `${b.category}:${slugify(b.label)}`;
+  if (!id.startsWith(`${b.category}:`)) throw new HttpError(400, `Id kafelka musi zaczynać się od "${b.category}:"`);
+  const t = store.insert('tiles', { status: 'active', ...b, id });
+  changed('tiles', t.id);
+  return c.json(t, 201);
+});
+api.patch('/tiles/:id', async (c) => {
+  const { id: _id, category: _cat, ...patch } = await body(c);
+  if (patch.status && !['active', 'soon'].includes(patch.status)) throw new HttpError(400, 'Status: active albo soon');
+  const t = store.update('tiles', c.req.param('id'), patch, { replaceData: c.req.query('replace') === '1' });
+  changed('tiles', t.id);
+  return c.json(t);
+});
+api.delete('/tiles/:id', (c) => {
+  store.remove('tiles', c.req.param('id'));
+  changed('tiles', c.req.param('id'));
+  return c.body(null, 204);
+});
+
+// scenariusze
+api.get('/scenarios', (c) => c.json(store.list('scenarios')));
+api.get('/scenarios/:id', (c) => c.json(store.mustGet('scenarios', c.req.param('id'))));
+api.put('/scenarios/:id', async (c) => {
+  const id = c.req.param('id');
+  const b = await body(c);
+  validateSteps(b.steps);
+  const role = store.get('tiles', id);
+  if (!role || role.category !== 'rola') throw new HttpError(400, `Scenariusz musi mieć id kafelka roli (np. rola:zarzad), a nie „${id}”`);
+  const row = store.get('scenarios', id)
+    ? store.update('scenarios', id, { steps: b.steps, ...(b.name ? { name: b.name } : {}) })
+    : store.insert('scenarios', { id, name: b.name || role.label, steps: b.steps });
+  changed('scenarios', id);
+  return c.json(row);
 });
 
 // eksport / import całej bazy

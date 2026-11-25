@@ -421,6 +421,21 @@ export class Store {
     return offer;
   }
 
+  // Wykonuje plan z mergeRecompute (src/generate.js) w jednej transakcji. Nie ustawia `locked`:
+  // przeliczenie to jedyna zmiana slajdów, która nie oznacza ich jako poprawionych ręcznie.
+  applyRecompute(offerId, { create = [], remove = [], hide = [], order = [] }) {
+    this.mustGet('offers', offerId);
+    this.tx(() => {
+      for (const id of remove) this.db.prepare('DELETE FROM slides WHERE id = ? AND offer_id = ?').run(id, offerId);
+      for (const id of hide) this.db.prepare('UPDATE slides SET hidden = 1 WHERE id = ? AND offer_id = ?').run(id, offerId);
+      const createdIds = create.map((s) => this.insert('slides', { ...s, offer_id: offerId, position: 0, locked: false }, 'slide').id);
+      const setPos = this.db.prepare('UPDATE slides SET position = ? WHERE id = ? AND offer_id = ?');
+      order.forEach((x, i) => setPos.run(i, typeof x === 'string' ? x : createdIds[x.create], offerId));
+      this.touch('offers', offerId);
+    });
+    return this.getOffer(offerId);
+  }
+
   addSlide(offerId, slide) {
     this.mustGet('offers', offerId);
     const max = this.db.prepare('SELECT MAX(position) AS m FROM slides WHERE offer_id = ?').get(offerId).m;
@@ -474,6 +489,11 @@ export class Store {
       for (const t of seed.tiles || []) { this.upsert('tiles', t); counts.tiles++; }
       for (const sc of seed.scenarios || []) if (!this.get('scenarios', sc.id)) { this.upsert('scenarios', sc); counts.scenarios++; }
       for (const b of seed.solutionBlocks || []) if (!this.get('blocks', b.id)) { this.upsert('blocks', b); counts.blocks++; }
+      // Kolejność z seeda (np. kroki wdrożenia): generator rozstrzyga nią remisy.
+      for (const b of seed.blocks || []) {
+        const cur = b.data?.order != null && this.get('blocks', b.id);
+        if (cur && cur.data?.order == null) this.update('blocks', b.id, { data: { order: b.data.order } });
+      }
       for (const [id, add] of Object.entries(seed.tileTags || {})) {
         const table = id.includes('/') ? 'components' : 'blocks';
         const cur = this.get(table, id);
