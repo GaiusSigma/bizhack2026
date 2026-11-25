@@ -1,0 +1,35 @@
+{
+  "name": "n8n-nodes-offer-studio",
+  "version": "0.1.0",
+  "description": "Węzły n8n do Offer Studio: wszystkie operacje API (czytane na żywo z /api/openapi.json) i trigger na zmiany",
+  "private": true,
+  "license": "UNLICENSED",
+  "keywords": [
+    "n8n-community-node-package"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "test": "npm run build && node --test test/*.test.cjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/OfferStudioApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/OfferStudio/OfferStudio.node.js",
+      "dist/nodes/OfferStudio/OfferStudioTrigger.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "n8n-workflow": "2.50.0",
+    "typescript": "^5.7.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}

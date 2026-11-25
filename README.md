@@ -5,7 +5,7 @@ Jeden `docker-compose.yml` z czterema aplikacjami, przygotowany do wdrożenia pr
 | Usługa | Co to jest | Port w kontenerze | Domena w Coolify |
 |---|---|---|---|
 | `landing` | Landing page w Astro, zbudowany statycznie i serwowany przez nginx | 80 | tak |
-| `n8n` | n8n 2.50 (automatyzacje) | 5678 | tak |
+| `n8n` | n8n 2.50 (automatyzacje) z wbudowanymi węzłami Offer Studio ([opis](n8n/README.md)) | 5678 | tak |
 | `n8n-runners` | Zewnętrzne task runnery n8n (JS i Python w węzłach Code) | – | nie |
 | `postgres` | Baza danych n8n (Postgres 17) | 5432 | nie |
 | `figcraft` | FigCraft w wersji webowej (WebAssembly) serwowany przez nginx + proxy `/sync/` | 80 | tak |
@@ -18,6 +18,7 @@ Jeden `docker-compose.yml` z czterema aplikacjami, przygotowany do wdrożenia pr
 ├── docker-compose.local.yml    # nakładka lokalna: porty na localhost, n8n po http
 ├── .env.example                # zmienne do uruchomienia lokalnego
 ├── landing/                    # projekt Astro + Dockerfile (node -> nginx) + nginx.conf
+├── n8n/                        # obraz n8n + węzły Offer Studio (n8n-nodes-offer-studio)
 ├── offer-studio/               # dashboard ofert: Node + SQLite + render przez figcraft-cli
 └── figcraft/
     ├── web/                    # Dockerfile: oficjalny figcraft-web-<wersja>.zip + nginx
@@ -112,4 +113,9 @@ SHA-256 na wartości z pliku `SHA256SUMS.txt` nowego releasu.
 - Konfiguracja wzorowana na oficjalnym szablonie Coolify „n8n with PostgreSQL”: Postgres,
   zewnętrzne task runnery (`n8nio/runners`), `N8N_PROXY_HOPS=1` za proxy Coolify.
 - Webhooki są dostępne pod `https://<domena-n8n>/webhook/...`.
-- Aktualizacja: zmień tag `n8nio/n8n` i `n8nio/runners` (zawsze ta sama wersja) i zrób redeploy.
+- Obraz budowany z `n8n/Dockerfile` ma wbudowane węzły **Offer Studio** i **Offer Studio Trigger**.
+  Operacje czytają na żywo z `/api/openapi.json` ofertownika, więc nowe endpointy Offer Studio
+  pojawiają się w n8n bez przebudowy. Poświadczenie „Offer Studio API” n8n wypełnia sam
+  (adres i `SERVICE_PASSWORD_64_STUDIOAPI`). Szczegóły: [n8n/README.md](n8n/README.md).
+- Aktualizacja: zmień `N8N_VERSION` (argument builda usługi `n8n`) i tag `n8nio/runners` (zawsze ta
+  sama wersja) i zrób redeploy.
