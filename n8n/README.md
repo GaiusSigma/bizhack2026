@@ -121,9 +121,9 @@ which slides each reader gets in Offer Studio, not in n8n.
    Offer Studio nodes if n8n asks.
 3. Set `ANTHROPIC_API_KEY` in Offer Studio (lead analysis). Without a key the
    workflow still runs, always on defaults.
-4. Activate (publish) the workflow. The landing calls `${PUBLIC_N8N_URL}/webhook/offer`; in
-   `docker-compose.yml`, `PUBLIC_N8N_URL` = `SERVICE_URL_N8N`. Without it the landing generator shows
-   the sample offer.
+4. Activate (publish) the workflow. The landing posts every "Generate my offer" click to the webhook in
+   `PUBLIC_OFFER_WEBHOOK_URL` (default: the production webhook set in `landing/src/pages/index.astro`).
+   If the webhook does not answer with an offer, the landing shows the sample offer.
 
 Test from a terminal:
 

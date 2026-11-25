@@ -8,9 +8,9 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 ARG SITE_URL=http://localhost:8080
 ENV SITE_URL=${SITE_URL}
-# n8n base URL the generator calls (/webhook/offer). Empty = demo on sample data.
-ARG PUBLIC_N8N_URL=
-ENV PUBLIC_N8N_URL=${PUBLIC_N8N_URL}
+# Webhook the generator posts the form to. Empty = the default n8n webhook set in index.astro.
+ARG PUBLIC_OFFER_WEBHOOK_URL=
+ENV PUBLIC_OFFER_WEBHOOK_URL=${PUBLIC_OFFER_WEBHOOK_URL}
 RUN npm run build
 
 # --- runtime: nginx serves dist ---

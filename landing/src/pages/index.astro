@@ -448,8 +448,9 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   import { icons } from '../lib/icons';
   import { personas, roles, sources, buildSteps, flowNodes, voiceSample } from '../lib/data';
 
-  // n8n base URL (PUBLIC_N8N_URL at build time). Without it the generator shows the sample offer.
-  const N8N_URL = String(import.meta.env.PUBLIC_N8N_URL || '').replace(/\/$/, '');
+  // Every "Generate my offer" click posts the form here (override with PUBLIC_OFFER_WEBHOOK_URL at build time).
+  const OFFER_WEBHOOK_URL = String(import.meta.env.PUBLIC_OFFER_WEBHOOK_URL || 'https://n8n.bizhack.trygaius.com/webhook/dd7c4b67-f5f6-40f4-9325-1ca924d5ff78');
+  const N8N_ORIGIN = new URL(OFFER_WEBHOOK_URL).origin;
 
   const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel as string) as T | null;
   const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => Array.from(root.querySelectorAll<T>(sel as string)) as T[];
@@ -523,12 +524,18 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
   // What we send to n8n. Without text (email or role only) the workflow takes the "nothing known" path.
   const typedEmail = () => $<HTMLInputElement>('#email')?.value.trim() || '';
+  // The same shape for every tab, so the n8n workflow reads one format:
+  // { source, mode, email, persona, role, segment, text, page, sentAt }
   const leadPayload = () => {
-    if (state.mode === 'voice') return { source: 'landing-voice', text: voiceSample };
-    if (state.mode === 'role') return { source: 'landing-role', role: state.role };
-    if (typedEmail()) return { source: 'landing-email', email: typedEmail() };
+    const base = { mode: state.mode, email: null as string | null, persona: null as string | null, role: null as string | null,
+      segment: null as string | null, text: null as string | null, page: location.href, sentAt: new Date().toISOString() };
+    if (state.mode === 'voice') return { ...base, source: 'landing-voice', text: voiceSample };
+    if (state.mode === 'role') return { ...base, source: 'landing-role', role: state.role };
+    // Email tab: the typed email and the selected "Try it as" chip are both sent.
     const p = personas.find((x) => x.id === state.persona) ?? personas[0];
-    return { source: 'landing-sample', segment: p.segment, role: p.role, text: p.text };
+    const email = typedEmail() || null;
+    return { ...base, source: email ? 'landing-email' : 'landing-try-it-as', email, persona: p.id, role: p.role, segment: p.segment,
+      text: email ? null : p.text };
   };
 
   // Sample offer when n8n is not configured or does not answer.
@@ -563,7 +570,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
     const pdf = $<HTMLAnchorElement>('[data-offer-pdf]');
     if (pdf) {
-      if (live) pdf.href = `${N8N_URL}${live.pdfPath}`;
+      if (live) pdf.href = `${N8N_ORIGIN}${live.pdfPath}`;
       else pdf.removeAttribute('href');
       pdf.setAttribute('aria-disabled', String(!live));
     }
@@ -583,16 +590,16 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   };
 
   const requestOffer = async (): Promise<LeadResult | null> => {
-    if (!N8N_URL) return null;
     try {
-      const res = await fetch(`${N8N_URL}/webhook/offer`, {
+      const res = await fetch(OFFER_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(leadPayload()),
         signal: AbortSignal.timeout(120_000),
       });
       if (!res.ok) throw new Error(`n8n ${res.status}`);
-      const data = (await res.json()) as LeadResult;
+      // The webhook may answer with just an acknowledgement; only a full offer replaces the sample one.
+      const data = (await res.json().catch(() => null)) as LeadResult | null;
       return data?.offerId ? data : null;
     } catch (e) {
       console.warn('Offer Studio via n8n unavailable, showing the sample offer.', e);
