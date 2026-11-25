@@ -279,3 +279,12 @@ label.check { display: inline-flex; gap: 4px; align-items: center; font-size: 13
   .nav-sep { display: none; }
   #tabs button { padding: 6px 8px; }
 }
+
+/* tile guidance: picker grid, "fits when / not when", solution source */
+.tp-tiles.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.tp-guide { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.tp-guide-row { display: flex; flex-direction: column; gap: 3px; }
+.gk { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; border-radius: 4px; }
+.gk.ok { background: #e6f3e5; color: #2f7a3b; }
+.gk.no { background: #fbeeee; color: #9c3a40; }
+.hint.source { margin: 6px 0 2px; font-style: italic; }

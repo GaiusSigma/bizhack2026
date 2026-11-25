@@ -29,15 +29,16 @@ test('tiles: valid ids and categories, statuses as agreed', () => {
   }
 });
 
-test('solutions: 27 PRKW blocks, each pinned to >= 1 pain', () => {
-  assert.equal(solutionBlocks.length, 27);
+test('solutions: 27 PRKW rows plus 5 from product sentences, each pinned to >= 1 pain and with a source', () => {
+  assert.equal(solutionBlocks.length, 32);
   for (const b of solutionBlocks) {
     assert.equal(b.type, 'solution');
     assert.match(b.id, /^sol-[a-z0-9-]+$/);
     assert.ok(b.title && b.title.length <= 60, `${b.id}: tytuł`);
     assert.ok(b.body, `${b.id}: brak rozwiązania`);
     assert.ok(b.data.effect && b.data.problem, `${b.id}: brak korzyści albo problemu`);
-    assert.ok(b.tags.some((t) => t.startsWith('pain:')), `${b.id}: brak bólu`);
+    assert.ok(b.tags.some((t) => t.startsWith('pain:')), `${b.id}: no pain`);
+    assert.ok(b.data.source, `${b.id}: no source`);
   }
 });
 
@@ -101,4 +102,29 @@ test('scenarios: valid fill and when', () => {
     }
   }
   assert.deepEqual(seed.scenarios, scenarios);
+});
+
+const ACTIVE_SEGMENTS = tiles.filter((t) => t.category === 'segment' && t.status === 'active').map((t) => t.id);
+const fitsSegment = (b, seg) => {
+  const segs = b.tags.filter((t) => t.startsWith('segment:'));
+  return !segs.length || segs.includes(seg);
+};
+
+test('coverage: every pain has 2 to 4 solutions in every active segment', () => {
+  const problems = [];
+  for (const p of tiles.filter((t) => t.category === 'pain')) {
+    for (const seg of ACTIVE_SEGMENTS) {
+      const n = solutionBlocks.filter((b) => b.tags.includes(p.id) && fitsSegment(b, seg)).length;
+      if (n < 2 || n > 4) problems.push(`${p.id} x ${seg}: ${n}`);
+    }
+  }
+  assert.deepEqual(problems, []);
+});
+
+test('tiles: every tile says when to pick it, active tiles also when not to and what they are', () => {
+  for (const t of tiles) {
+    assert.ok(t.data.pick_when?.length > 20, `${t.id}: pick_when`);
+    assert.ok(t.data.avoid_when?.length > 10, `${t.id}: avoid_when`);
+    if (t.status === 'active') assert.ok(t.description.length > 40, `${t.id}: description too short`);
+  }
 });

@@ -2,7 +2,7 @@
 // and the template (seed/gaius-template.figcraft) is the same file with {{…}} fields in its layer names.
 // Same format as an /api/export dump; the server adds the template file itself.
 import { scenarios } from './scenarios.js';
-import { solutionBlocks, tileTags, tiles } from './tiles.js';
+import { solutionBlocks, tileTags, tileUpgrade, tiles } from './tiles.js';
 
 const ts = '2026-11-25T00:00:00.000Z';
 const tags = ['vault'];
@@ -217,6 +217,7 @@ export default {
   scenarios,
   tileTags,
   solutionBlocks,
+  tileUpgrade,
   templates: [],
   offers: [{ id: OFFER, name: 'Gaius Vault – base offer', template_id: TEMPLATE.id, data: { client: '', price: '------' }, created_at: ts, updated_at: ts }],
   slides,

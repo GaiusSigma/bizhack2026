@@ -25,6 +25,16 @@ export const segmentOk = (tags, sel) => {
 export const painsWithContent = (sel) => sel.pains.filter((p) => state.blocks.some((b) =>
   COVERAGE_TYPES.includes(b.type) && b.tags.includes(p) && segmentOk(b.tags, sel)));
 
+// Under each category: when the selected tiles fit and when they don't (the same guidance the AI model reads).
+const selectedGuide = (chosen) => {
+  const withGuide = chosen.filter((t) => t.data?.pick_when || t.data?.avoid_when);
+  if (!withGuide.length) return null;
+  return h('div', { class: 'tp-guide' }, withGuide.map((t) => h('div', { class: 'tp-guide-row' },
+    h('b', {}, t.label),
+    t.data?.pick_when ? h('div', {}, h('span', { class: 'gk ok' }, 'Fits when'), ' ', t.data.pick_when) : null,
+    t.data?.avoid_when ? h('div', {}, h('span', { class: 'gk no' }, 'Not when'), ' ', t.data.avoid_when) : null)));
+};
+
 // Tile picker. `selected` = list of ids; onChange gets the new list.
 export function tilePicker(selected, onChange) {
   let ids = cleanSelection(selected, state.tiles);
@@ -37,13 +47,13 @@ export function tilePicker(selected, onChange) {
       return h('section', { class: 'tp-cat' },
         h('div', { class: 'tp-head' }, h('h3', {}, title),
           h('span', { class: 'hint' }, multi ? `pick 1 to ${MAX_PAINS} · ${count} selected` : 'pick one')),
-        h('div', { class: `tp-tiles ${multi ? 'multi' : ''}` }, tiles.map((t) => {
+        h('div', { class: 'tp-tiles grid' }, tiles.map((t) => {
           const on = ids.includes(t.id);
           const soon = t.status === 'soon';
           return h('button', {
             class: `tile ${on ? 'on' : ''} ${soon ? 'soon' : ''}`,
             disabled: soon,
-            title: [t.description, t.quotes?.[0] && `„${t.quotes[0]}”`].filter(Boolean).join('\n'),
+            title: [t.data?.pick_when && `Pick when: ${t.data.pick_when}`, t.quotes?.[0] && `"${t.quotes[0]}"`].filter(Boolean).join('\n\n'),
             onclick: () => {
               if (multi) {
                 if (on) ids = ids.filter((x) => x !== t.id);
@@ -55,9 +65,10 @@ export function tilePicker(selected, onChange) {
             },
           },
           h('span', { class: 'tile-label' }, t.label),
-          multi && t.description ? h('span', { class: 'tile-desc' }, t.description) : null,
+          !soon && t.description ? h('span', { class: 'tile-desc' }, t.description) : null,
           soon ? h('span', { class: 'soon-tag' }, 'coming soon') : null);
-        })));
+        })),
+        selectedGuide(tiles.filter((t) => ids.includes(t.id))));
     }));
   };
   render();
