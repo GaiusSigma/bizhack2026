@@ -1,15 +1,15 @@
 // Warstwa danych: jeden plik SQLite (node:sqlite, bez natywnych zależności).
 //
 // Model:
-//   blocks   – jednostki wiedzy (use case, problem, krok wdrożenia, wiersz porównania...).
-//              `type` i `tags` są dowolnymi stringami, a pola specyficzne dla typu siedzą w `data` (JSON).
-//   layouts  – szablony slajdów (Handlebars + CSS). Zmiana wyglądu oferty = edycja layoutu, bez deployu.
-//   offers   – oferta: nazwa + zmienne (`data`, np. klient, cena).
-//   slides   – uporządkowane slajdy oferty: layout + dane slajdu + wybrane bloki (lista id albo zapytanie).
-//   assets   – obrazki (BLOB), dostępne pod /assets/<id>.
-//   settings – m.in. globalny CSS motywu (`theme_css`).
+//   blocks    – jednostki wiedzy (use case, problem, krok wdrożenia, wiersz porównania...).
+//               `type` i `tags` są dowolnymi stringami, a pola specyficzne dla typu siedzą w `data` (JSON).
+//   templates – szablony prezentacji: pliki .figcraft (BLOB). Każda ramka najwyższego poziomu = slajd szablonu.
+//   offers    – oferta: nazwa, szablon i zmienne (`data`, np. klient, cena).
+//   slides    – uporządkowane slajdy oferty: slajd szablonu (`frame`) + treść + bloki (lista id albo zapytanie).
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes } from 'node:crypto';
+
+const SCHEMA_VERSION = 2;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS blocks (
@@ -24,12 +24,10 @@ CREATE TABLE IF NOT EXISTS blocks (
 );
 CREATE INDEX IF NOT EXISTS blocks_type ON blocks(type);
 
-CREATE TABLE IF NOT EXISTS layouts (
+CREATE TABLE IF NOT EXISTS templates (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  description TEXT NOT NULL DEFAULT '',
-  template TEXT NOT NULL DEFAULT '',
-  css TEXT NOT NULL DEFAULT '',
+  file BLOB NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -37,6 +35,7 @@ CREATE TABLE IF NOT EXISTS layouts (
 CREATE TABLE IF NOT EXISTS offers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  template_id TEXT,
   data TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -46,7 +45,7 @@ CREATE TABLE IF NOT EXISTS slides (
   id TEXT PRIMARY KEY,
   offer_id TEXT NOT NULL REFERENCES offers(id) ON DELETE CASCADE,
   position INTEGER NOT NULL DEFAULT 0,
-  layout_id TEXT NOT NULL,
+  frame TEXT NOT NULL,
   data TEXT NOT NULL DEFAULT '{}',
   block_ids TEXT NOT NULL DEFAULT '[]',
   query TEXT,
@@ -55,19 +54,6 @@ CREATE TABLE IF NOT EXISTS slides (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS slides_offer ON slides(offer_id, position);
-
-CREATE TABLE IF NOT EXISTS assets (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL DEFAULT '',
-  mime TEXT NOT NULL,
-  data BLOB NOT NULL,
-  created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
 `;
 
 // Opis tabel: które kolumny są JSON-em, które wolno ustawiać przez API, domyślne sortowanie.
@@ -77,18 +63,19 @@ export const TABLES = {
     json: { data: {}, tags: [] },
     order: 'type, title',
   },
-  layouts: {
-    fields: ['name', 'description', 'template', 'css'],
+  templates: {
+    fields: ['name'],
     json: {},
     order: 'name',
+    columns: 'id, name, length(file) AS size, created_at, updated_at',
   },
   offers: {
-    fields: ['name', 'data'],
+    fields: ['name', 'template_id', 'data'],
     json: { data: {} },
     order: 'updated_at DESC',
   },
   slides: {
-    fields: ['offer_id', 'position', 'layout_id', 'data', 'block_ids', 'query', 'hidden'],
+    fields: ['offer_id', 'position', 'frame', 'data', 'block_ids', 'query', 'hidden'],
     json: { data: {}, block_ids: [], query: null },
     bool: ['hidden'],
     order: 'offer_id, position',
@@ -124,8 +111,31 @@ const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
 export function openDb(path) {
   const db = new DatabaseSync(path);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+  const migrated = migrate(db);
   db.exec(SCHEMA);
-  return new Store(db);
+  db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  const store = new Store(db);
+  store.migratedFromV1 = migrated;
+  return store;
+}
+
+// v1 (layouty HTML) -> v2 (szablony FigCraft). Bloki i oferty zostają, slajdy dostają kolumnę `frame`.
+function migrate(db) {
+  const version = db.prepare('PRAGMA user_version').get().user_version;
+  const has = (t) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t);
+  if (version >= SCHEMA_VERSION || !has('slides')) return false;
+  const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
+  db.exec('BEGIN');
+  try {
+    if (cols('slides').includes('layout_id')) db.exec('ALTER TABLE slides RENAME COLUMN layout_id TO frame');
+    if (has('offers') && !cols('offers').includes('template_id')) db.exec('ALTER TABLE offers ADD COLUMN template_id TEXT');
+    for (const t of ['layouts', 'assets', 'settings']) if (has(t)) db.exec(`DROP TABLE ${t}`);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  return true;
 }
 
 export class Store {
@@ -159,12 +169,14 @@ export class Store {
   }
 
   list(table, where = '', params = {}) {
-    const sql = `SELECT * FROM ${table} ${where ? `WHERE ${where}` : ''} ORDER BY ${TABLES[table].order}`;
+    const cols = TABLES[table].columns || '*';
+    const sql = `SELECT ${cols} FROM ${table} ${where ? `WHERE ${where}` : ''} ORDER BY ${TABLES[table].order}`;
     return this.db.prepare(sql).all(params).map((r) => this.decode(table, r));
   }
 
   get(table, id) {
-    return this.decode(table, this.db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id));
+    const cols = TABLES[table].columns || '*';
+    return this.decode(table, this.db.prepare(`SELECT ${cols} FROM ${table} WHERE id = ?`).get(id));
   }
 
   mustGet(table, id) {
@@ -245,6 +257,25 @@ export class Store {
     return { types: types.map((r) => ({ ...r })), tags: tags.map((r) => ({ ...r })) };
   }
 
+  // ------------------------------------------------------------ szablony
+  templateFile(id) {
+    const r = this.db.prepare('SELECT file, updated_at FROM templates WHERE id = ?').get(id);
+    if (!r) throw new HttpError(404, `templates/${id}: nie ma takiego szablonu`);
+    return { file: Buffer.from(r.file), updated_at: r.updated_at };
+  }
+
+  putTemplate({ id, name, file, created_at, updated_at }) {
+    if (!ID_RE.test(id)) throw new HttpError(400, `Niepoprawne id szablonu "${id}"`);
+    const ts = now();
+    this.db
+      .prepare(
+        `INSERT INTO templates (id, name, file, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET name = excluded.name, file = excluded.file, updated_at = excluded.updated_at`,
+      )
+      .run(id, name || id, file, created_at || ts, updated_at || ts);
+    return this.get('templates', id);
+  }
+
   // ------------------------------------------------------------ oferty i slajdy
   getOffer(id) {
     const offer = this.mustGet('offers', id);
@@ -282,7 +313,7 @@ export class Store {
   duplicateOffer(id, name) {
     const src = this.getOffer(id);
     return this.tx(() => {
-      const copy = this.insert('offers', { name: name || `${src.name} (kopia)`, data: src.data }, src.name);
+      const copy = this.insert('offers', { name: name || `${src.name} (kopia)`, template_id: src.template_id, data: src.data }, src.name);
       for (const s of src.slides) {
         const { id: _i, offer_id: _o, created_at: _c, updated_at: _u, ...rest } = s;
         this.insert('slides', { ...rest, offer_id: copy.id }, 'slide');
@@ -295,97 +326,53 @@ export class Store {
     this.db.prepare(`UPDATE ${table} SET updated_at = ? WHERE id = ?`).run(now(), id);
   }
 
-  // ------------------------------------------------------------ assety i ustawienia
-  listAssets() {
-    return this.db
-      .prepare('SELECT id, name, mime, length(data) AS size, created_at FROM assets ORDER BY id')
-      .all()
-      .map((r) => ({ ...r }));
-  }
-
-  getAsset(id) {
-    return this.db.prepare('SELECT * FROM assets WHERE id = ?').get(id);
-  }
-
-  putAsset({ id, name, mime, data, created_at }) {
-    if (!ID_RE.test(id)) throw new HttpError(400, `Niepoprawne id assetu "${id}"`);
-    this.db
-      .prepare(
-        `INSERT INTO assets (id, name, mime, data, created_at) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET name = excluded.name, mime = excluded.mime, data = excluded.data`,
-      )
-      .run(id, name || id, mime, data, created_at || now());
-    return this.listAssets().find((a) => a.id === id);
-  }
-
-  removeAsset(id) {
-    const r = this.db.prepare('DELETE FROM assets WHERE id = ?').run(id);
-    if (!r.changes) throw new HttpError(404, `assets/${id}: nie ma takiego pliku`);
-  }
-
-  getSetting(key, def = '') {
-    const r = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
-    return r ? r.value : def;
-  }
-
-  setSetting(key, value) {
-    this.db
-      .prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-      .run(key, String(value));
-  }
-
   isEmpty() {
-    return !this.db.prepare('SELECT 1 FROM layouts LIMIT 1').get() && !this.db.prepare('SELECT 1 FROM blocks LIMIT 1').get();
+    return !this.db.prepare('SELECT 1 FROM templates LIMIT 1').get() && !this.db.prepare('SELECT 1 FROM blocks LIMIT 1').get();
   }
 
   // ------------------------------------------------------------ eksport / import
   exportAll() {
-    const raw = (t) => this.list(t);
-    const settings = Object.fromEntries(
-      this.db.prepare('SELECT key, value FROM settings ORDER BY key').all().map((r) => [r.key, r.value]),
-    );
-    const assets = this.db
-      .prepare('SELECT * FROM assets ORDER BY id')
+    const templates = this.db
+      .prepare('SELECT * FROM templates ORDER BY id')
       .all()
-      .map((a) => ({ id: a.id, name: a.name, mime: a.mime, created_at: a.created_at, data_base64: Buffer.from(a.data).toString('base64') }));
+      .map((t) => ({ id: t.id, name: t.name, created_at: t.created_at, updated_at: t.updated_at, file_base64: Buffer.from(t.file).toString('base64') }));
     return {
       format: 'offer-studio',
-      version: 1,
+      version: 2,
       exported_at: now(),
-      settings,
-      blocks: raw('blocks'),
-      layouts: raw('layouts'),
-      offers: raw('offers'),
-      slides: raw('slides'),
-      assets,
+      blocks: this.list('blocks'),
+      templates,
+      offers: this.list('offers'),
+      slides: this.list('slides'),
     };
   }
 
   // mode = 'merge' (wstaw albo nadpisz rekordy o tych samych id, reszty nie rusza)
   //      | 'replace' (wyczyść wszystko i wczytaj tylko to, co w pliku)
+  // Eksport v1 (layouty HTML) wczytuje bloki i oferty; layouty, obrazki i motyw pomija.
   importAll(dump, mode = 'merge') {
     if (!dump || dump.format !== 'offer-studio') throw new HttpError(400, 'To nie jest eksport offer-studio (brak format: "offer-studio")');
-    if (dump.version !== 1) throw new HttpError(400, `Nieobsługiwana wersja eksportu: ${dump.version}`);
+    if (![1, 2].includes(dump.version)) throw new HttpError(400, `Nieobsługiwana wersja eksportu: ${dump.version}`);
     if (!['merge', 'replace'].includes(mode)) throw new HttpError(400, 'mode: merge albo replace');
+    const slides = (dump.slides || []).map((s) => (dump.version === 1 ? { ...s, frame: s.layout_id } : s));
     const counts = {};
     this.tx(() => {
       if (mode === 'replace') {
-        for (const t of ['slides', 'offers', 'blocks', 'layouts', 'assets', 'settings']) this.db.exec(`DELETE FROM ${t}`);
+        for (const t of ['slides', 'offers', 'blocks', 'templates']) this.db.exec(`DELETE FROM ${t}`);
+      }
+      counts.templates = 0;
+      for (const t of dump.templates || []) {
+        this.putTemplate({ ...t, file: Buffer.from(t.file_base64, 'base64') });
+        counts.templates++;
       }
       // Kolejność ma znaczenie: slajdy wskazują na oferty.
-      for (const table of ['blocks', 'layouts', 'offers', 'slides']) {
+      for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides]]) {
         counts[table] = 0;
-        for (const item of dump[table] || []) {
+        for (const item of items || []) {
           this.upsert(table, item);
           counts[table]++;
         }
       }
-      counts.assets = 0;
-      for (const a of dump.assets || []) {
-        this.putAsset({ id: a.id, name: a.name, mime: a.mime, created_at: a.created_at, data: Buffer.from(a.data_base64, 'base64') });
-        counts.assets++;
-      }
-      for (const [k, v] of Object.entries(dump.settings || {})) this.setSetting(k, v);
     });
     return counts;
   }
