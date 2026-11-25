@@ -664,7 +664,7 @@ export class Store {
       if (!cur) { this.upsert('tiles', t); counts.tiles++; continue; }
       const patch = {};
       const data = {};
-      for (const k of ['pick_when', 'avoid_when']) if (!cur.data?.[k] && t.data?.[k]) data[k] = t.data[k];
+      for (const k of ['pick_when', 'avoid_when', 'writing_brief']) if (!cur.data?.[k] && t.data?.[k]) data[k] = t.data[k];
       if (Object.keys(data).length) patch.data = data;
       if (prev[t.id] != null && cur.description === prev[t.id] && t.description !== cur.description) patch.description = t.description;
       if (Object.keys(patch).length) this.update('tiles', t.id, patch);

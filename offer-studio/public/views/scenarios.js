@@ -63,6 +63,7 @@ export function viewScenarios(selectedId) {
           h('div', { class: 'hint' }, describeFill(fill)),
           describeWhen(st.when) ? h('div', { class: 'hint' }, describeWhen(st.when)) : null,
           st.answers?.length ? h('div', { class: 'hint' }, `Answers: ${st.answers.join(', ')}`) : null,
+          Object.keys({ ...st.data_by_role, ...st.data_by_role_product }).length ? h('div', { class: 'hint' }, `Own copy for: ${Object.keys({ ...st.data_by_role, ...st.data_by_role_product }).map(tileLabel).join(', ')}`) : null,
           st.draft?.length ? h('div', { class: 'hint warn' }, `Draft copy for: ${st.draft.map(tileLabel).join(', ')}`) : null),
         h('div', { class: 'stc-acts' },
           h('button', { class: 'icon', title: 'Move up', onclick: () => move(i, -1) }, '↑'),

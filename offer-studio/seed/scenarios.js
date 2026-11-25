@@ -5,8 +5,12 @@
 // Step = a slide from the library (`frame`) + default copy (`data`) + a fill rule (`fill`).
 //   fill.kind: none (copy only) | pains | blocks (blocks of `type`, from `min` to `max`) | picks (cards of a set).
 //   data_by_product: copy overrides per product (the default copy is the Vault version).
+//   data_by_role: copy overrides per role tile, for the reader's perspective (the default copy is written for
+//     the Champion, who uses the tool and wins over the board); data_by_role_product: per role and product.
+//     Same slides for every role: only the copy changes.
 //   write: the fields a model writes for the client, each with what to write (`hint`) and a length limit
 //     (`max` characters). A list field (a slide's repeated cards) has `min`/`max` items and `columns`.
+//     `hint_by_role` adds what changes in that field for a role (the model also gets the role's writing brief).
 //     Fields without `write` stay as in `data` (e.g. the security features, which come from product material).
 //   optional: the slide starts hidden and is shown only once a model writes it (e.g. the comparison, which
 //     only makes sense when the client mentioned another tool).
@@ -15,6 +19,8 @@
 
 const SAAS = 'product:saas';
 const ONPREM = 'product:on-prem';
+const BOARD = 'role:board';
+const CHAMPION = 'role:champion';
 
 // "label | value" lines, the format of list fields (#item:<field> cards).
 const lines = (rows) => rows.map((r) => r.join(' | ')).join('\n');
@@ -32,9 +38,24 @@ const steps = [
       [SAAS]: { lead: 'Legal AI for research and document work: legal sources, your templates and ready drafts in one tool.' },
       [ONPREM]: { lead: 'Private Legal AI on your own infrastructure: documents never leave the organisation.' },
     },
+    data_by_role: {
+      [BOARD]: { lead: 'A private Legal AI that gives your lawyers back hours of research and drafting, with client data under your control.' },
+    },
+    data_by_role_product: {
+      [BOARD]: {
+        [SAAS]: { lead: 'Legal AI that gives your lawyers back hours of research and drafting, ready to test in a short pilot.' },
+        [ONPREM]: { lead: 'Private Legal AI on your own infrastructure: faster legal work, and documents never leave the organisation.' },
+      },
+    },
     write: {
       title: { hint: 'A title that fits what the client asked about or discussed on the call, in their terms. 3–8 words, at most two lines (use \\n).', max: 60 },
-      lead: { hint: 'One sentence: what the product is for this client, in the language of their field. Factual, no sales adjectives.', max: 150 },
+      lead: {
+        hint: 'One sentence: what the product is for this client, in the language of their field. Factual, no sales adjectives.', max: 150,
+        hint_by_role: {
+          [BOARD]: 'what it changes for the organisation (time, risk, control of client data), not how it works.',
+          [CHAMPION]: 'what it changes in the team’s daily work (research, drafting, review).',
+        },
+      },
     },
     fill: { kind: 'none' },
   },
@@ -48,8 +69,17 @@ const steps = [
         ['Contract review', 'Contracts need fast, consistent review against the team’s standards.'],
       ]),
     },
+    data_by_role: {
+      [BOARD]: { lead: 'Your lawyers spend hours on research and first drafts. The question is how to win that time back without putting client data or quality at risk.' },
+    },
     write: {
-      lead: { hint: 'Two sentences from the transcript: who the organisation is, what it does, how big it is and who will really use the tool (team, number of people, roles).', max: 240 },
+      lead: {
+        hint: 'Two sentences from the transcript: who the organisation is, what it does, how big it is and who will really use the tool (team, number of people, roles).', max: 240,
+        hint_by_role: {
+          [BOARD]: 'end on the cost of the current way of working (time, risk, missed work) as the client described it.',
+          [CHAMPION]: 'end on what slows the team down day to day, as the client described it.',
+        },
+      },
       areas: {
         hint: 'The areas of work the client wants help with, as they described them. 3 or 4 (a 4th only if the call really had one).', min: 3, max: 4,
         columns: {
@@ -89,10 +119,29 @@ const steps = [
         ['Will people actually use it?', 'Each lawyer gets a short onboarding on their own matters, and we review usage together after two weeks.'],
       ]),
     },
+    data_by_role: {
+      [BOARD]: {
+        lead: 'We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.',
+        concerns: lines([
+          ['Is it worth the cost?', 'During the pilot we measure time saved on real matters and review the result with you before any wider rollout.'],
+          ['Is the AI’s output reliable?', 'Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.'],
+        ]),
+      },
+    },
     write: {
-      lead: { hint: 'One sentence: how we work with the team during the rollout. Calm tone, no scaremongering.', max: 140 },
+      lead: {
+        hint: 'One sentence: how we work with the team during the rollout. Calm tone, no scaremongering.', max: 140,
+        hint_by_role: {
+          [BOARD]: 'that adoption is taken care of without a burden on the team.',
+          [CHAMPION]: 'how the team gets started and who helps them.',
+        },
+      },
       concerns: {
         hint: 'Concerns the client raised on the call, each with how we answer it. 1 or 2.', min: 1, max: 2,
+        hint_by_role: {
+          [BOARD]: 'concerns about cost, return, risk and the decision; answers say how the pilot will show it.',
+          [CHAMPION]: 'concerns about daily use and the team’s trust in the answers.',
+        },
         columns: {
           title: { hint: 'The concern, named neutrally, 3–8 words.', max: 50 },
           value: { hint: 'How we answer it: a concrete action or feature.', max: 150 },
@@ -191,12 +240,45 @@ const steps = [
         ]),
       },
     },
+    data_by_role: {
+      [BOARD]: {
+        lead: 'A few decisions that give the pilot a clear owner and a clear basis for your decision.',
+        steps: lines([
+          ['Name a pilot owner', 'So one person runs the pilot on the team and reports the result to you.'],
+          ['Agree on success criteria', 'So the pilot ends with a clear answer: time saved, quality, adoption.'],
+          ['Involve your DPO', 'To agree on the data processing rules and have the data processing agreement ready.'],
+          ['Involve IT', 'To check server and network access, so the pilot can start on day one.'],
+        ]),
+      },
+    },
+    data_by_role_product: {
+      [BOARD]: {
+        [SAAS]: {
+          steps: lines([
+            ['Name a pilot owner', 'So one person runs the pilot on the team and reports the result to you.'],
+            ['Agree on success criteria', 'So the pilot ends with a clear answer: time saved, quality, adoption.'],
+            ['Involve your DPO', 'To agree on the data processing rules and have the data processing agreement ready.'],
+            ['Involve IT', 'To check accounts and sign-in, so the pilot can start on day one.'],
+          ]),
+        },
+      },
+    },
     draft: [SAAS],
     write: {
       title: { hint: 'Recommended steps before the next stage: before the pilot starts or before signing the contract, whichever is next for this client. At most two lines (use \\n).', max: 60 },
-      lead: { hint: 'One sentence: a few conversations after which the client goes into the pilot or the contract well prepared.', max: 120 },
+      lead: {
+        hint: 'One sentence: a few conversations after which the client goes into the pilot or the contract well prepared.', max: 120,
+        hint_by_role: {
+          [BOARD]: 'decisions the board makes so the pilot gives a clear basis for the decision.',
+          [CHAMPION]: 'conversations the champion leads to get the team and the board ready.',
+        },
+      },
       steps: {
         hint: 'Steps the client should take first: talk to the DPO, to IT, a short meeting with us, talk to the board. Leave out a step the client already did (e.g. a signed agreement). A 5th step only for something the client itself raised on the call.', min: 3, max: 5,
+        hint_by_role: {
+          [BOARD]: 'the board does not talk to itself: name a pilot owner and agree on success criteria instead of "Talk to the board".',
+          [CHAMPION]: 'keep "Talk to the board": the champion needs the decision makers on board.',
+        },
         columns: {
           title: { hint: 'The step, 2–5 words.', max: 35 },
           value: { hint: 'One sentence: why, starting with "To" or "So".', max: 120 },
@@ -239,8 +321,17 @@ const steps = [
       lead: 'Next step: a short call to plan the pilot with your team.',
       calendar: 'Book a call: gaius-lex.pl',
     },
+    data_by_role: {
+      [BOARD]: { lead: 'Next step: a short call to agree on the pilot scope and how you will judge the result.' },
+    },
     write: {
-      lead: { hint: 'One or two sentences: the concrete next step, e.g. a meeting with IT or the start of the pilot, with the date if one came up on the call.', max: 150 },
+      lead: {
+        hint: 'One or two sentences: the concrete next step, e.g. a meeting with IT or the start of the pilot, with the date if one came up on the call.', max: 150,
+        hint_by_role: {
+          [BOARD]: 'a decision or a date, not a demo.',
+          [CHAMPION]: 'what the champion does next with their team.',
+        },
+      },
     },
     fill: { kind: 'blocks', type: 'person', min: 1, max: 1 },
   },

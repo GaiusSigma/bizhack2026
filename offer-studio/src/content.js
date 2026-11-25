@@ -20,7 +20,13 @@ const clean = (v) => String(v ?? '').replace(/\s*\|\s*/g, ' / ').replace(/\s*\n\
 export const toLines = (items, columns) => items.map((it) => Object.keys(columns).map((k) => clean(it[k])).join(' | ')).join('\n');
 
 // Everything a model needs to write an offer's copy: per slide (in offer order) the fields it may write.
-export function contentContext(offer, scenario) {
+// `tiles` (id -> tile) names the reader: the role tile's label, description and writing brief.
+export function contentContext(offer, scenario, { tiles = {} } = {}) {
+  const role = (offer.data?.tiles || []).find((t) => String(t).startsWith('role:')) || '';
+  const roleTile = tiles[role];
+  const roleLabel = roleTile?.label || role.slice(5).replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  // a field's hint for this reader: the general hint plus what changes for the role
+  const hintFor = (w) => [w.hint || '', w.hint_by_role?.[role] ? `For the ${roleLabel}: ${w.hint_by_role[role]}` : ''].filter(Boolean).join(' ');
   const steps = Object.fromEntries((scenario?.steps || []).map((s) => [s.key, s]));
   const slides = [];
   for (const slide of [...offer.slides].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))) {
@@ -29,15 +35,16 @@ export function contentContext(offer, scenario) {
     const fields = {};
     for (const [key, w] of Object.entries(step.write)) {
       fields[key] = w.columns
-        ? { kind: 'list', hint: w.hint || '', min: w.min ?? 0, max: w.max ?? 6, columns: w.columns, current: parseLines(slide.data?.[key], w.columns) }
-        : { kind: 'text', hint: w.hint || '', max: w.max ?? 200, current: String(slide.data?.[key] ?? '') };
+        ? { kind: 'list', hint: hintFor(w), min: w.min ?? 0, max: w.max ?? 6, columns: w.columns, current: parseLines(slide.data?.[key], w.columns) }
+        : { kind: 'text', hint: hintFor(w), max: w.max ?? 200, current: String(slide.data?.[key] ?? '') };
     }
     slides.push({
       step: step.key, slide_id: slide.id, label: step.label || step.key, hidden: !!slide.hidden,
       optional: !!step.optional, ...(slide.origin?.written_by ? { written_by: slide.origin.written_by } : {}), fields,
     });
   }
-  return { offer_id: offer.id, client: offer.data?.client || '', tiles: offer.data?.tiles || [], slides };
+  const reader = role ? { role, label: roleLabel, description: roleTile?.description || '', brief: roleTile?.data?.writing_brief || '' } : null;
+  return { offer_id: offer.id, client: offer.data?.client || '', tiles: offer.data?.tiles || [], reader, slides };
 }
 
 // A model's answer: { slides: { <step>: { <field>: text | [{title, value…}], hide?: true } } }.
