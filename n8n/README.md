@@ -59,6 +59,10 @@ Offer Studio.
 - **Offer for a client**: Offer Studio (Offers / Duplicate an offer, `id` = `gaius-vault-base`) →
   Offer Studio (Offers / Update an offer, `data` = `{"client": "ACME Ltd.", "price": "12,000"}`) →
   Offer Studio (Offers / Download the offer PDF) → Gmail with the `data` attachment.
+- **Offer from tiles after a call**: transcript (e.g. Fireflies) → an AI agent picks tiles from the list
+  (Tiles / List tiles) → Offer Studio (Tiles / Generate an offer from tiles: `client` = "ACME S.A.",
+  `tiles` = `["role:board", "segment:in-house", "product:vault", "pain:confidentiality", "pain:shadow-ai"]`) →
+  Offer Studio (Offers / Download the offer PDF). The response includes `coverage`: which pains the offer solves.
 - **Change notification**: Offer Studio Trigger (Changes In: Offers) → Slack.
 
 The trigger groups changes to the same record within the "Debounce (ms)" window (3 s by default), because
