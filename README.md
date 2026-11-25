@@ -10,8 +10,7 @@ Jeden `docker-compose.yml` z czterema aplikacjami, przygotowany do wdrożenia pr
 | `postgres` | Baza danych n8n (Postgres 17) | 5432 | nie |
 | `figcraft` | FigCraft w wersji webowej (WebAssembly) serwowany przez nginx + proxy `/sync/` | 80 | tak |
 | `figcraft-server` | Serwer współpracy FigCraft (udostępnianie plików, linki, lista zespołu) | 47900 | nie, dostępny przez `figcraft` pod `/sync/` |
-| `offer-studio` | Baza wiedzy + składanie ofert ze slajdów, podgląd na żywo, PDF ([opis](offer-studio/README.md)) | 3000 | tak |
-| `gotenberg` | Chromium jako usługa: HTML → PDF dla Offer Studio | 3000 | nie |
+| `offer-studio` | Baza wiedzy + składanie ofert; slajdy, podgląd i PDF renderuje FigCraft ([opis](offer-studio/README.md)) | 3000 | tak |
 
 ```
 .
@@ -19,7 +18,7 @@ Jeden `docker-compose.yml` z czterema aplikacjami, przygotowany do wdrożenia pr
 ├── docker-compose.local.yml    # nakładka lokalna: porty na localhost, n8n po http
 ├── .env.example                # zmienne do uruchomienia lokalnego
 ├── landing/                    # projekt Astro + Dockerfile (node -> nginx) + nginx.conf
-├── offer-studio/               # dashboard ofert: Node + SQLite + szablony slajdów
+├── offer-studio/               # dashboard ofert: Node + SQLite + render przez figcraft-cli
 └── figcraft/
     ├── web/                    # Dockerfile: oficjalny figcraft-web-<wersja>.zip + nginx
     └── server/                 # Dockerfile: oficjalna binarka figcraft-server + entrypoint

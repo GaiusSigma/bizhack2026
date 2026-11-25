@@ -1,5 +1,5 @@
 // Offer Studio: minimalistyczny frontend bez buildu. Wszystko idzie przez to samo REST API,
-// z którego mogą korzystać skrypty i n8n (patrz /static/api.html).
+// z którego mogą korzystać skrypty i n8n (patrz /static/api.html). Slajdy renderuje FigCraft.
 
 // ------------------------------------------------------------------ narzędzia
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -70,10 +70,9 @@ function autosize(t) {
 }
 
 // Edytor pól klucz → wartość (dla `data` bloków, slajdów i ofert).
-// `hints` to klucze, które warto pokazać od razu (np. wyczytane z szablonu layoutu).
+// `hints` to klucze, które warto pokazać od razu (np. pola wyczytane z szablonu).
 function kvEditor(obj, hints, onChange) {
   const rows = [];
-  const wrap = h('div', { class: 'kv' });
   const types = {};
   const collect = () => {
     const out = {};
@@ -92,6 +91,7 @@ function kvEditor(obj, hints, onChange) {
     return out;
   };
   const fire = () => onChange(collect());
+  const list = h('div', { class: 'kv' });
   const addRow = (k = '', v = '') => {
     if (v !== null && typeof v === 'object') { types[k] = 'json'; v = JSON.stringify(v, null, 2); }
     else if (typeof v === 'number') types[k] = 'number';
@@ -106,13 +106,12 @@ function kvEditor(obj, hints, onChange) {
     list.append(row);
     return r;
   };
-  const list = h('div', { class: 'kv' });
   for (const [k, v] of Object.entries(obj)) addRow(k, v);
   for (const k of hints || []) if (!(k in obj)) addRow(k, '');
-  wrap.append(list, h('div', {}, h('button', { class: 'btn sm', onclick: () => addRow().k.focus() }, '+ pole')));
-  return wrap;
+  return h('div', { class: 'kv' }, list, h('div', {}, h('button', { class: 'btn sm', onclick: () => addRow().k.focus() }, '+ pole')));
 }
 
+let onModalClose = null;
 function modal(content) {
   const m = $('#modal');
   m.replaceChildren(h('div', { class: 'dlg' }, content));
@@ -121,29 +120,44 @@ function modal(content) {
   m.onclick = (e) => { if (e.target === m) close(); };
   return close;
 }
-let onModalClose = null;
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#modal').hidden) $('#modal').click(); });
 
+async function download(path, fallbackName) {
+  toast('Generuję…');
+  try {
+    const res = await fetch(`/api${path}`);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || fallbackName;
+    const url = URL.createObjectURL(await res.blob());
+    h('a', { href: url, download: name }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    toast('Gotowe');
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
 // ------------------------------------------------------------------ stan i routing
-const state = { blocks: [], offers: [], layouts: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
+const state = { blocks: [], offers: [], templates: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
 
 async function loadAll() {
-  [state.blocks, state.offers, state.layouts, state.meta] = await Promise.all([
-    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/layouts'), api('GET', '/meta'),
+  [state.blocks, state.offers, state.templates, state.meta] = await Promise.all([
+    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/meta'),
   ]);
 }
 
 function route() {
   const [view = 'offers', id = '', sub = ''] = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
-  ({ blocks: viewBlocks, offers: viewOffers, layouts: viewLayouts, assets: viewAssets }[view] || viewOffers)(id, sub);
+  ({ blocks: viewBlocks, offers: viewOffers, templates: viewTemplates }[view] || viewOffers)(id, sub);
 }
 const go = (...parts) => { location.hash = `#/${parts.filter((p) => p != null && p !== '').map(encodeURIComponent).join('/')}`; };
 document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => go(b.dataset.view)));
 addEventListener('hashchange', route);
 
-// Zmiany z innych kart / z API odświeżają listy (edytorów w trakcie pisania nie ruszamy).
+// Zmiany z innych kart / z API odświeżają listy i podgląd (edytorów w trakcie pisania nie ruszamy).
 let editingUntil = 0;
+let refreshLists = null;
 document.addEventListener('input', () => (editingUntil = Date.now() + 2500), true);
 const es = new EventSource('/api/events');
 es.onmessage = debounce(async (e) => {
@@ -154,16 +168,16 @@ es.onmessage = debounce(async (e) => {
   if (!inOffers && Date.now() > editingUntil && $('#modal').hidden) route();
   else refreshLists?.();
 }, 300);
-let refreshLists = null;
 
-// ------------------------------------------------------------------ edytor bloku (używany w Wiedzy i z podglądu oferty)
+const framesOf = (templateId) => state.templates.find((t) => t.id === templateId)?.frames || [];
+
+// ------------------------------------------------------------------ edytor bloku (Wiedza i okienko z oferty)
 function blockEditor(block, { onDeleted, inModal = false } = {}) {
   const status = h('span', { class: 'status' });
   const save = saver(status, async (patch) => {
     const b = await api('PATCH', `/blocks/${encodeURIComponent(block.id)}`, patch);
     Object.assign(block, b);
   });
-  const typeList = h('datalist', { id: 'types-dl' }, state.meta.types.map((t) => h('option', { value: t.type })));
   const tagList = state.meta.tags.map((t) => t.tag).join(', ');
   return h('div', {},
     h('div', { class: 'bar' },
@@ -174,6 +188,7 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
         const b = await api('POST', '/blocks', { ...rest, title: `${block.title} (kopia)` });
         toast('Skopiowano');
         if (inModal) $('#modal').click();
+        await loadAll();
         go('blocks', b.id);
       } }, 'Duplikuj'),
       h('button', { class: 'btn danger', onclick: async () => {
@@ -185,24 +200,23 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
     ),
     h('div', { class: 'id' }, `id: ${block.id}`),
     h('label', { class: 'f' }, 'Typ'),
-    typeList,
+    h('datalist', { id: 'types-dl' }, state.meta.types.map((t) => h('option', { value: t.type }))),
     h('input', { value: block.type, list: 'types-dl', oninput: (e) => e.target.value.trim() && save({ type: e.target.value.trim() }) }),
     h('label', { class: 'f' }, 'Tytuł'),
     h('input', { value: block.title, oninput: (e) => save({ title: e.target.value }) }),
-    h('label', { class: 'f' }, 'Treść (Markdown)'),
+    h('label', { class: 'f' }, 'Treść (listy „- ” zamieniają się w linie, **tekst** = akcent)'),
     autosize(h('textarea', { rows: 4, oninput: (e) => save({ body: e.target.value }) }, block.body)),
     h('label', { class: 'f' }, 'Tagi (po przecinku)'),
     h('input', { value: (block.tags || []).join(', '), placeholder: tagList, oninput: (e) => save({ tags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }) }),
     h('label', { class: 'f' }, 'Dodatkowe pola'),
     kvEditor(block.data || {}, [], (data) => save({ data })),
-    h('div', { class: 'hint' }, 'Pola są dostępne w layoucie pod swoją nazwą, np. {{effect}}. Zmiany zapisują się same.'),
+    h('div', { class: 'hint' }, 'W szablonie FigCraft pole wstawiasz nazwą warstwy, np. {{effect}}. Zmiany zapisują się same.'),
   );
 }
 
 // ------------------------------------------------------------------ widok: Wiedza
 function viewBlocks(selectedId) {
   const f = state.filter;
-  const view = $('#view');
   const listEl = h('div', { class: 'items' });
   const editor = h('div', { class: 'editor' });
 
@@ -241,7 +255,7 @@ function viewBlocks(selectedId) {
     go('blocks', b.id);
   };
 
-  view.replaceChildren(
+  $('#view').replaceChildren(
     h('div', { class: 'col list' },
       h('div', { class: 'tools' },
         h('div', { class: 'row' },
@@ -261,7 +275,6 @@ function viewBlocks(selectedId) {
 
 // ------------------------------------------------------------------ widok: Oferty
 async function viewOffers(offerId, slideId) {
-  const view = $('#view');
   if (!offerId && state.offers[0]) return go('offers', state.offers[0].id);
 
   const listEl = h('div', { class: 'items' });
@@ -275,7 +288,7 @@ async function viewOffers(offerId, slideId) {
   const newOffer = async () => {
     const name = prompt('Nazwa nowej oferty:');
     if (!name) return;
-    const o = await api('POST', '/offers', { name, data: { client: '', price: '' } });
+    const o = await api('POST', '/offers', { name, template_id: state.templates[0]?.id, data: { client: '', price: '' } });
     await loadAll();
     go('offers', o.id);
   };
@@ -285,7 +298,7 @@ async function viewOffers(offerId, slideId) {
     listEl);
 
   if (!offerId) {
-    view.replaceChildren(left, h('div', { class: 'empty', style: 'flex:1' }, 'Nie ma jeszcze ofert.'));
+    $('#view').replaceChildren(left, h('div', { class: 'empty', style: 'flex:1' }, 'Nie ma jeszcze ofert.'));
     return;
   }
 
@@ -296,20 +309,58 @@ async function viewOffers(offerId, slideId) {
     toast(e.message, true);
     return go('offers');
   }
-  const layoutsById = Object.fromEntries(state.layouts.map((l) => [l.id, l]));
+  const frames = framesOf(offer.template_id);
+  const framesByName = Object.fromEntries(frames.map((f) => [f.name, f]));
   const blocksById = Object.fromEntries(state.blocks.map((b) => [b.id, b]));
 
-  // --- podgląd
-  const iframe = h('iframe', { src: `/preview/${encodeURIComponent(offer.id)}${slideId ? `?slide=${encodeURIComponent(slideId)}` : ''}`, title: 'Podgląd oferty' });
-  const selectInPreview = (id) => iframe.contentWindow?.postMessage({ source: 'offer-studio', select: id }, location.origin);
+  // --- podgląd z FigCraft (PNG)
+  const shots = h('div', { class: 'shots' });
+  const pstatus = h('span', { class: 'phint' });
+  const shotFor = new Map();
+  const markSelected = () => {
+    for (const [id, el] of shotFor) el.classList.toggle('active', id === slideId);
+  };
+  let previewSeq = 0;
+  const refreshPreview = async () => {
+    const my = ++previewSeq;
+    pstatus.textContent = 'FigCraft renderuje…';
+    let p;
+    try {
+      p = await api('GET', `/offers/${encodeURIComponent(offer.id)}/preview`);
+    } catch (e) {
+      pstatus.textContent = '';
+      shots.replaceChildren(h('div', { class: 'shot-error' }, e.message));
+      return;
+    }
+    if (my !== previewSeq) return;
+    // nowe obrazki ładujemy w tle i podmieniamy naraz, bez migania
+    const figs = p.slides.map((s, i) => {
+      const img = s.url ? h('img', { src: s.url, alt: `Slajd ${i + 1}` }) : null;
+      const fig = h('figure', { class: `shot ${s.hidden ? 'is-hidden' : ''}`, onclick: () => selectSlide(s.id, true) },
+        img || h('div', { class: 'shot-error' }, s.error || p.error || 'brak podglądu'),
+        h('figcaption', {}, `${i + 1} · ${s.frame}${s.hidden ? ' · ukryty' : ''}`));
+      return { s, fig, img };
+    });
+    await Promise.all(figs.filter((x) => x.img).map((x) => x.img.decode().catch(() => {})));
+    if (my !== previewSeq) return;
+    shotFor.clear();
+    for (const x of figs) shotFor.set(x.s.id, x.fig);
+    const y = shots.scrollTop;
+    shots.replaceChildren(...figs.map((x) => x.fig), p.error ? h('div', { class: 'shot-error' }, p.error) : '');
+    shots.scrollTop = y;
+    markSelected();
+    pstatus.textContent = p.error ? 'błąd renderu' : `FigCraft: ${p.ms} ms`;
+  };
+  const refreshPreviewSoon = debounce(refreshPreview, 250);
+
   const preview = h('div', { class: 'preview' },
     h('div', { class: 'pbar' },
-      h('button', { class: 'btn primary', onclick: () => downloadPdf(offer) }, 'Pobierz PDF'),
-      h('button', { class: 'btn', title: 'Druk z przeglądarki (Zapisz jako PDF)', onclick: () => printOffer(offer) }, 'Drukuj'),
-      h('a', { class: 'btn', href: `/preview/${encodeURIComponent(offer.id)}`, target: '_blank' }, 'Otwórz podgląd'),
+      h('button', { class: 'btn primary', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/pdf`, `${offer.name}.pdf`) }, 'Pobierz PDF'),
+      h('button', { class: 'btn', title: 'Gotowa oferta jako plik FigCraft do ręcznych poprawek', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/figcraft`, `${offer.name}.figcraft`) }, 'Pobierz .figcraft'),
+      state.meta.figcraftWebUrl ? h('a', { class: 'btn', href: state.meta.figcraftWebUrl, target: '_blank' }, 'Otwórz FigCraft') : null,
       h('span', { class: 'spacer' }),
-      h('span', { class: 'phint' }, 'kliknij element slajdu, aby go edytować')),
-    iframe);
+      pstatus),
+    shots);
 
   // --- edytor oferty
   const status = h('span', { class: 'status' });
@@ -317,11 +368,11 @@ async function viewOffers(offerId, slideId) {
   const slidesEl = h('div', { class: 'slides' });
   const slideEditorEl = h('div');
 
-  const slideTitle = (s) => s.data?.title?.replace(/\*\*/g, '') || s.data?.asset || layoutsById[s.layout_id]?.name || s.layout_id;
+  const slideTitle = (s) => String(s.data?.title || s.data?.quote || s.data?.kicker || '').replace(/\*\*/g, '').trim() || s.frame;
   const renderSlides = () => slidesEl.replaceChildren(...offer.slides.map((s, i) =>
     h('div', { class: `slide-row ${s.id === slideId ? 'active' : ''} ${s.hidden ? 'hidden-slide' : ''}`, onclick: () => selectSlide(s.id) },
       h('span', { class: 'n' }, i + 1),
-      h('span', { class: 't' }, slideTitle(s), ' ', h('small', {}, `· ${layoutsById[s.layout_id]?.name || s.layout_id}`)),
+      h('span', { class: 't' }, slideTitle(s), ' ', h('small', {}, `· ${s.frame}${framesByName[s.frame] ? '' : ' (brak w szablonie)'}`)),
       h('span', {},
         h('button', { class: 'icon', title: 'W górę', onclick: (e) => { e.stopPropagation(); move(i, -1); } }, '↑'),
         h('button', { class: 'icon', title: 'W dół', onclick: (e) => { e.stopPropagation(); move(i, 1); } }, '↓')))));
@@ -335,20 +386,25 @@ async function viewOffers(offerId, slideId) {
     renderSlides();
   };
 
-  const addSlide = async () => {
-    const layoutSel = h('select', {}, state.layouts.map((l) => h('option', { value: l.id }, `${l.name} (${l.id})`)));
+  const addSlide = () => {
+    if (!frames.length) return toast('Najpierw wybierz szablon oferty', true);
+    const frameSel = h('select', {}, frames.map((f) => h('option', { value: f.name }, f.name)));
     const close = modal(h('div', {},
       h('h3', {}, 'Nowy slajd'),
-      h('label', { class: 'f' }, 'Layout'), layoutSel,
+      h('label', { class: 'f' }, 'Slajd z szablonu'), frameSel,
       h('div', { class: 'hint' }, 'Slajd trafi za aktualnie wybranym (albo na koniec).'),
       h('div', { class: 'bar', style: 'margin-top:16px' }, h('span', { class: 'spacer' }),
         h('button', { class: 'btn primary', onclick: async () => {
           const idx = offer.slides.findIndex((s) => s.id === slideId);
-          const s = await api('POST', `/offers/${encodeURIComponent(offer.id)}/slides`, { layout_id: layoutSel.value, data: {}, ...(idx >= 0 ? { position: offer.slides[idx].position + 1 } : {}) });
+          const s = await api('POST', `/offers/${encodeURIComponent(offer.id)}/slides`, { frame: frameSel.value, data: {}, ...(idx >= 0 ? { position: offer.slides[idx].position + 1 } : {}) });
           close();
           go('offers', offer.id, s.id);
         } }, 'Dodaj'))));
   };
+
+  const templateSel = h('select', { onchange: (e) => saveOffer({ template_id: e.target.value }) },
+    h('option', { value: '' }, '(brak)'), state.templates.map((t) => h('option', { value: t.id }, t.name)));
+  templateSel.value = offer.template_id || '';
 
   const offerPanel = h('div', {},
     h('div', { class: 'bar' },
@@ -365,7 +421,9 @@ async function viewOffers(offerId, slideId) {
     h('div', { class: 'id' }, `id: ${offer.id}`),
     h('label', { class: 'f' }, 'Nazwa oferty'),
     h('input', { value: offer.name, oninput: (e) => saveOffer({ name: e.target.value }) }),
-    h('label', { class: 'f' }, 'Zmienne oferty (w layoutach: {{offer.client}}, {{offer.price}}…)'),
+    h('label', { class: 'f' }, 'Szablon FigCraft'),
+    templateSel,
+    h('label', { class: 'f' }, 'Zmienne oferty (w szablonie: {{offer.client}}, {{offer.price}}…)'),
     kvEditor(offer.data || {}, ['client', 'price'], (data) => saveOffer({ data })),
     h('div', { class: 'bar', style: 'margin-top:18px' }, h('h2', { style: 'font-size:14px' }, `Slajdy (${offer.slides.length})`), h('button', { class: 'btn sm', onclick: addSlide }, '+ slajd')),
     slidesEl,
@@ -373,22 +431,24 @@ async function viewOffers(offerId, slideId) {
   );
   renderSlides();
 
-  // --- edytor slajdu (wybór slajdu nie przeładowuje podglądu)
   const renderSlideEditor = () => {
     const slide = offer.slides.find((s) => s.id === slideId);
-    slideEditorEl.replaceChildren(slide ? slideEditor(slide, offer, layoutsById, blocksById, renderSlides, () => go('offers', offer.id)) : '');
+    slideEditorEl.replaceChildren(slide ? slideEditor(slide, offer, framesByName, blocksById, renderSlides, () => go('offers', offer.id)) : '');
   };
+  // wybór slajdu nie przerenderowuje widoku
   const selectSlide = (id, fromPreview = false) => {
     if (id === slideId) return;
     slideId = id;
     history.replaceState(null, '', `#/offers/${encodeURIComponent(offer.id)}/${encodeURIComponent(id)}`);
     renderSlides();
     renderSlideEditor();
-    if (!fromPreview) selectInPreview(id);
+    markSelected();
+    if (!fromPreview) shotFor.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    else slidesEl.querySelector('.slide-row.active')?.scrollIntoView({ block: 'nearest' });
   };
   renderSlideEditor();
 
-  // Zmiany z API (np. z n8n albo innej karty): odśwież listę slajdów, edytora nie ruszaj.
+  // Każda zmiana (z UI albo z API) -> odśwież listę slajdów i podgląd.
   refreshLists = async () => {
     renderList();
     try {
@@ -396,39 +456,28 @@ async function viewOffers(offerId, slideId) {
       offer.slides = fresh.slides;
       renderSlides();
     } catch { /* oferta usunięta */ }
+    refreshPreviewSoon();
   };
 
-  view.replaceChildren(left, h('div', { class: 'editor narrow' }, offerPanel), preview);
-  iframe.addEventListener('load', () => slideId && selectInPreview(slideId));
-
-  // Kliknięcie w podglądzie: blok -> edytor bloku w okienku, tło slajdu -> wybór slajdu.
-  window.onmessage = (e) => {
-    if (e.origin !== location.origin || e.data?.source !== 'offer-preview') return;
-    if (e.data.slide) selectSlide(e.data.slide, true);
-    if (e.data.block) {
-      const b = state.blocks.find((x) => x.id === e.data.block);
-      if (b) {
-        modal(blockEditor(b, { inModal: true, onDeleted: () => $('#modal').click() }));
-        onModalClose = () => loadAll().then(() => (refreshLists?.()));
-      }
-    }
-  };
+  $('#view').replaceChildren(left, h('div', { class: 'editor narrow' }, offerPanel), preview);
+  await refreshPreview();
+  if (slideId) shotFor.get(slideId)?.scrollIntoView({ block: 'center' });
 }
 
-function slideEditor(slide, offer, layoutsById, blocksById, renderSlides, onDeleted) {
+function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDeleted) {
   const status = h('span', { class: 'status' });
   const save = saver(status, async (patch) => {
     const s = await api('PATCH', `/slides/${encodeURIComponent(slide.id)}`, patch);
     Object.assign(slide, s);
     renderSlides();
   }, 350);
-  const layout = layoutsById[slide.layout_id];
-  // Klucze `data.xxx` używane w szablonie podpowiadamy jako puste pola.
-  const hints = layout ? [...new Set([...layout.template.matchAll(/data\.([A-Za-z_][\w]*)/g)].map((m) => m[1]))] : [];
+  const frame = framesByName[slide.frame];
+  const frames = Object.keys(framesByName);
 
-  const layoutSel = h('select', { onchange: async (e) => { await api('PATCH', `/slides/${encodeURIComponent(slide.id)}`, { layout_id: e.target.value }); route(); } },
-    state.layouts.map((l) => h('option', { value: l.id }, l.name)));
-  layoutSel.value = slide.layout_id;
+  const frameSel = h('select', { onchange: async (e) => { await api('PATCH', `/slides/${encodeURIComponent(slide.id)}`, { frame: e.target.value }); route(); } },
+    frames.includes(slide.frame) ? null : h('option', { value: slide.frame }, `${slide.frame} (brak w szablonie)`),
+    frames.map((f) => h('option', { value: f }, f)));
+  frameSel.value = slide.frame;
 
   // --- bloki: lista wybranych albo zapytanie
   const useQuery = !!(slide.query && (slide.query.type || slide.query.tag)) && !slide.block_ids?.length;
@@ -441,13 +490,14 @@ function slideEditor(slide, offer, layoutsById, blocksById, renderSlides, onDele
       Object.entries(state.blocks.reduce((g, b) => ((g[b.type] ||= []).push(b), g), {})).map(([type, bs]) =>
         h('optgroup', { label: type }, bs.filter((b) => !ids.includes(b.id)).map((b) => h('option', { value: b.id }, b.title)))));
     const q = slide.query || {};
+    const setQuery = (patch) => { slide.query = { ...slide.query, ...patch }; save({ query: slide.query, block_ids: [] }); };
     const queryForm = h('div', { class: 'bar' },
-      h('input', { placeholder: 'typ, np. use_case', value: q.type || '', oninput: (e) => { slide.query = { ...slide.query, type: e.target.value.trim() || undefined }; save({ query: slide.query, block_ids: [] }); } }),
-      h('input', { placeholder: 'tag', value: q.tag || '', oninput: (e) => { slide.query = { ...slide.query, tag: e.target.value.trim() || undefined }; save({ query: slide.query, block_ids: [] }); } }),
-      h('input', { placeholder: 'limit', style: 'width:70px', value: q.limit || '', oninput: (e) => { slide.query = { ...slide.query, limit: Number(e.target.value) || undefined }; save({ query: slide.query, block_ids: [] }); } }));
+      h('input', { placeholder: 'typ, np. use_case', value: q.type || '', oninput: (e) => setQuery({ type: e.target.value.trim() || undefined }) }),
+      h('input', { placeholder: 'tag', value: q.tag || '', oninput: (e) => setQuery({ tag: e.target.value.trim() || undefined }) }),
+      h('input', { placeholder: 'limit', style: 'width:70px', value: q.limit || '', oninput: (e) => setQuery({ limit: Number(e.target.value) || undefined }) }));
     const mode = blocksBox.dataset.mode || (useQuery ? 'query' : 'list');
     blocksBox.replaceChildren(
-      h('h3', {}, 'Bloki na slajdzie ',
+      h('h3', {}, `Bloki na slajdzie (w szablonie ${frame?.slots ?? 0} slotów #item) `,
         h('button', { class: `btn sm ${mode === 'list' ? 'primary' : ''}`, onclick: () => { blocksBox.dataset.mode = 'list'; renderBlocks(); } }, 'wybrane'), ' ',
         h('button', { class: `btn sm ${mode === 'query' ? 'primary' : ''}`, onclick: () => { blocksBox.dataset.mode = 'query'; renderBlocks(); } }, 'wg typu / tagu')),
       mode === 'list'
@@ -457,7 +507,7 @@ function slideEditor(slide, offer, layoutsById, blocksById, renderSlides, onDele
             return h('div', { class: 'p' },
               h('span', {}, b ? b.title : h('s', {}, id), ' ', h('small', {}, b?.type || 'brak bloku')),
               h('span', {},
-                h('button', { class: 'icon', title: 'Edytuj blok', onclick: () => b && (modal(blockEditor(b, { inModal: true, onDeleted: () => $('#modal').click() })), (onModalClose = () => loadAll())) }, '✎'),
+                h('button', { class: 'icon', title: 'Edytuj blok', onclick: () => b && (modal(blockEditor(b, { inModal: true, onDeleted: () => $('#modal').click() })), (onModalClose = () => loadAll().then(() => refreshLists?.()))) }, '✎'),
                 h('button', { class: 'icon', onclick: () => { if (i > 0) { const n = [...ids]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; setIds(n); } } }, '↑'),
                 h('button', { class: 'icon', onclick: () => { if (i < ids.length - 1) { const n = [...ids]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; setIds(n); } } }, '↓'),
                 h('button', { class: 'icon', title: 'Zdejmij ze slajdu', onclick: () => setIds(ids.filter((x) => x !== id)) }, '×')));
@@ -468,6 +518,7 @@ function slideEditor(slide, offer, layoutsById, blocksById, renderSlides, onDele
   };
   renderBlocks();
 
+  const fields = frame?.fields || { data: [], item: [], sources: [] };
   return h('div', { class: 'box', style: 'border-color: var(--accent)' },
     h('div', { class: 'bar' },
       h('h2', { style: 'font-size:14px' }, `Slajd ${offer.slides.indexOf(slide) + 1}`), status,
@@ -477,115 +528,80 @@ function slideEditor(slide, offer, layoutsById, blocksById, renderSlides, onDele
         await api('DELETE', `/slides/${encodeURIComponent(slide.id)}`);
         onDeleted();
       } }, 'Usuń')),
-    h('label', { class: 'f' }, 'Layout'), layoutSel,
-    layout?.description ? h('div', { class: 'hint' }, layout.description) : null,
-    h('label', { class: 'f' }, 'Treść slajdu (**słowo** = kolor akcentu)'),
-    kvEditor(slide.data || {}, hints, (data) => save({ data })),
-    layout && /blocks/.test(layout.template) ? blocksBox : null,
+    h('label', { class: 'f' }, 'Slajd z szablonu'), frameSel,
+    fields.item.length ? h('div', { class: 'hint' }, `Pola kart: ${fields.item.map((k) => `{{${k}}}`).join(', ')}`) : null,
+    h('label', { class: 'f' }, 'Treść slajdu (**słowo** = wyróżnienie z szablonu; puste pole ukrywa warstwę)'),
+    kvEditor(slide.data || {}, fields.data, (data) => save({ data })),
+    fields.sources.includes('blocks') ? blocksBox : null,
   );
 }
 
-async function downloadPdf(offer) {
-  toast('Generuję PDF…');
-  try {
-    const res = await fetch(`/api/offers/${encodeURIComponent(offer.id)}/pdf`);
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
-    const url = URL.createObjectURL(await res.blob());
-    h('a', { href: url, download: `${offer.name}.pdf` }).click();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    toast('Gotowe');
-  } catch (e) {
-    toast(e.message, true);
-  }
-}
-
-function printOffer(offer) {
-  const w = window.open(`/preview/${encodeURIComponent(offer.id)}`);
-  w?.addEventListener('load', () => w.document.fonts.ready.then(() => w.print()));
-}
-
-// ------------------------------------------------------------------ widok: Layouty
-function viewLayouts(layoutId) {
-  const view = $('#view');
-  const listEl = h('div', { class: 'items' },
-    h('div', { class: `item ${layoutId === '_theme' ? 'active' : ''}`, onclick: () => go('layouts', '_theme') }, h('div', {}, 'Motyw (wspólny CSS)'), h('div', { class: 'sub' }, 'kolory, fonty, wspólne klasy')),
-    h('div', { class: 'group' }, 'Layouty slajdów'),
-    state.layouts.map((l) => h('div', { class: `item ${l.id === layoutId ? 'active' : ''}`, onclick: () => go('layouts', l.id) },
-      h('div', {}, l.name), h('div', { class: 'sub' }, l.id))));
+// ------------------------------------------------------------------ widok: Szablony
+function viewTemplates(templateId) {
   refreshLists = null;
-  const editor = h('div', { class: 'editor' });
-
-  const newLayout = async () => {
-    const name = prompt('Nazwa layoutu:');
-    if (!name) return;
-    const l = await api('POST', '/layouts', { name, template: '<div class="pattern"></div>\n<div class="content">\n  <h2 class="h1">{{mdi data.title}}</h2>\n</div>', css: '' });
+  const upload = (id) => h('input', { type: 'file', accept: '.figcraft', hidden: true, onchange: async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    if (id) fd.append('id', id);
+    toast('Wgrywam szablon…');
+    const res = await fetch('/api/templates', { method: 'POST', body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return toast(data.error || res.statusText, true);
+    toast(id ? 'Szablon podmieniony' : 'Szablon dodany');
     await loadAll();
-    go('layouts', l.id);
-  };
+    go('templates', data.id);
+  } });
 
-  view.replaceChildren(
+  const listEl = h('div', { class: 'items' },
+    state.templates.map((t) => h('div', { class: `item ${t.id === templateId ? 'active' : ''}`, onclick: () => go('templates', t.id) },
+      h('div', {}, t.name), h('div', { class: 'sub' }, `${t.id} · ${t.frames.length} slajdów`))));
+  const editor = h('div', { class: 'editor' });
+  $('#view').replaceChildren(
     h('div', { class: 'col list', style: 'width: 260px' },
-      h('div', { class: 'tools' }, h('button', { class: 'btn primary', onclick: newLayout }, '+ Layout')), listEl),
+      h('div', { class: 'tools' }, h('label', { class: 'btn primary' }, '+ Wgraj .figcraft', upload(null))), listEl),
     editor);
 
-  if (layoutId === '_theme') {
-    const status = h('span', { class: 'status' });
-    api('GET', '/theme').then(({ css }) => {
-      const save = saver(status, (v) => api('PUT', '/theme', { css: v }));
-      editor.replaceChildren(
-        h('div', { class: 'bar' }, h('h2', {}, 'Motyw'), status),
-        h('div', { class: 'hint' }, 'CSS dołączany do każdej oferty. Zmiany widać od razu w otwartych podglądach.'),
-        h('textarea', { class: 'code', style: 'min-height: 70vh', spellcheck: 'false', oninput: (e) => save(e.target.value) }, css));
-    });
+  const t = state.templates.find((x) => x.id === templateId);
+  if (!t) {
+    editor.replaceChildren(h('div', { class: 'help' },
+      h('h2', {}, 'Szablony FigCraft'),
+      h('p', {}, 'Wygląd oferty projektujesz w FigCraft. Każda ramka najwyższego poziomu w pliku to slajd szablonu, a jej nazwa to jego identyfikator. Pola z bazy wiążesz nazwami warstw:'),
+      h('table', {},
+        h('tr', {}, h('td', {}, h('code', {}, '{{data.title}}')), h('td', {}, 'treść slajdu z edytora oferty')),
+        h('tr', {}, h('td', {}, h('code', {}, '{{offer.client|upper}}')), h('td', {}, 'zmienna oferty, opcjonalnie wielkimi literami')),
+        h('tr', {}, h('td', {}, h('code', {}, 'Efekt: {{effect}}')), h('td', {}, 'tekst stały + pole; pusty wynik ukrywa warstwę')),
+        h('tr', {}, h('td', {}, h('code', {}, '#item')), h('td', {}, 'karta na blok; w środku {{title}}, {{body}}, {{n}} i pola bloku. Nadmiarowe karty znikają, brakujące są dokładane')),
+        h('tr', {}, h('td', {}, h('code', {}, '#item:lines')), h('td', {}, 'wiersz z pola data.lines („etykieta | wartość”): {{title}}, {{value}}')),
+        h('tr', {}, h('td', {}, h('code', {}, '[[2:tekst]]')), h('td', {}, 'w nazwie warstwy: styl 2. wyróżnienia z oryginalnego tekstu')),
+        h('tr', {}, h('td', {}, h('code', {}, '**tekst**')), h('td', {}, 'w treści: styl 1. wyróżnienia (np. czerwony akcent)'))),
+      h('p', {}, 'Żeby zmienić wygląd: pobierz szablon, popraw go w FigCraft (desktop albo web), wgraj z powrotem przyciskiem „Podmień plik”. Oferty od razu użyją nowej wersji.')));
     return;
   }
 
-  const l = state.layouts.find((x) => x.id === layoutId);
-  if (!l) {
-    editor.replaceChildren(h('div', { class: 'empty' }, 'Layout to szablon slajdu w Handlebars + CSS. Dane: {{data.*}} (treść slajdu), {{offer.*}} (zmienne oferty), {{#each blocks}} (bloki). Helpery: md, mdi, upper, inc, pad2, or, eq, lines, split.'));
-    return;
-  }
   const status = h('span', { class: 'status' });
-  const save = saver(status, (patch) => api('PATCH', `/layouts/${encodeURIComponent(l.id)}`, patch));
+  const save = saver(status, (patch) => api('PATCH', `/templates/${encodeURIComponent(t.id)}`, patch));
   editor.replaceChildren(
-    h('div', { class: 'bar' }, h('h2', {}, l.name), status,
+    h('div', { class: 'bar' }, h('h2', {}, t.name), status,
+      h('a', { class: 'btn', href: `/api/templates/${encodeURIComponent(t.id)}/file` }, 'Pobierz .figcraft'),
+      h('label', { class: 'btn' }, 'Podmień plik', upload(t.id)),
+      state.meta.figcraftWebUrl ? h('a', { class: 'btn', href: state.meta.figcraftWebUrl, target: '_blank' }, 'Otwórz FigCraft') : null,
       h('button', { class: 'btn danger', onclick: async () => {
-        if (!confirm(`Usunąć layout „${l.name}”? Slajdy, które go używają, pokażą błąd.`)) return;
-        await api('DELETE', `/layouts/${encodeURIComponent(l.id)}`);
-        await loadAll(); go('layouts');
+        if (!confirm(`Usunąć szablon „${t.name}”? Oferty, które go używają, przestaną się renderować.`)) return;
+        await api('DELETE', `/templates/${encodeURIComponent(t.id)}`);
+        await loadAll(); go('templates');
       } }, 'Usuń')),
-    h('div', { class: 'id' }, `id: ${l.id}`),
-    h('label', { class: 'f' }, 'Nazwa'), h('input', { value: l.name, oninput: (e) => save({ name: e.target.value }) }),
-    h('label', { class: 'f' }, 'Opis (podpowiedź przy edycji slajdu)'), autosize(h('textarea', { rows: 2, oninput: (e) => save({ description: e.target.value }) }, l.description)),
-    h('label', { class: 'f' }, 'Szablon (Handlebars)'), h('textarea', { class: 'code', spellcheck: 'false', style: 'min-height: 320px', oninput: (e) => save({ template: e.target.value }) }, l.template),
-    h('label', { class: 'f' }, `CSS (zakres: .layout-${l.id})`), h('textarea', { class: 'code', spellcheck: 'false', oninput: (e) => save({ css: e.target.value }) }, l.css),
-    h('div', { class: 'hint' }, 'Dodaj atrybut data-block="{{id}}" do elementu bloku, żeby dało się go kliknąć w podglądzie.'));
-}
-
-// ------------------------------------------------------------------ widok: Obrazki
-async function viewAssets() {
-  const view = $('#view');
-  refreshLists = null;
-  const assets = await api('GET', '/assets');
-  const upload = h('input', { type: 'file', accept: 'image/*', multiple: true, hidden: true, onchange: async (e) => {
-    for (const file of e.target.files) {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/assets', { method: 'POST', body: fd });
-      if (!res.ok) toast((await res.json()).error, true);
-    }
-    viewAssets();
-  } });
-  view.replaceChildren(h('div', { class: 'editor' },
-    h('div', { class: 'bar' }, h('h2', {}, 'Obrazki'), h('label', { class: 'btn primary' }, '+ Wgraj', upload)),
-    h('div', { class: 'hint', style: 'margin-bottom:12px' }, 'W layoutach i treści używaj adresu /assets/<id>, np. <img src="/assets/gaius-logo">. Do slajdu „Obraz na cały slajd” wpisz samo id.'),
-    h('div', { class: 'assets' }, assets.map((a) => h('div', { class: 'asset' },
-      h('div', { class: 'img' }, h('img', { src: `/assets/${encodeURIComponent(a.id)}`, alt: a.name })),
-      h('div', { class: 'meta' },
-        h('span', { class: 'id', title: a.name }, a.id),
-        h('span', {},
-          h('button', { class: 'icon', title: 'Kopiuj adres', onclick: () => navigator.clipboard.writeText(`/assets/${a.id}`).then(() => toast('Skopiowano')) }, '⧉'),
-          h('button', { class: 'icon', title: 'Usuń', onclick: async () => { if (confirm(`Usunąć ${a.id}?`)) { await api('DELETE', `/assets/${encodeURIComponent(a.id)}`); viewAssets(); } } }, '×'))))))));
+    h('div', { class: 'id' }, `id: ${t.id} · ${(t.size / 1024 / 1024).toFixed(1)} MB · zmieniony ${new Date(t.updated_at).toLocaleString('pl-PL')}`),
+    h('label', { class: 'f' }, 'Nazwa'), h('input', { value: t.name, oninput: (e) => save({ name: e.target.value }) }),
+    h('label', { class: 'f' }, `Slajdy w szablonie (${t.frames.length})`),
+    h('table', { class: 'frames' },
+      h('tr', {}, h('th', {}, 'slajd'), h('th', {}, 'pola slajdu {{data.*}}'), h('th', {}, 'karty #item'), h('th', {}, 'pola kart')),
+      t.frames.map((f) => h('tr', {},
+        h('td', {}, h('code', {}, f.name)),
+        h('td', {}, f.fields.data.join(', ') || '–'),
+        h('td', {}, f.slots ? `${f.slots} (${f.fields.sources.join(', ')})` : '–'),
+        h('td', {}, f.fields.item.join(', ') || '–')))));
 }
 
 // ------------------------------------------------------------------ import
@@ -599,7 +615,7 @@ $('#import-file').addEventListener('change', async (e) => {
   } catch {
     return toast('To nie jest poprawny plik JSON', true);
   }
-  const counts = ['blocks', 'layouts', 'offers', 'slides', 'assets'].map((k) => `${k}: ${(dump[k] || []).length}`).join(', ');
+  const counts = ['blocks', 'templates', 'offers', 'slides'].map((k) => `${k}: ${(dump[k] || []).length}`).join(', ');
   const run = async (mode) => {
     close();
     try {

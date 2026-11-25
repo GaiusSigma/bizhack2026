@@ -83,13 +83,19 @@ label.f { display: block; margin: 12px 0 4px; font-size: 12px; color: var(--mute
 }
 .preview .pbar .btn { background: #333; color: #eee; border-color: #444; }
 .preview .pbar .btn.primary { background: var(--accent); border-color: var(--accent); }
-.preview iframe { flex: 1; border: 0; width: 100%; }
+.shots { flex: 1; overflow: auto; padding: 16px 20px 40px; display: flex; flex-direction: column; gap: 18px; }
+.shot { margin: 0; cursor: pointer; }
+.shot img { display: block; width: 100%; aspect-ratio: 16 / 9; background: #fff; box-shadow: 0 6px 24px rgba(0,0,0,.4); outline: 4px solid transparent; outline-offset: 4px; }
+.shot.active img { outline-color: var(--accent); }
+.shot.is-hidden img { opacity: .35; }
+.shot figcaption { color: #aaa; font-size: 12px; margin-top: 6px; }
+.shot-error { background: #3a2222; color: #ffb4b4; padding: 16px; border-radius: 6px; font: 12px/1.5 var(--mono); white-space: pre-wrap; aspect-ratio: 16 / 9; }
 
-.assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-.asset { border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; }
-.asset .img { height: 130px; display: grid; place-items: center; background: repeating-conic-gradient(#f2f2f2 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
-.asset img { max-width: 100%; max-height: 130px; }
-.asset .meta { padding: 8px 10px; font-size: 12px; display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+.help { max-width: 760px; }
+.help table, table.frames { border-collapse: collapse; width: 100%; margin: 8px 0 16px; font-size: 13px; }
+.help td, table.frames td, table.frames th { border-top: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+table.frames th { font-size: 12px; color: var(--muted); }
+code { font-family: var(--mono); font-size: 12px; background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
 
 #modal { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: grid; place-items: center; z-index: 100; }
 #modal[hidden] { display: none; }

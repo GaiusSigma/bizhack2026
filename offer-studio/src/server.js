@@ -2,13 +2,12 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, mkdirSync } from 'node:fs';
-import { dirname, extname, join, resolve } from 'node:path';
+import { timingSafeEqual } from 'node:crypto';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HttpError, openDb, slugify } from './db.js';
-import { htmlUrlToPdf } from './pdf.js';
-import { renderOffer } from './render.js';
+import { describeTemplate, hashOf, parseTemplate, renderFigcraft, renderPdf, renderPreview } from './figcraft.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const env = process.env;
@@ -16,49 +15,123 @@ const PORT = Number(env.PORT || 3000);
 const DB_PATH = env.STUDIO_DB || join(ROOT, 'data', 'studio.db');
 const PASSWORD = env.STUDIO_PASSWORD || '';
 const API_TOKEN = env.STUDIO_API_TOKEN || '';
-const GOTENBERG_URL = env.GOTENBERG_URL || '';
-const INTERNAL_URL = (env.STUDIO_INTERNAL_URL || `http://127.0.0.1:${PORT}`).replace(/\/$/, '');
-const SIGNING_KEY = env.STUDIO_SECRET || randomBytes(32).toString('hex');
+const FIGCRAFT_WEB_URL = env.FIGCRAFT_WEB_URL || '';
 
 mkdirSync(dirname(DB_PATH), { recursive: true });
 const store = openDb(DB_PATH);
 
-// ------------------------------------------------------------------ dane startowe
-const MIME = { '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+// ------------------------------------------------------------------ dane startowe i migracja z v1
+const seedModule = await import('../seed/seed.js');
+const seedTemplate = () => {
+  const t = seedModule.TEMPLATE;
+  store.putTemplate({ id: t.id, name: t.name, file: readFileSync(join(ROOT, 'seed', t.file)) });
+};
 if (store.isEmpty() && env.STUDIO_SEED !== 'false') {
-  const { default: seed } = await import('../seed/seed.js');
-  const counts = store.importAll(seed, 'merge');
-  const dir = join(ROOT, 'seed', 'assets');
-  if (existsSync(dir)) {
-    for (const f of readdirSync(dir)) {
-      const ext = extname(f).toLowerCase();
-      if (MIME[ext]) store.putAsset({ id: f.slice(0, -ext.length), name: f, mime: MIME[ext], data: readFileSync(join(dir, f)) });
-    }
-  }
+  const counts = store.importAll(seedModule.default, 'merge');
+  seedTemplate();
   console.log('offer-studio: pusta baza, wczytano dane startowe', counts);
+} else if (store.migratedFromV1) {
+  // v1 miało layouty HTML: dokładamy szablon FigCraft, a ofercie bazowej dajemy slajdy pod nowy szablon.
+  if (!store.get('templates', seedModule.TEMPLATE.id)) seedTemplate();
+  store.tx(() => {
+    store.db.prepare('UPDATE offers SET template_id = ? WHERE template_id IS NULL').run(seedModule.TEMPLATE.id);
+    if (store.get('offers', 'gaius-vault-bazowa')) {
+      store.db.prepare('DELETE FROM slides WHERE offer_id = ?').run('gaius-vault-bazowa');
+      for (const s of seedModule.slides) store.upsert('slides', s);
+    }
+  });
+  console.log('offer-studio: zmigrowano bazę z layoutów HTML na szablony FigCraft');
 }
 
 // ------------------------------------------------------------------ live: Server-Sent Events
 const listeners = new Set();
-function emit(ev) {
-  for (const fn of listeners) fn(ev);
+const emit = (ev) => { for (const fn of listeners) fn(ev); };
+
+// ------------------------------------------------------------------ render przez FigCraft
+const parsedCache = new Map();
+function template(id) {
+  if (!id) throw new HttpError(400, 'Oferta nie ma wybranego szablonu');
+  const { file, updated_at } = store.templateFile(id);
+  const hit = parsedCache.get(id);
+  if (hit?.updated_at === updated_at) return { file, parsed: hit.parsed, updated_at };
+  const parsed = parseTemplate(file);
+  parsedCache.set(id, { updated_at, parsed });
+  return { file, parsed, updated_at };
 }
 
-// ------------------------------------------------------------------ fonty (Figtree z @fontsource)
-const FONT_DIR = join(ROOT, 'node_modules', '@fontsource', 'figtree');
-const FONT_CSS = [400, 500, 600, 700, 800]
-  .map((w) => join(FONT_DIR, `${w}.css`))
-  .filter(existsSync)
-  .map((f) => readFileSync(f, 'utf8').replaceAll('./files/', '/fonts/files/'))
-  .join('\n');
+// Bloki slajdu: jawna lista `block_ids` (w tej kolejności) albo zapytanie `query` {type, tag, limit}.
+function resolveBlocks(slide) {
+  let blocks = [];
+  if (slide.block_ids?.length) {
+    blocks = slide.block_ids.map((id) => store.get('blocks', id)).filter(Boolean);
+  } else if (slide.query && (slide.query.type || slide.query.tag)) {
+    blocks = store.listBlocks({ type: slide.query.type, tag: slide.query.tag });
+    blocks.sort((a, b) => (a.data?.order ?? 1e9) - (b.data?.order ?? 1e9) || a.title.localeCompare(b.title, 'pl'));
+    if (slide.query.limit) blocks = blocks.slice(0, Number(slide.query.limit));
+  }
+  // pola z `data` są dostępne wprost: {{effect}} zamiast {{data.effect}}
+  return blocks.map((b) => ({ ...b.data, id: b.id, type: b.type, title: b.title, body: b.body }));
+}
 
-// ------------------------------------------------------------------ podpisane linki do renderu (dla Gotenberga)
-const sign = (offerId, exp) => createHmac('sha256', SIGNING_KEY).update(`${offerId}.${exp}`).digest('hex');
-function verifySig(offerId, exp, sig) {
-  if (!exp || !sig || Number(exp) < Date.now()) return false;
-  const a = Buffer.from(sign(offerId, exp));
-  const b = Buffer.from(String(sig));
-  return a.length === b.length && timingSafeEqual(a, b);
+// "etykieta | wartość" w każdej linii -> [{title, value, value2…}]
+const lines = (text) =>
+  String(text || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const [title, value = '', ...rest] = l.split('|').map((x) => x.trim());
+    return { title, value, ...Object.fromEntries(rest.map((v, i) => [`value${i + 2}`, v])) };
+  });
+
+function renderInput(offerId, { includeHidden }) {
+  const offer = store.getOffer(offerId);
+  const tpl = template(offer.template_id);
+  const frames = Object.fromEntries(tpl.parsed.frames.map((f) => [f.name, f]));
+  const report = [];
+  const slides = [];
+  for (const s of offer.slides) {
+    const f = frames[s.frame];
+    const entry = { id: s.id, frame: s.frame, hidden: s.hidden };
+    report.push(entry);
+    if (!f) { entry.error = `Szablon nie ma slajdu "${s.frame}"`; continue; }
+    if (s.hidden && !includeHidden) { entry.skipped = true; continue; }
+    const items = {};
+    for (const source of f.fields.sources) items[source] = source === 'blocks' ? resolveBlocks(s) : lines(s.data?.[source]);
+    entry.index = slides.length;
+    slides.push({ id: s.id, frame: s.frame, data: s.data || {}, items });
+  }
+  return {
+    offer,
+    report,
+    input: { templateBuf: tpl.file, parsed: tpl.parsed, slides, offer: { id: offer.id, name: offer.name, ...offer.data } },
+    key: hashOf({ t: offer.template_id, u: tpl.updated_at, o: offer.data, s: slides }),
+  };
+}
+
+// Podgląd PNG: cache per oferta, jeden render naraz na ofertę.
+const previews = new Map(); // offerId -> {key, pngs, report, ms, error}
+const inflight = new Map();
+async function preview(offerId) {
+  const { key, input, report } = renderInput(offerId, { includeHidden: true });
+  const cached = previews.get(offerId);
+  if (cached?.key === key) return cached;
+  const running = inflight.get(offerId);
+  if (running?.key === key) return running.promise;
+  const promise = (async () => {
+    if (running) await running.promise.catch(() => {});
+    const t = Date.now();
+    try {
+      const pngs = input.slides.length ? await renderPreview(input) : [];
+      const result = { key, pngs, report, ms: Date.now() - t };
+      previews.set(offerId, result);
+      return result;
+    } catch (e) {
+      const result = { key, pngs: [], report, ms: Date.now() - t, error: e.message };
+      previews.set(offerId, result);
+      return result;
+    } finally {
+      if (inflight.get(offerId)?.key === key) inflight.delete(offerId);
+    }
+  })();
+  inflight.set(offerId, { key, promise });
+  return promise;
 }
 
 const safeEq = (a, b) => {
@@ -77,15 +150,6 @@ app.onError((err, c) => {
 });
 
 app.get('/healthz', (c) => c.text('ok'));
-app.get('/fonts/figtree.css', (c) => c.body(FONT_CSS, 200, { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'public, max-age=86400' }));
-app.use('/fonts/files/*', serveStatic({ root: FONT_DIR, rewriteRequestPath: (p) => p.replace(/^\/fonts/, '') }));
-
-// Render dla Gotenberga: bez logowania, ale tylko z ważnym podpisem (ważny kilka minut).
-app.get('/render/:id', (c) => {
-  const id = c.req.param('id');
-  if (!verifySig(id, c.req.query('exp'), c.req.query('sig'))) return c.text('forbidden', 403);
-  return c.html(renderOffer(store, id, { mode: 'pdf' }));
-});
 
 // Logowanie: Basic (hasło STUDIO_PASSWORD, dowolny login) albo Bearer STUDIO_API_TOKEN.
 // Bez obu zmiennych aplikacja jest otwarta (tylko do pracy lokalnej).
@@ -108,13 +172,12 @@ app.use('/static/*', serveStatic({
 }));
 app.get('/', (c) => c.html(readFileSync(join(ROOT, 'public', 'index.html'), 'utf8')));
 
-app.get('/assets/:id', (c) => {
-  const a = store.getAsset(c.req.param('id'));
-  if (!a) return c.text('not found', 404);
-  return c.body(Buffer.from(a.data), 200, { 'content-type': a.mime, 'cache-control': 'no-cache' });
+app.get('/preview-img/:offer/:key/:n', (c) => {
+  const p = previews.get(c.req.param('offer'));
+  const n = Number.parseInt(c.req.param('n'), 10);
+  if (!p || p.key !== c.req.param('key') || !p.pngs[n]) return c.text('not found', 404);
+  return c.body(p.pngs[n], 200, { 'content-type': 'image/png', 'cache-control': 'private, max-age=86400, immutable' });
 });
-
-app.get('/preview/:id', (c) => c.html(renderOffer(store, c.req.param('id'), { mode: 'preview' })));
 
 // ------------------------------------------------------------------ API
 const api = new Hono();
@@ -142,9 +205,7 @@ api.get('/events', (c) =>
   }),
 );
 
-api.get('/meta', (c) =>
-  c.json({ ...store.meta(), layouts: store.list('layouts').map(({ id, name, description }) => ({ id, name, description })) }),
-);
+api.get('/meta', (c) => c.json({ ...store.meta(), figcraftWebUrl: FIGCRAFT_WEB_URL }));
 
 // bloki
 api.get('/blocks', (c) => c.json(store.listBlocks({ type: c.req.query('type'), tag: c.req.query('tag'), q: c.req.query('q') })));
@@ -168,24 +229,40 @@ api.delete('/blocks/:id', (c) => {
   return c.body(null, 204);
 });
 
-// layouty
-api.get('/layouts', (c) => c.json(store.list('layouts')));
-api.get('/layouts/:id', (c) => c.json(store.mustGet('layouts', c.req.param('id'))));
-api.post('/layouts', async (c) => {
-  const b = await body(c);
-  if (!b.name) throw new HttpError(400, 'Layout musi mieć "name"');
-  const l = store.insert('layouts', { ...b, id: b.id || slugify(b.name) });
-  changed('layouts', l.id);
-  return c.json(l, 201);
+// szablony (.figcraft)
+const withFrames = (t) => ({ ...t, frames: describeTemplate(template(t.id).parsed) });
+api.get('/templates', (c) => c.json(store.list('templates').map(withFrames)));
+api.get('/templates/:id', (c) => c.json(withFrames(store.mustGet('templates', c.req.param('id')))));
+api.get('/templates/:id/file', (c) => {
+  const t = store.mustGet('templates', c.req.param('id'));
+  return c.body(store.templateFile(t.id).file, 200, {
+    'content-type': 'application/octet-stream',
+    'content-disposition': `attachment; filename="${slugify(t.name)}.figcraft"`,
+  });
 });
-api.patch('/layouts/:id', async (c) => {
-  const l = store.update('layouts', c.req.param('id'), await body(c));
-  changed('layouts', l.id);
-  return c.json(l);
+// multipart: file (.figcraft), opcjonalnie id i name. Istniejące id = podmiana pliku szablonu.
+api.post('/templates', async (c) => {
+  const form = await c.req.parseBody();
+  const file = form.file;
+  if (!(file instanceof File)) throw new HttpError(400, 'Wyślij plik .figcraft w polu "file" (multipart/form-data)');
+  if (file.size > 100 * 1024 * 1024) throw new HttpError(413, 'Plik większy niż 100 MB');
+  const buf = Buffer.from(await file.arrayBuffer());
+  const parsed = parseTemplate(buf); // walidacja
+  const id = (typeof form.id === 'string' && form.id) || slugify(file.name.replace(/\.figcraft$/i, ''));
+  const name = (typeof form.name === 'string' && form.name) || store.get('templates', id)?.name || parsed.name || id;
+  const t = store.putTemplate({ id, name, file: buf });
+  changed('templates', t.id);
+  return c.json(withFrames(t), 201);
 });
-api.delete('/layouts/:id', (c) => {
-  store.remove('layouts', c.req.param('id'));
-  changed('layouts', c.req.param('id'));
+api.patch('/templates/:id', async (c) => {
+  const { name } = await body(c);
+  const t = store.update('templates', c.req.param('id'), { name });
+  changed('templates', t.id);
+  return c.json(t);
+});
+api.delete('/templates/:id', (c) => {
+  store.remove('templates', c.req.param('id'));
+  changed('templates', c.req.param('id'));
   return c.body(null, 204);
 });
 
@@ -196,6 +273,7 @@ api.post('/offers', async (c) => {
   const b = await body(c);
   if (!b.name) throw new HttpError(400, 'Oferta musi mieć "name"');
   const { slides = [], ...offer } = b;
+  if (!offer.template_id) offer.template_id = store.list('templates')[0]?.id ?? null;
   const created = store.tx(() => {
     const o = store.insert('offers', offer, offer.name);
     slides.forEach((s, i) => store.insert('slides', { ...s, offer_id: o.id, position: i }, 'slide'));
@@ -211,6 +289,7 @@ api.patch('/offers/:id', async (c) => {
 });
 api.delete('/offers/:id', (c) => {
   store.remove('offers', c.req.param('id'));
+  previews.delete(c.req.param('id'));
   changed('offers', c.req.param('id'), { offer_id: c.req.param('id') });
   return c.body(null, 204);
 });
@@ -227,24 +306,41 @@ api.put('/offers/:id/order', async (c) => {
   changed('slides', null, { offer_id: o.id });
   return c.json(o);
 });
-api.get('/offers/:id/html', (c) => c.html(renderOffer(store, c.req.param('id'), { mode: 'pdf' })));
-api.get('/offers/:id/pdf', async (c) => {
+
+// render
+api.get('/offers/:id/preview', async (c) => {
   const id = c.req.param('id');
-  const offer = store.mustGet('offers', id);
-  const exp = String(Date.now() + 5 * 60_000);
-  const pageUrl = `${INTERNAL_URL}/render/${encodeURIComponent(id)}?exp=${exp}&sig=${sign(id, exp)}`;
-  const pdf = await htmlUrlToPdf({ gotenbergUrl: GOTENBERG_URL, pageUrl });
-  const filename = `${slugify(offer.name)}.pdf`;
+  const p = await preview(id);
+  return c.json({
+    key: p.key,
+    ms: p.ms,
+    error: p.error,
+    slides: p.report.map((s) => ({ ...s, url: s.index != null && p.pngs[s.index] ? `/preview-img/${encodeURIComponent(id)}/${p.key}/${s.index}` : null })),
+  });
+});
+api.get('/offers/:id/pdf', async (c) => {
+  const { offer, input } = renderInput(c.req.param('id'), { includeHidden: false });
+  if (!input.slides.length) throw new HttpError(400, 'Oferta nie ma widocznych slajdów');
+  const pdf = await renderPdf(input);
   return c.body(pdf, 200, {
     'content-type': 'application/pdf',
-    'content-disposition': `${c.req.query('download') === '0' ? 'inline' : 'attachment'}; filename="${filename}"`,
+    'content-disposition': `${c.req.query('download') === '0' ? 'inline' : 'attachment'}; filename="${slugify(offer.name)}.pdf"`,
+  });
+});
+// Gotowy dokument oferty jako .figcraft: do ręcznych poprawek w FigCraft.
+api.get('/offers/:id/figcraft', async (c) => {
+  const { offer, input } = renderInput(c.req.param('id'), { includeHidden: false });
+  const file = await renderFigcraft(input);
+  return c.body(file, 200, {
+    'content-type': 'application/octet-stream',
+    'content-disposition': `attachment; filename="${slugify(offer.name)}.figcraft"`,
   });
 });
 
 // slajdy
 api.post('/offers/:id/slides', async (c) => {
   const b = await body(c);
-  if (!b.layout_id) throw new HttpError(400, 'Slajd musi mieć "layout_id"');
+  if (!b.frame) throw new HttpError(400, 'Slajd musi mieć "frame" (nazwę slajdu w szablonie)');
   const s = store.addSlide(c.req.param('id'), b);
   changed('slides', s.id, { offer_id: s.offer_id });
   return c.json(s, 201);
@@ -264,37 +360,6 @@ api.delete('/slides/:id', (c) => {
   return c.body(null, 204);
 });
 
-// motyw
-api.get('/theme', (c) => c.json({ css: store.getSetting('theme_css') }));
-api.put('/theme', async (c) => {
-  const { css } = await body(c);
-  if (typeof css !== 'string') throw new HttpError(400, 'Oczekiwano {"css": "..."}');
-  store.setSetting('theme_css', css);
-  changed('settings', 'theme_css');
-  return c.json({ css });
-});
-
-// assety (obrazki)
-api.get('/assets', (c) => c.json(store.listAssets()));
-api.post('/assets', async (c) => {
-  const form = await c.req.parseBody();
-  const file = form.file;
-  if (!(file instanceof File)) throw new HttpError(400, 'Wyślij plik w polu "file" (multipart/form-data)');
-  if (file.size > 15 * 1024 * 1024) throw new HttpError(413, 'Plik większy niż 15 MB');
-  const ext = extname(file.name).toLowerCase();
-  const mime = file.type || MIME[ext];
-  if (!mime || !mime.startsWith('image/')) throw new HttpError(400, 'Dozwolone są tylko obrazki');
-  const id = (typeof form.id === 'string' && form.id) || slugify(file.name.slice(0, file.name.length - ext.length));
-  const a = store.putAsset({ id, name: file.name, mime, data: Buffer.from(await file.arrayBuffer()) });
-  changed('assets', a.id);
-  return c.json(a, 201);
-});
-api.delete('/assets/:id', (c) => {
-  store.removeAsset(c.req.param('id'));
-  changed('assets', c.req.param('id'));
-  return c.body(null, 204);
-});
-
 // eksport / import całej bazy
 api.get('/export', (c) => {
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
@@ -305,6 +370,8 @@ api.get('/export', (c) => {
 });
 api.post('/import', async (c) => {
   const counts = store.importAll(await body(c), c.req.query('mode') || 'merge');
+  parsedCache.clear();
+  previews.clear();
   emit({ table: '*', id: null });
   return c.json({ imported: counts });
 });
@@ -314,5 +381,4 @@ app.route('/api', api);
 serve({ fetch: app.fetch, port: PORT, hostname: '0.0.0.0' }, (info) => {
   console.log(`offer-studio: http://localhost:${info.port} (baza: ${DB_PATH})`);
   if (!PASSWORD && !API_TOKEN) console.warn('offer-studio: UWAGA, brak STUDIO_PASSWORD i STUDIO_API_TOKEN: aplikacja jest otwarta');
-  if (!GOTENBERG_URL) console.warn('offer-studio: brak GOTENBERG_URL, eksport PDF wyłączony (zostaje „Drukuj” w przeglądarce)');
 });
