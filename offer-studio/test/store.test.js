@@ -438,3 +438,15 @@ test('tile content update: a database seeded with revision 1 gets the new soluti
   assert.equal(s.getSetting('tile_content_rev'), String(seed.tileUpgrade.rev));
   assert.deepEqual(s.ensureTiles(seed), { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 }, 'second run changes nothing');
 });
+
+test('tile content update: generated sources are refreshed, sources written by hand stay', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  s.update('blocks', 'sol-private-vault', { data: { source: 'Sales sheet: "Gaius Vault to wewnętrzne AI…"' } });
+  s.update('blocks', 'sol-it-brief', { data: { source: 'Confirmed by Witek on the call' } });
+  s.setSetting('tile_content_rev', String(seed.tileUpgrade.rev - 1));
+  s.ensureTiles(seed);
+  assert.equal(s.get('blocks', 'sol-private-vault').data.source, seed.solutionBlocks.find((b) => b.id === 'sol-private-vault').data.source);
+  assert.equal(s.get('blocks', 'sol-it-brief').data.source, 'Confirmed by Witek on the call');
+});

@@ -550,7 +550,9 @@ export class Store {
       if (!cur) { this.upsert('blocks', b); counts.blocks++; continue; }
       const tiles = b.tags.filter((t) => t.includes(':'));
       const tags = [...cur.tags.filter((t) => !t.includes(':')), ...tiles];
-      const data = cur.data?.source ? {} : { source: b.data.source };
+      // Sources written by this seed start with "Sales sheet"; those follow the seed, anything else was written by hand.
+      const generated = !cur.data?.source || String(cur.data.source).startsWith('Sales sheet');
+      const data = generated && cur.data?.source !== b.data.source ? { source: b.data.source } : {};
       if (JSON.stringify(tags) === JSON.stringify(cur.tags) && !Object.keys(data).length) continue;
       this.update('blocks', b.id, { tags, ...(Object.keys(data).length ? { data } : {}) });
       counts.tagged++;

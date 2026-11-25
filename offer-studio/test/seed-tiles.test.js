@@ -155,3 +155,19 @@ test('content: every block and card is pinned to a tile or marked general', () =
   const loose = [...seed.blocks, ...seed.components].filter((x) => !x.tags.some((t) => t.includes(':')) && !x.tags.includes('general'));
   assert.deepEqual(loose.map((x) => x.id), []);
 });
+
+test('content language: everything people see is in English (proper names aside)', () => {
+  const allowed = ['Marszałek'];
+  const polish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/;
+  const offenders = [];
+  const check = (id, value) => {
+    let text = JSON.stringify(value);
+    for (const a of allowed) text = text.split(a).join('');
+    if (polish.test(text)) offenders.push(id);
+  };
+  for (const b of seed.blocks) check(b.id, [b.title, b.body, b.data]);
+  for (const t of tiles) check(t.id, [t.label, t.description, t.quotes, t.data]);
+  for (const c of seed.components) check(c.id, [c.title, c.description, c.use_when, c.avoid_when]);
+  for (const s of scenarios) check(s.id, s.steps);
+  assert.deepEqual(offenders, []);
+});
