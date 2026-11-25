@@ -101,6 +101,7 @@ Offer PDF (webhook GET /webhook/offer-pdf?id=…)
 | `role` | `champion` or `board` (who reads the offer) |
 | `email`, `client` | contact and organization name |
 | `text` | an email, transcript or note. When present, the AI fills in the missing fields |
+| `brief`, `voice`, `tryItAs`, `pickedRole` | sent by the landing: the whole form on every click. `brief` is what the active tab means; `voice.audioBase64` is a recorded note (WebM/Opus) to transcribe |
 
 **We know nothing** (no `text`): the segment comes from `segment` or the email domain, otherwise
 `in-house`; the role comes from `role`, otherwise `board`; product Vault; pains confidentiality and

@@ -504,12 +504,65 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   pressGroup('data-persona', 'persona');
   pressGroup('data-role', 'role');
 
+  // Voice note: a real recording from the microphone (up to 30 s), sent to n8n as base64 audio.
+  // n8n transcribes it. Without a microphone (or permission) the sample transcript is sent instead.
+  const MAX_REC_S = 30;
+  const voice: { audio: string | null; mimeType: string | null; seconds: number; error: string | null } = { audio: null, mimeType: null, seconds: 0, error: null };
+  let recorder: MediaRecorder | null = null;
+  let recTimer = 0;
+  // Resolves when the last recording is converted and ready to send.
+  let voiceReady: Promise<void> = Promise.resolve();
   const recBtn = $<HTMLButtonElement>('[data-rec]');
-  recBtn?.addEventListener('click', () => {
-    state.rec = !state.rec;
-    recBtn.closest<HTMLElement>('.voice')!.dataset.recording = String(state.rec);
-    recBtn.setAttribute('aria-label', state.rec ? 'Stop recording' : 'Start recording');
-    $('[data-rec-title]')!.textContent = state.rec ? 'Recording… 0:12 / 0:30' : 'Tap to record a voice note';
+  const recTitle = $('[data-rec-title]');
+  const fmt = (s: number) => `0:${String(Math.round(s)).padStart(2, '0')}`;
+  const setRecUi = (on: boolean, title: string) => {
+    state.rec = on;
+    recBtn!.closest<HTMLElement>('.voice')!.dataset.recording = String(on);
+    recBtn!.setAttribute('aria-label', on ? 'Stop recording' : 'Start recording');
+    recTitle!.textContent = title;
+  };
+  const blobToBase64 = (blob: Blob) =>
+    new Promise<string>((ok, fail) => {
+      const r = new FileReader();
+      r.onload = () => ok(String(r.result).split(',')[1] || '');
+      r.onerror = () => fail(r.error);
+      r.readAsDataURL(blob);
+    });
+  const stopRecording = () => {
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+  };
+  recBtn?.addEventListener('click', async () => {
+    if (state.rec) return stopRecording();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks: Blob[] = [];
+      const started = performance.now();
+      let done = () => {};
+      voiceReady = new Promise((ok) => (done = ok));
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      recorder.onstop = async () => {
+        clearInterval(recTimer);
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks, { type: recorder?.mimeType || 'audio/webm' });
+        voice.seconds = Math.min(MAX_REC_S, (performance.now() - started) / 1000);
+        voice.mimeType = blob.type;
+        voice.audio = await blobToBase64(blob);
+        voice.error = null;
+        setRecUi(false, `Recorded ${fmt(voice.seconds)} · tap to record again`);
+        done();
+      };
+      recorder.start();
+      setRecUi(true, `Recording… 0:00 / ${fmt(MAX_REC_S)}`);
+      recTimer = window.setInterval(() => {
+        const s = (performance.now() - started) / 1000;
+        if (s >= MAX_REC_S) return stopRecording();
+        recTitle!.textContent = `Recording… ${fmt(s)} / ${fmt(MAX_REC_S)}`;
+      }, 250);
+    } catch (e) {
+      voice.error = (e as Error).name || 'microphone unavailable';
+      setRecUi(false, 'No microphone access · the sample note will be sent');
+    }
   });
 
   type LeadResult = {
@@ -524,18 +577,39 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
   // What we send to n8n. Without text (email or role only) the workflow takes the "nothing known" path.
   const typedEmail = () => $<HTMLInputElement>('#email')?.value.trim() || '';
-  // The same shape for every tab, so the n8n workflow reads one format:
-  // { source, mode, email, persona, role, segment, text, page, sentAt }
+  // Everything the visitor set in the form goes to n8n on every click, whichever tab is open.
+  // `mode` says which tab they generated from; n8n decides what to use.
   const leadPayload = () => {
-    const base = { mode: state.mode, email: null as string | null, persona: null as string | null, role: null as string | null,
-      segment: null as string | null, text: null as string | null, page: location.href, sentAt: new Date().toISOString() };
-    if (state.mode === 'voice') return { ...base, source: 'landing-voice', text: voiceSample };
-    if (state.mode === 'role') return { ...base, source: 'landing-role', role: state.role };
-    // Email tab: the typed email and the selected "Try it as" chip are both sent.
     const p = personas.find((x) => x.id === state.persona) ?? personas[0];
     const email = typedEmail() || null;
-    return { ...base, source: email ? 'landing-email' : 'landing-try-it-as', email, persona: p.id, role: p.role, segment: p.segment,
-      text: email ? null : p.text };
+    const source = { email: email ? 'landing-email' : 'landing-try-it-as', voice: 'landing-voice', role: 'landing-role' }[state.mode] ?? 'landing';
+    return {
+      source,
+      mode: state.mode,
+      // Email tab
+      email,
+      tryItAs: { persona: p.id, label: p.label, role: p.role, segment: p.segment, text: p.text },
+      // Pick your role tab
+      pickedRole: state.role,
+      // Voice note tab: real audio when recorded, otherwise the sample transcript
+      voice: {
+        recorded: !!voice.audio,
+        audioBase64: voice.audio,
+        mimeType: voice.mimeType,
+        seconds: voice.seconds ? Math.round(voice.seconds * 10) / 10 : null,
+        sampleTranscript: voice.audio ? null : voiceSample,
+        error: voice.error,
+      },
+      // What the generator would use for the active tab (a ready-made brief for the workflow)
+      brief: state.mode === 'role'
+        ? { role: state.role, segment: null, text: null }
+        : state.mode === 'voice'
+          ? { role: null, segment: null, text: voice.audio ? null : voiceSample }
+          : { role: p.role, segment: p.segment, text: email ? null : p.text },
+      page: location.href,
+      language: navigator.language,
+      sentAt: new Date().toISOString(),
+    };
   };
 
   // Sample offer when n8n is not configured or does not answer.
@@ -615,6 +689,9 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     // Progress steps follow the demo rhythm; the last one waits for n8n.
     for (let n = 1; n < buildSteps.length; n++) genTimers.push(window.setTimeout(() => setBuildStep(n), n * 750));
     const minWait = new Promise((ok) => genTimers.push(window.setTimeout(ok, 3400)));
+    // Still recording? Finish the note first so the audio goes with this click.
+    if (state.rec) stopRecording();
+    await voiceReady;
     const [live] = await Promise.all([requestOffer(), minWait]);
     if (run !== genRun) return; // the selection changed meanwhile: the result is stale
     setBuildStep(buildSteps.length);
