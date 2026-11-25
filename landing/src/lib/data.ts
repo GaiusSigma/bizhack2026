@@ -52,9 +52,6 @@ export const personas = [
   },
 ];
 
-/** Voice note in the demo: a sample transcript (recording is simulated). */
-export const voiceSample = 'Cześć, kieruję małym działem prawnym w firmie logistycznej. Chcę, żeby zespół zaczął korzystać z AI przy umowach, ale muszę mieć coś, co pokażę zarządowi. Martwi mnie, że ludzie spróbują raz i wrócą do starych nawyków.';
-
 export const tabs: { id: 'email' | 'voice' | 'role'; label: string; icon: IconName }[] = [
   { id: 'email', label: 'Email', icon: 'mail' },
   { id: 'voice', label: 'Voice note', icon: 'mic' },

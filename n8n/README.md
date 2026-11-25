@@ -101,6 +101,7 @@ Offer PDF (webhook GET /webhook/offer-pdf?id=…)
 | `role` | `champion` or `board` (who reads the offer) |
 | `email`, `client` | contact and organization name |
 | `text` | an email, transcript or note. When present, the AI fills in the missing fields |
+| `touched`, `tryItAs`, `pickedRole`, `voice` | sent by the landing: only what the visitor used, `null` otherwise. `voice` has the recorded audio (base64 WebM/Opus) and the browser's transcript; `voice.transcriptionError` means n8n should transcribe the audio itself |
 
 **We know nothing** (no `text`): the segment comes from `segment` or the email domain, otherwise
 `in-house`; the role comes from `role`, otherwise `board`; product Vault; pains confidentiality and
@@ -121,9 +122,9 @@ which slides each reader gets in Offer Studio, not in n8n.
    Offer Studio nodes if n8n asks.
 3. Set `ANTHROPIC_API_KEY` in Offer Studio (lead analysis). Without a key the
    workflow still runs, always on defaults.
-4. Activate (publish) the workflow. The landing calls `${PUBLIC_N8N_URL}/webhook/offer`; in
-   `docker-compose.yml`, `PUBLIC_N8N_URL` = `SERVICE_URL_N8N`. Without it the landing generator shows
-   the sample offer.
+4. Activate (publish) the workflow. The landing posts every "Generate my offer" click to the webhook in
+   `PUBLIC_OFFER_WEBHOOK_URL` (default: the production webhook set in `landing/src/pages/index.astro`).
+   If the webhook does not answer with an offer, the landing shows the sample offer.
 
 Test from a terminal:
 
