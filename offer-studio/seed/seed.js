@@ -1,6 +1,8 @@
 // Dane startowe, wczytywane tylko do PUSTEJ bazy. Treść pochodzi z gaius-offer.figcraft,
 // a szablon (seed/gaius-template.figcraft) to ten sam plik z polami {{…}} w nazwach warstw.
 // Format jak eksport z /api/export; plik szablonu dokłada serwer.
+import { solutionBlocks, tileTags, tiles } from './tiles.js';
+
 const ts = '2026-11-25T00:00:00.000Z';
 const tags = ['vault'];
 
@@ -202,14 +204,20 @@ export const componentSets = [{
 
 export const TEMPLATE = { id: 'gaius', name: 'Gaius Vault', file: 'gaius-template.figcraft' };
 
+// Kafelki dopisane do tagów treści (bez powtórzeń).
+const withTiles = (item) => ({ ...item, tags: [...new Set([...item.tags, ...(tileTags[item.id] || [])])] });
+
 export default {
   format: 'offer-studio',
   version: 3,
   exported_at: ts,
-  blocks,
+  blocks: [...blocks.map(withTiles), ...solutionBlocks],
+  tiles,
+  tileTags,
+  solutionBlocks,
   templates: [],
   offers: [{ id: OFFER, name: 'Gaius Vault – oferta bazowa', template_id: TEMPLATE.id, data: { client: '', price: '------' }, created_at: ts, updated_at: ts }],
   slides,
-  components,
+  components: components.map(withTiles),
   component_sets: componentSets,
 };
