@@ -62,6 +62,11 @@ if (gaiusRow && env.STUDIO_SEED !== 'false' && !store.list('components').length
   });
   console.log('offer-studio: dodano komponenty (zestaw @dlaczego) i ich opisy');
 }
+// Kafelki (v4): baza bez kafelków dostaje kafelki, scenariusze, bloki rozwiązań i przypięcia treści.
+if (env.STUDIO_SEED !== 'false') {
+  const added = store.ensureTiles(seedModule.default);
+  if (Object.values(added).some(Boolean)) console.log('offer-studio: dodano kafelki i scenariusze', added);
+}
 
 // ------------------------------------------------------------------ live: Server-Sent Events
 const listeners = new Set();

@@ -272,3 +272,63 @@ test('render: wybrane komponenty zastępują sloty #pick w kolejności, z nadpis
 test('nieobsługiwany format pliku jest odrzucany', async () => {
   await assert.rejects(normalizeUpload(Buffer.from('x'), 'notatki.txt'), /Nieobsługiwany plik/);
 });
+
+// ------------------------------------------------------------------ v4: kafelki i scenariusze
+const tileFree = () => ({
+  ...seed,
+  tiles: undefined,
+  scenarios: undefined,
+  blocks: seed.blocks.filter((b) => b.type !== 'rozwiazanie').map((b) => ({ ...b, tags: b.tags.filter((t) => !t.includes(':')) })),
+  components: seed.components.map((c) => ({ ...c, tags: c.tags.filter((t) => !t.includes(':')) })),
+});
+
+test('v4: baza v3 z wolumenu dostaje kafelki, a oferta bazowa zostaje', () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'studio-')), 'v3.db');
+  const a = openDb(path);
+  a.importAll(tileFree(), 'merge');
+  a.db.exec('DROP TABLE tiles; DROP TABLE scenarios; ALTER TABLE slides DROP COLUMN origin; ALTER TABLE slides DROP COLUMN locked; PRAGMA user_version = 3');
+  a.db.close();
+
+  const b = openDb(path);
+  assert.equal(b.db.prepare('PRAGMA user_version').get().user_version, 4);
+  const cols = b.db.prepare('PRAGMA table_info(slides)').all().map((c) => c.name);
+  assert.ok(cols.includes('origin') && cols.includes('locked'));
+  assert.equal(b.getOffer('gaius-vault-bazowa').slides.length, 11);
+  assert.equal(b.getOffer('gaius-vault-bazowa').slides[0].locked, false);
+
+  const first = b.ensureTiles(seed);
+  assert.equal(first.tiles, seed.tiles.length);
+  assert.equal(first.blocks, seed.solutionBlocks.length);
+  assert.ok(first.tagged > 0);
+  assert.deepEqual(b.ensureTiles(seed), { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 });
+
+  const tags = b.get('blocks', 'uc-pilne-pismo').tags;
+  assert.deepEqual(tags, [...new Set(tags)], 'powtórzone tagi');
+  assert.ok(tags.includes('dzial-prawny'), 'stary tag zniknął');
+  for (const t of seed.tileTags['uc-pilne-pismo']) assert.ok(tags.includes(t), t);
+  assert.ok(b.get('components', 'dlaczego/on-premise').tags.includes('produkt:on-prem'));
+});
+
+test('kafelki: złe id odrzucone (400)', () => {
+  const s = openDb(':memory:');
+  for (const id of ['kolor:zielony', 'bol:Zła', 'poufnosc']) {
+    assert.throws(() => s.insert('tiles', { id, category: 'bol', label: 'x', status: 'active' }), (e) => e.status === 400, id);
+  }
+  assert.throws(() => s.insert('scenarios', { id: 'bol:poufnosc', name: 'x', steps: [] }), (e) => e.status === 400);
+  const t = s.insert('tiles', { id: 'bol:test', category: 'bol', label: 'Test', status: 'active', quotes: ['a'] });
+  assert.deepEqual(t.quotes, ['a']);
+});
+
+test('eksport v4 -> import replace odtwarza kafelki i scenariusze', () => {
+  const a = fresh();
+  a.insert('scenarios', { id: 'rola:zarzad', name: 'Zarząd', steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
+  const dump = JSON.parse(JSON.stringify(a.exportAll()));
+  assert.equal(dump.version, 4);
+  assert.equal(dump.tiles.length, seed.tiles.length);
+  const b = openDb(':memory:');
+  const counts = b.importAll(dump, 'replace');
+  assert.equal(counts.tiles, seed.tiles.length);
+  assert.equal(counts.scenarios, 1);
+  assert.deepEqual(b.list('tiles'), a.list('tiles'));
+  assert.deepEqual(b.get('scenarios', 'rola:zarzad').steps[0].fill, { kind: 'none' });
+});

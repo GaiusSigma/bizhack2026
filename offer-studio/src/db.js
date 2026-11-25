@@ -14,7 +14,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes } from 'node:crypto';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS blocks (
@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS slides (
   query TEXT,
   picks TEXT NOT NULL DEFAULT '{}',
   hidden INTEGER NOT NULL DEFAULT 0,
+  origin TEXT,                             -- JSON {step, matched}: skąd slajd przyszedł przy generowaniu z kafelków
+  locked INTEGER NOT NULL DEFAULT 0,       -- 1: poprawiony ręcznie, przeliczenie go nie rusza
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -81,6 +83,27 @@ CREATE TABLE IF NOT EXISTS components (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS components_set ON components(set_name);
+
+CREATE TABLE IF NOT EXISTS tiles (
+  id TEXT PRIMARY KEY,                     -- "<kategoria>:<slug>", np. bol:poufnosc
+  category TEXT NOT NULL,                  -- rola | segment | bol | produkt
+  label TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  quotes TEXT NOT NULL DEFAULT '[]',       -- cytaty klientów
+  status TEXT NOT NULL DEFAULT 'active',   -- active | soon
+  position INTEGER NOT NULL DEFAULT 0,
+  data TEXT NOT NULL DEFAULT '{}',         -- np. {price} dla produktu
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scenarios (
+  id TEXT PRIMARY KEY,                     -- id kafelka roli, np. rola:zarzad
+  name TEXT NOT NULL DEFAULT '',
+  steps TEXT NOT NULL DEFAULT '[]',        -- kroki: [{key, label, frame, data, data_by_product, fill, when}]
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS component_sets (
   id TEXT PRIMARY KEY,                     -- nazwa zestawu bez @
@@ -110,9 +133,9 @@ export const TABLES = {
     order: 'updated_at DESC',
   },
   slides: {
-    fields: ['offer_id', 'position', 'frame', 'data', 'block_ids', 'query', 'picks', 'hidden'],
-    json: { data: {}, block_ids: [], query: null, picks: {} },
-    bool: ['hidden'],
+    fields: ['offer_id', 'position', 'frame', 'data', 'block_ids', 'query', 'picks', 'hidden', 'origin', 'locked'],
+    json: { data: {}, block_ids: [], query: null, picks: {}, origin: null },
+    bool: ['hidden', 'locked'],
     order: 'offer_id, position',
   },
   components: {
@@ -126,7 +149,21 @@ export const TABLES = {
     json: {},
     order: 'id',
   },
+  tiles: {
+    fields: ['category', 'label', 'description', 'quotes', 'status', 'position', 'data'],
+    json: { quotes: [], data: {} },
+    order: 'category, position, label',
+  },
+  scenarios: {
+    fields: ['name', 'steps'],
+    json: { steps: [] },
+    order: 'id',
+  },
 };
+
+export const TILE_CATEGORIES = ['rola', 'segment', 'bol', 'produkt'];
+export const TILE_ID_RE = /^(rola|segment|bol|produkt):[a-z0-9][a-z0-9-]{0,59}$/;
+const SCENARIO_ID_RE = /^rola:[a-z0-9][a-z0-9-]{0,59}$/;
 
 // Pola komponentu, które opisuje człowiek (reszta przychodzi z synchronizacji z biblioteką).
 export const COMPONENT_EDITABLE = ['title', 'description', 'use_when', 'avoid_when', 'topic', 'variant', 'tags', 'data'];
@@ -158,7 +195,8 @@ export function slugify(s) {
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
 // Komponenty mają id "<zestaw>/<karta>" (oba człony po slugify).
 const COMPONENT_ID_RE = /^[a-z0-9][a-z0-9-]{0,59}\/[a-z0-9][a-z0-9-]{0,79}$/;
-const idOk = (table, id) => (table === 'components' ? COMPONENT_ID_RE : ID_RE).test(id);
+const ID_RES = { components: COMPONENT_ID_RE, tiles: TILE_ID_RE, scenarios: SCENARIO_ID_RE };
+const idOk = (table, id) => (ID_RES[table] || ID_RE).test(id);
 export const componentId = (set, key) => `${slugify(set)}/${slugify(key)}`;
 
 export function openDb(path) {
@@ -189,6 +227,9 @@ function migrate(db) {
       for (const t of ['layouts', 'assets', 'settings']) if (has(t)) db.exec(`DROP TABLE ${t}`);
     }
     if (!cols('slides').includes('picks')) db.exec("ALTER TABLE slides ADD COLUMN picks TEXT NOT NULL DEFAULT '{}'");
+    // v3 -> v4: slajdy dostają pochodzenie i blokadę; tabele tiles i scenarios tworzy SCHEMA.
+    if (!cols('slides').includes('origin')) db.exec('ALTER TABLE slides ADD COLUMN origin TEXT');
+    if (!cols('slides').includes('locked')) db.exec('ALTER TABLE slides ADD COLUMN locked INTEGER NOT NULL DEFAULT 0');
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
@@ -423,6 +464,29 @@ export class Store {
     this.db.prepare(`UPDATE ${table} SET updated_at = ? WHERE id = ?`).run(now(), id);
   }
 
+  // Kafelki (v4) dla baz, które ich jeszcze nie mają: kafelki, scenariusze, bloki rozwiązań
+  // i przypięcia kafelków do istniejącej treści (dopisywane do tagów, nic nie jest usuwane).
+  // Działa tylko przy pustej tabeli tiles, więc kolejne starty nic nie zmieniają.
+  ensureTiles(seed) {
+    const counts = { tiles: 0, scenarios: 0, blocks: 0, tagged: 0 };
+    if (this.db.prepare('SELECT 1 FROM tiles LIMIT 1').get()) return counts;
+    this.tx(() => {
+      for (const t of seed.tiles || []) { this.upsert('tiles', t); counts.tiles++; }
+      for (const sc of seed.scenarios || []) if (!this.get('scenarios', sc.id)) { this.upsert('scenarios', sc); counts.scenarios++; }
+      for (const b of seed.solutionBlocks || []) if (!this.get('blocks', b.id)) { this.upsert('blocks', b); counts.blocks++; }
+      for (const [id, add] of Object.entries(seed.tileTags || {})) {
+        const table = id.includes('/') ? 'components' : 'blocks';
+        const cur = this.get(table, id);
+        if (!cur) continue;
+        const tags = [...new Set([...cur.tags, ...add])];
+        if (tags.length === cur.tags.length) continue;
+        this.update(table, id, { tags });
+        counts.tagged++;
+      }
+    });
+    return counts;
+  }
+
   isEmpty() {
     return !this.db.prepare('SELECT 1 FROM templates LIMIT 1').get() && !this.db.prepare('SELECT 1 FROM blocks LIMIT 1').get();
   }
@@ -435,7 +499,7 @@ export class Store {
       .map((t) => ({ id: t.id, name: t.name, created_at: t.created_at, updated_at: t.updated_at, file_base64: Buffer.from(t.file).toString('base64') }));
     return {
       format: 'offer-studio',
-      version: 3,
+      version: 4,
       exported_at: now(),
       blocks: this.list('blocks'),
       templates,
@@ -443,6 +507,8 @@ export class Store {
       slides: this.list('slides'),
       components: this.list('components'),
       component_sets: this.list('component_sets'),
+      tiles: this.list('tiles'),
+      scenarios: this.list('scenarios'),
     };
   }
 
@@ -452,13 +518,13 @@ export class Store {
   // Eksport v2 nie ma komponentów: po imporcie dopisze je synchronizacja z biblioteką.
   importAll(dump, mode = 'merge') {
     if (!dump || dump.format !== 'offer-studio') throw new HttpError(400, 'To nie jest eksport offer-studio (brak format: "offer-studio")');
-    if (![1, 2, 3].includes(dump.version)) throw new HttpError(400, `Nieobsługiwana wersja eksportu: ${dump.version}`);
+    if (![1, 2, 3, 4].includes(dump.version)) throw new HttpError(400, `Nieobsługiwana wersja eksportu: ${dump.version}`);
     if (!['merge', 'replace'].includes(mode)) throw new HttpError(400, 'mode: merge albo replace');
     const slides = (dump.slides || []).map((s) => (dump.version === 1 ? { ...s, frame: s.layout_id } : s));
     const counts = {};
     this.tx(() => {
       if (mode === 'replace') {
-        for (const t of ['slides', 'offers', 'blocks', 'templates', 'components', 'component_sets']) this.db.exec(`DELETE FROM ${t}`);
+        for (const t of ['slides', 'offers', 'blocks', 'templates', 'components', 'component_sets', 'tiles', 'scenarios']) this.db.exec(`DELETE FROM ${t}`);
       }
       counts.templates = 0;
       for (const t of dump.templates || []) {
@@ -466,7 +532,7 @@ export class Store {
         counts.templates++;
       }
       // Kolejność ma znaczenie: slajdy wskazują na oferty.
-      for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides], ['components', dump.components], ['component_sets', dump.component_sets]]) {
+      for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides], ['components', dump.components], ['component_sets', dump.component_sets], ['tiles', dump.tiles], ['scenarios', dump.scenarios]]) {
         counts[table] = 0;
         for (const item of items || []) {
           this.upsert(table, item);
