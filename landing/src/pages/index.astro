@@ -1,78 +1,569 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+import '../styles/landing.css';
+import {
+  apps,
+  buildSteps,
+  concerns,
+  defaultSource,
+  flowFacts,
+  flowNodes,
+  heroSteps,
+  includes,
+  personas,
+  roles,
+  sources,
+  stats,
+  tabs,
+} from '../lib/data';
 
-const features = [
-  {
-    title: 'Automatyzacje',
-    text: 'Procesy spięte w n8n: formularze, CRM, maile i integracje bez ręcznej roboty.',
-  },
-  {
-    title: 'Projektowanie',
-    text: 'Makiety i prototypy interfejsu robimy w FigCraft, bezpośrednio w przeglądarce.',
-  },
-  {
-    title: 'Szybkie wdrożenie',
-    text: 'Cały stack w Dockerze, wdrażany jednym kliknięciem przez Coolify.',
-  },
+const startSource = sources.find((s) => s.id === defaultSource) ?? sources[0];
+const nodes = [
+  { app: startSource.label.toUpperCase(), icon: startSource.icon, label: startSource.trigger, mock: false, first: true },
+  ...flowNodes.map((n) => ({ ...n, mock: !!n.mock, first: false })),
 ];
+const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixed(2)}s`;
 ---
 
-<Layout title="BizHack 2026" description="BizHack 2026: automatyzacje, design i szybkie wdrożenia.">
-  <header class="wrap nav">
-    <strong class="logo">BizHack<span>2026</span></strong>
-    <a class="btn ghost" href="#kontakt">Kontakt</a>
+<Layout
+  title="Gaius-Lex · Your tailored offer in under three minutes"
+  description="Private AI for legal teams. Tell Gaius who you are and get the offer our sales team would write for you, matched to your role and concerns."
+>
+  <header class="topbar">
+    <div class="wrap topbar__inner">
+      <div class="brand">
+        <a class="wordmark" href="#generator">GAIUS-LEX</a>
+        <span class="badge"><Icon name="spark" size={14} />BizHack AI · Challenge 07</span>
+      </div>
+      <nav class="nav" aria-label="Main">
+        <a class="nav__link" href="#flow">How it runs</a>
+        <a class="nav__link" href="#fears">Why it matters</a>
+        <a class="nav__link" href="#roles">For your team</a>
+        <a class="nav__link" href="#results">Results</a>
+        <a class="btn btn--ink nudge" href="#generator">Get your offer<Icon name="arrow" size={16} /></a>
+      </nav>
+    </div>
   </header>
 
   <main>
-    <section class="wrap hero">
-      <h1>Pomysł rano, działający produkt wieczorem.</h1>
-      <p class="lead">
-        Landing, automatyzacje i projekt interfejsu w jednym miejscu. Podmień ten tekst na opis
-        swojego projektu w <code>landing/src/pages/index.astro</code>.
-      </p>
-      <a class="btn" href="#kontakt">Zacznij teraz</a>
+    <!-- 1 · Generator -->
+    <section id="generator" class="section section--white">
+      <div class="wrap hero">
+        <div class="hero__copy">
+          <span class="eyebrow rise">Private AI for legal teams. Offers in minutes, not days.</span>
+          <h1 class="hero__title rise" style="animation-delay: .1s">Your tailored offer in under three minutes<span class="dot">.</span></h1>
+          <p class="hero__lead rise" style="animation-delay: .2s">
+            Tell Gaius who you are. It builds the offer our sales team would write for you, matched to your role and to
+            the concerns your organisation has about AI.
+          </p>
+
+          <ol class="hero__steps">
+            {heroSteps.map((h, i) => (
+              <li class="rise" style={`animation-delay: ${delay(i, 0.1, 0.3)}`}>
+                <span class="tile tile--soft"><Icon name={h.icon} /></span>
+                <span>{h.text}</span>
+              </li>
+            ))}
+          </ol>
+
+          <div class="apps">
+            <span class="overline overline--muted">Connected to</span>
+            <ul class="apps__list">
+              {apps.map((a, i) => (
+                <li class="app floaty" style={`animation-delay: ${delay(i, 0.35)}`}>
+                  <span class="app__tile"><Icon name={a.icon} size={22} /></span>
+                  <span class="app__label">{a.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <a class="callout lift" href="#flow">
+            <span class="tile tile--ink tile--36"><Icon name="workflow" size={18} /></span>
+            <span><b>No form needed.</b> In daily work it runs on its own: emails, Fireflies transcripts and Gaius Meet notes go through n8n into our CRM.</span>
+          </a>
+
+          <p class="fineprint">
+            <Icon name="shield" size={16} />
+            We use only what you type or say here. No profile lookups, no scraping. This demo runs on sample data.
+          </p>
+        </div>
+
+        <div class="gen rise" style="animation-delay: .25s" data-generator>
+          <div class="gen__tabs" role="tablist" aria-label="How to start">
+            {tabs.map((t, i) => (
+              <button
+                class="gen__tab"
+                role="tab"
+                id={`tab-${t.id}`}
+                aria-controls={`panel-${t.id}`}
+                aria-selected={i === 0 ? 'true' : 'false'}
+                tabindex={i === 0 ? 0 : -1}
+                data-tab={t.id}
+                type="button"
+              >
+                <Icon name={t.icon} size={18} />{t.label}
+              </button>
+            ))}
+          </div>
+
+          <div class="gen__body">
+            <div class="gen__panel" role="tabpanel" id="panel-email" aria-labelledby="tab-email" data-panel="email">
+              <div class="field rise">
+                <label for="email" class="field__label">Work email</label>
+                <div class="field__control">
+                  <Icon name="mail" size={18} />
+                  <input id="email" type="email" autocomplete="email" placeholder="anna.kovacs@yourcompany.hu" />
+                </div>
+              </div>
+              <div class="field rise" style="animation-delay: .1s">
+                <span class="field__label">Or try it as</span>
+                <div class="chips">
+                  {personas.map((p, i) => (
+                    <button class="chip lift" type="button" data-persona={p.id} aria-pressed={i === 0 ? 'true' : 'false'}>
+                      <Icon name="building" size={16} stroke="#9b5155" />{p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div class="gen__panel" role="tabpanel" id="panel-voice" aria-labelledby="tab-voice" data-panel="voice" hidden>
+              <div class="voice rise" data-recording="false">
+                <button class="voice__btn" type="button" aria-label="Start recording" data-rec>
+                  <Icon name="mic" size={24} />
+                </button>
+                <div class="voice__text">
+                  <span class="voice__title" data-rec-title>Tap to record a voice note</span>
+                  <div class="voice__wave" aria-hidden="true">
+                    {Array.from({ length: 12 }, (_, i) => <span class="wave" style={`animation-delay: ${delay(i, 0.08)}`}></span>)}
+                  </div>
+                  <span class="voice__hint">Say who you are, what your team does and what worries you about AI. Up to 30 seconds.</span>
+                </div>
+              </div>
+              <p class="fineprint fineprint--tight">Your note is transcribed and used for this offer only.</p>
+            </div>
+
+            <div class="gen__panel" role="tabpanel" id="panel-role" aria-labelledby="tab-role" data-panel="role" hidden>
+              <span class="field__label">Which seat do you sit in?</span>
+              <div class="role-grid">
+                {roles.map((r, i) => (
+                  <button
+                    class="role-pick lift rise"
+                    type="button"
+                    data-role={r.id}
+                    aria-pressed={i === 0 ? 'true' : 'false'}
+                    style={`animation-delay: ${delay(i, 0.06)}`}
+                  >
+                    <Icon name={r.icon} stroke="#9b5155" />{r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button class="btn btn--ink btn--block nudge" type="button" data-generate>
+              <Icon name="spark" size={18} />Generate my offer<Icon name="arrow" size={18} />
+            </button>
+          </div>
+
+          <div class="gen__result">
+            <div data-phase="idle">
+              <span class="overline">Your offer will include</span>
+              <div class="includes">
+                {includes.map((inc, i) => (
+                  <div class="include rise" style={`animation-delay: ${delay(i, 0.08)}`}>
+                    <Icon name={inc.icon} stroke="#9b5155" />{inc.text}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div data-phase="working" aria-live="polite" hidden>
+              <span class="overline">Building your offer</span>
+              <ol class="build-steps">
+                {buildSteps.map((label, i) => (
+                  <li class="build-step" data-build-step={i} data-state="waiting">
+                    <span class="build-step__mark">
+                      <Icon name="spinner" size={16} strokeWidth={2.5} class="spin mark-active" />
+                      <Icon name="check" size={16} strokeWidth={2.5} class="mark-done" />
+                      <span class="mark-waiting">{i + 1}</span>
+                    </span>
+                    {label}
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div data-phase="done" hidden>
+              <article class="offer rise">
+                <div class="offer__head">
+                  <span class="overline"><span>Offer for <span data-offer="who"></span></span></span>
+                  <h2 class="offer__title" data-offer="headline"></h2>
+                  <span class="offer__meta"><Icon name="clock" size={14} />Generated in 2 min 41 s · sample data</span>
+                  <span class="offer__saved slidein" style="animation-delay: .4s"><Icon name="check" size={14} strokeWidth={2.5} />Saved to CRM · alert posted to #sales on Discord (mock)</span>
+                </div>
+                <div class="offer__block">
+                  <span class="offer__label">What you told us worries you</span>
+                  <div class="offer__line slidein" style="animation-delay: .15s"><Icon name="alert" size={18} stroke="#ce5e64" />Picking a tool that does not fit and leaves the team frustrated.</div>
+                  <div class="offer__line slidein" style="animation-delay: .25s"><Icon name="lock" size={18} stroke="#ce5e64" />Client documents leaking, with no one accountable.</div>
+                </div>
+                <div class="offer__block">
+                  <span class="offer__label">How Gaius answers</span>
+                  <div class="offer__line slidein" style="animation-delay: .35s"><Icon name="check" size={18} stroke="#2e7d46" strokeWidth={2.5} />Every answer leads to its basis: the provision, the judgment, the quote, the case number.</div>
+                  <div class="offer__line slidein" style="animation-delay: .45s"><Icon name="check" size={18} stroke="#2e7d46" strokeWidth={2.5} />Gaius Vault runs on your own servers, with post-quantum file encryption.</div>
+                  <div class="offer__line slidein" style="animation-delay: .55s"><Icon name="check" size={18} stroke="#2e7d46" strokeWidth={2.5} /><span data-offer="answer"></span></div>
+                </div>
+                <div class="offer__foot">
+                  <div class="offer__attach">
+                    <span class="offer__meta">Attached for your team</span>
+                    <span class="offer__file"><Icon name="file" size={16} stroke="#9b5155" /><span data-offer="attach"></span></span>
+                    <span class="offer__price">Price: [YOUR PRICE]</span>
+                  </div>
+                  <div class="offer__actions">
+                    <button class="btn btn--outline btn--sm" type="button"><Icon name="download" size={16} />Download PDF</button>
+                    <a class="btn btn--ink btn--sm" href="#generator"><Icon name="calendar" size={16} />Book a demo</a>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
-    <section class="wrap grid">
-      {
-        features.map((f) => (
-          <article class="card">
-            <h2>{f.title}</h2>
-            <p>{f.text}</p>
-          </article>
-        ))
-      }
+    <!-- 2 · Flow -->
+    <section id="flow" class="section section--sand section--bordered">
+      <div class="wrap stack-40">
+        <div class="flow__intro reveal">
+          <div class="section-head">
+            <span class="overline"><Icon name="workflow" size={16} />AI-native sales, end to end</span>
+            <h2 class="h2">From the first conversation to the CRM, with no one retyping anything.</h2>
+            <p class="lead">An email arrives or a meeting ends. n8n picks it up, Gaius writes the offer, the opportunity lands in our CRM and the team gets a ping on Discord.</p>
+          </div>
+          <button class="btn btn--ink btn--lg pulse" type="button" data-run-flow>
+            <Icon name="play" size={18} /><span data-run-flow-label>Run the workflow</span>
+          </button>
+        </div>
+
+        <div class="flow" data-flow>
+          <div class="flow__col flow__col--sources">
+            <span class="overline overline--muted">1 · Something comes in</span>
+            {sources.map((src) => (
+              <button class="source lift reveal" type="button" data-src={src.id} aria-pressed={src.id === startSource.id ? 'true' : 'false'}>
+                <span class="source__tile"><Icon name={src.icon} size={22} /></span>
+                <span class="source__text">
+                  <span class="source__label">{src.label}</span>
+                  <span class="source__desc">{src.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div class="flow__col flow__col--nodes">
+            <span class="overline overline--muted">2 · n8n workflow runs</span>
+            <div class="workflow reveal">
+              <div class="workflow__head">
+                <span class="workflow__name"><Icon name="workflow" size={18} stroke="#9b5155" />n8n · gaius-offer-generator</span>
+                <span class="workflow__status" data-flow-status data-state="waiting"><span class="workflow__dot"></span><span data-flow-status-text>Waiting for a trigger</span></span>
+              </div>
+              <ol class="workflow__nodes" aria-live="polite">
+                {nodes.map((n, i) => (
+                  <>
+                    <li class="node" data-node={i} data-state="idle">
+                      <span class="node__dot"><Icon name={n.icon} size={18} data-node-icon={n.first ? '' : undefined} /></span>
+                      <span class="node__text">
+                        <span class="node__app" data-node-app={n.first ? '' : undefined}>{n.app}</span>
+                        <span class="node__label" data-node-label={n.first ? '' : undefined}>{n.label}</span>
+                      </span>
+                      {n.mock && <span class="node__mock">MOCK</span>}
+                      <Icon name="check" size={18} stroke="#2e7d46" strokeWidth={2.5} class="node__check" />
+                    </li>
+                    {i < nodes.length - 1 && <li class="node-link" aria-hidden="true"></li>}
+                  </>
+                ))}
+              </ol>
+            </div>
+          </div>
+
+          <div class="flow__col flow__col--out">
+            <span class="overline overline--muted">3 · The team knows</span>
+            <div class="flow__placeholder" data-flow-empty>
+              <span class="tile tile--white tile--56 floaty"><Icon name="bell" size={26} /></span>
+              <span class="flow__placeholder-title">Discord alert and CRM card appear here.</span>
+              <span class="flow__placeholder-hint">Pick a source and run the workflow.</span>
+            </div>
+            <div class="flow__out" data-flow-out hidden>
+              <div class="discord slidein">
+                <span class="discord__avatar"><Icon name="spark" /></span>
+                <div class="discord__body">
+                  <span class="discord__meta"><b>Gaius Offers</b> <span class="discord__bot">BOT</span> <span class="discord__time">#sales · today 09:41</span></span>
+                  <span class="discord__strong">New offer ready for <b data-flow-who>{startSource.who}</b></span>
+                  <span>Source: <span data-flow-source>{startSource.short}</span>. Opportunity moved to <b class="discord__hl">Oferta</b>. Offer PDF attached.</span>
+                  <span class="discord__link">Open in CRM<Icon name="arrow" size={14} /></span>
+                </div>
+              </div>
+              <div class="crm slidein" style="animation-delay: .2s">
+                <span class="crm__kicker"><Icon name="db" size={14} />CRM · OPPORTUNITY</span>
+                <span class="crm__who" data-flow-who>{startSource.who}</span>
+                <div class="crm__stages">
+                  <span>Nowe</span><span>Trial</span><span class="is-current pulse">Oferta</span><span>Sukces</span>
+                </div>
+                <span class="crm__next"><Icon name="calendar" size={16} stroke="#9b5155" />Offer attached · next activity: follow-up call in 2 days · owner [SALESPERSON]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="facts">
+          {flowFacts.map((f) => (
+            <div class="fact reveal">
+              <span class="tile tile--soft"><Icon name={f.icon} /></span>
+              <span class="fact__title">{f.title}</span>
+              <span class="fact__text">{f.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
 
-    <section id="kontakt" class="wrap cta">
-      <h2>Porozmawiajmy</h2>
-      <p>Napisz do nas, a odezwiemy się w ciągu jednego dnia roboczego.</p>
-      <a class="btn" href="mailto:kontakt@example.com">kontakt@example.com</a>
+    <!-- 3 · Fears -->
+    <section id="fears" class="section section--ink">
+      <div class="wrap stack-48">
+        <div class="section-head reveal">
+          <span class="overline overline--on-ink">Why offers have to be personal</span>
+          <h2 class="h2">Two fears stand behind every AI purchase.</h2>
+          <p class="lead lead--on-ink">A generic offer answers neither. Each buyer weighs them differently, so each offer has to lead with the one that keeps them up at night.</p>
+        </div>
+        <div class="fears">
+          <div class="fear reveal">
+            <div class="fear__top"><span class="fear__num">01</span><span class="tile tile--raised tile--56 floaty"><Icon name="alert" size={28} /></span></div>
+            <h3 class="fear__title">Choosing the wrong tool.</h3>
+            <p class="fear__text">AI is new for most legal teams. There is no checklist yet, so a poor pick means wasted budget, chaos in the workflow and a team that stops trying.</p>
+            <p class="fear__answer"><Icon name="check" stroke="#7fd79a" strokeWidth={2.5} />Gaius answer: see it work on your own case before you commit.</p>
+          </div>
+          <div class="fear reveal">
+            <div class="fear__top"><span class="fear__num">02</span><span class="tile tile--raised tile--56 floaty" style="animation-delay: .6s"><Icon name="lock" size={28} /></span></div>
+            <h3 class="fear__title">A data leak no one owns.</h3>
+            <p class="fear__text">Lawyers ask one thing first: can we put documents here? No vendor can promise nothing ever fails. What buyers need is a partner who stays accountable if it does.</p>
+            <p class="fear__answer"><Icon name="check" stroke="#7fd79a" strokeWidth={2.5} />Gaius answer: your data stays on your servers, encrypted, with one team accountable for it.</p>
+          </div>
+        </div>
+        <div class="concerns">
+          {concerns.map((c) => (
+            <div class="concern reveal lift">
+              <span class="concern__icon"><Icon name={c.icon} size={24} /></span>
+              <span class="concern__title">{c.title}</span>
+              <span class="concern__text">{c.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · Roles -->
+    <section id="roles" class="section section--sand">
+      <div class="wrap stack-48">
+        <div class="section-head reveal">
+          <span class="overline">One deal, many signatures</span>
+          <h2 class="h2">Every person who signs off gets the document they need.</h2>
+          <p class="lead">IT does not need a sales offer. It needs a deployment brief. The generator knows the difference.</p>
+        </div>
+        <div class="role-cards">
+          {roles.map((r) => (
+            <div class="role-card reveal">
+              <span class="tile tile--soft tile--48"><Icon name={r.icon} size={24} /></span>
+              <h3 class="role-card__title">{r.label}</h3>
+              <span class="role-card__label">Cares about</span>
+              <span class="role-card__text">{r.cares}</span>
+              <span class="role-card__label role-card__label--rule">Gets</span>
+              <span class="role-card__gets"><Icon name="file" size={18} stroke="#9b5155" />{r.gets}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · Results -->
+    <section id="results" class="section section--white">
+      <div class="wrap stack-48">
+        <div class="section-head reveal">
+          <span class="overline">Measured result</span>
+          <h2 class="h2">Measured against how we sell today.</h2>
+        </div>
+        <div class="stats">
+          {stats.map((st, i) => (
+            <div class="stat reveal">
+              <span class="tile tile--ink tile--48 floaty" style={`animation-delay: ${delay(i, 0.5)}`}><Icon name={st.icon} size={24} /></span>
+              <span class="stat__label">{st.label}</span>
+              <span class:list={['stat__before', { 'is-struck': st.strike }]}>{st.before}</span>
+              <span class="stat__after">{st.after}</span>
+            </div>
+          ))}
+        </div>
+        <p class="fineprint">Baseline from the Gaius-Lex sales team, November 2026. Tested on [N] sample offers.</p>
+      </div>
     </section>
   </main>
 
-  <footer class="wrap footer">© {new Date().getFullYear()} BizHack</footer>
+  <footer class="footer">
+    <div class="wrap footer__inner">
+      <div class="footer__brand">
+        <span class="wordmark wordmark--light">GAIUS-LEX</span>
+        <span>Built at BizHack AI Hackathon · Budapest · 24–26 November 2026</span>
+      </div>
+      <div class="footer__links">
+        <a href="#generator"><Icon name="code" size={16} />Source code on GitHub [REPO LINK]</a>
+        <span>MIT licence</span>
+        <span class="footer__note"><Icon name="shield" size={16} />Sample data only. No real client records.</span>
+      </div>
+    </div>
+  </footer>
 </Layout>
 
-<style>
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
-  .nav { display: flex; align-items: center; justify-content: space-between; padding-block: 20px; }
-  .logo { font-size: 20px; letter-spacing: -0.02em; }
-  .logo span { color: var(--accent); margin-left: 4px; }
-  .hero { padding-block: 72px 56px; }
-  h1 { font-size: clamp(32px, 6vw, 56px); line-height: 1.1; letter-spacing: -0.03em; margin: 0 0 20px; max-width: 16ch; }
-  .lead { font-size: 18px; color: var(--muted); max-width: 60ch; margin: 0 0 28px; }
-  .btn {
-    display: inline-block; padding: 12px 20px; border-radius: 10px;
-    background: var(--accent); color: #fff; text-decoration: none; font-weight: 600;
-  }
-  .btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--border); padding: 8px 14px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; padding-bottom: 56px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
-  .card h2 { font-size: 18px; margin: 0 0 8px; }
-  .card p { margin: 0; color: var(--muted); }
-  .cta { padding-block: 56px; border-top: 1px solid var(--border); }
-  .cta h2 { font-size: 28px; margin: 0 0 8px; }
-  .cta p { color: var(--muted); margin: 0 0 20px; }
-  .footer { padding-block: 32px; color: var(--muted); font-size: 14px; }
-</style>
+<script>
+  import { icons } from '../lib/icons';
+  import { personas, roles, sources, buildSteps, flowNodes } from '../lib/data';
+
+  const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel as string) as T | null;
+  const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => Array.from(root.querySelectorAll<T>(sel as string)) as T[];
+
+  /* ---------- Generator ofert ---------- */
+  const state = { mode: 'email', persona: personas[0].id, role: roles[0].id, rec: false };
+  let genTimers: number[] = [];
+
+  const showPhase = (phase: 'idle' | 'working' | 'done') => {
+    $$('[data-phase]').forEach((el) => (el.hidden = el.dataset.phase !== phase));
+  };
+  const resetGen = () => {
+    genTimers.forEach(clearTimeout);
+    genTimers = [];
+    showPhase('idle');
+  };
+
+  const tabButtons = $$<HTMLButtonElement>('[data-tab]');
+  const selectTab = (id: string, focus = false) => {
+    state.mode = id;
+    tabButtons.forEach((b) => {
+      const on = b.dataset.tab === id;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+      if (on && focus) b.focus();
+    });
+    $$('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== id));
+    resetGen();
+  };
+  tabButtons.forEach((b, i) => {
+    b.addEventListener('click', () => selectTab(b.dataset.tab!));
+    b.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const next = tabButtons[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabButtons.length) % tabButtons.length];
+      selectTab(next.dataset.tab!, true);
+    });
+  });
+
+  const pressGroup = (attr: string, key: 'persona' | 'role') => {
+    const buttons = $$<HTMLButtonElement>(`[${attr}]`);
+    buttons.forEach((b) =>
+      b.addEventListener('click', () => {
+        state[key] = b.getAttribute(attr)!;
+        buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        resetGen();
+      }),
+    );
+  };
+  pressGroup('data-persona', 'persona');
+  pressGroup('data-role', 'role');
+
+  const recBtn = $<HTMLButtonElement>('[data-rec]');
+  recBtn?.addEventListener('click', () => {
+    state.rec = !state.rec;
+    recBtn.closest<HTMLElement>('.voice')!.dataset.recording = String(state.rec);
+    recBtn.setAttribute('aria-label', state.rec ? 'Stop recording' : 'Start recording');
+    $('[data-rec-title]')!.textContent = state.rec ? 'Recording… 0:12 / 0:30' : 'Tap to record a voice note';
+  });
+
+  const fillOffer = () => {
+    let roleId = state.role;
+    let who = (roles.find((r) => r.id === state.role) ?? roles[0]).label;
+    if (state.mode === 'email') {
+      const p = personas.find((x) => x.id === state.persona) ?? personas[0];
+      roleId = p.role;
+      who = p.who;
+    } else if (state.mode === 'voice') {
+      roleId = 'legal';
+      who = 'In-house legal team · from your voice note';
+    }
+    const r = roles.find((x) => x.id === roleId) ?? roles[0];
+    const values: Record<string, string> = { who, headline: r.headline, answer: r.answer, attach: r.attach };
+    $$('[data-offer]').forEach((el) => (el.textContent = values[el.dataset.offer!] ?? ''));
+  };
+
+  const setBuildStep = (step: number) => {
+    $$('[data-build-step]').forEach((el) => {
+      const i = Number(el.dataset.buildStep);
+      el.dataset.state = i < step ? 'done' : i === step ? 'active' : 'waiting';
+    });
+  };
+
+  $('[data-generate]')?.addEventListener('click', () => {
+    resetGen();
+    fillOffer();
+    setBuildStep(0);
+    showPhase('working');
+    for (let n = 1; n <= buildSteps.length; n++) genTimers.push(window.setTimeout(() => setBuildStep(n), n * 750));
+    genTimers.push(window.setTimeout(() => showPhase('done'), 3400));
+  });
+
+  /* ---------- Workflow n8n ---------- */
+  let flowTimers: number[] = [];
+  let currentSrc = sources.find((s) => s.id === $('[data-src][aria-pressed="true"]')?.dataset.src) ?? sources[0];
+  const nodeCount = flowNodes.length + 1;
+  const runBtn = $<HTMLButtonElement>('[data-run-flow]');
+  const status = $('[data-flow-status]');
+
+  const setFlow = (step: number) => {
+    const done = step >= nodeCount;
+    const running = step >= 0 && !done;
+    $$('[data-node]').forEach((el) => {
+      const i = Number(el.dataset.node);
+      el.dataset.state = i < step ? 'done' : i === step ? 'active' : 'idle';
+    });
+    if (status) {
+      status.dataset.state = done ? 'done' : running ? 'running' : 'waiting';
+      $('[data-flow-status-text]')!.textContent = done ? 'Finished · 1 offer' : running ? 'Running…' : 'Waiting for a trigger';
+    }
+    if (runBtn) {
+      runBtn.classList.toggle('pulse', step < 0);
+      $('[data-run-flow-label]')!.textContent = done ? 'Run again' : 'Run the workflow';
+    }
+    $('[data-flow-empty]')!.hidden = done;
+    $('[data-flow-out]')!.hidden = !done;
+  };
+
+  const stopFlow = () => {
+    flowTimers.forEach(clearTimeout);
+    flowTimers = [];
+  };
+
+  const sourceButtons = $$<HTMLButtonElement>('[data-src]');
+  sourceButtons.forEach((b) =>
+    b.addEventListener('click', () => {
+      stopFlow();
+      currentSrc = sources.find((s) => s.id === b.dataset.src) ?? sources[0];
+      sourceButtons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      $('[data-node-app]')!.textContent = currentSrc.label.toUpperCase();
+      $('[data-node-label]')!.textContent = currentSrc.trigger;
+      $('[data-node-icon] path')?.setAttribute('d', icons[currentSrc.icon]);
+      $$('[data-flow-who]').forEach((el) => (el.textContent = currentSrc.who));
+      $('[data-flow-source]')!.textContent = currentSrc.short;
+      setFlow(-1);
+    }),
+  );
+
+  runBtn?.addEventListener('click', () => {
+    stopFlow();
+    setFlow(0);
+    for (let n = 1; n <= nodeCount; n++) flowTimers.push(window.setTimeout(() => setFlow(n), n * 700));
+  });
+</script>
