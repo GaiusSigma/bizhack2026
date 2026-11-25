@@ -409,14 +409,14 @@ export const tiles = [
     "id": "product:saas",
     "category": "product",
     "label": "SaaS",
-    "description": "Gaius in the cloud (Gaius Pro): lite, standard and pro plans, 14-day trial. Good for small firms and single lawyers.",
+    "description": "Gaius in the cloud (Gaius Pro): lite, standard and pro plans, 14-day trial. A quick start for a lawyer or a team who want to try it themselves.",
     "quotes": [],
     "status": "active",
     "position": 0,
     "data": {
       "price": "",
-      "pick_when": "A small firm or a single lawyer, no requirement for data to stay on site, quick start with a trial.",
-      "avoid_when": "Documents must not leave the organisation, or the client needs company-wide access without per-user limits.",
+      "pick_when": "The contact is a Champion: a lawyer or team lead who wants to try Gaius themselves and win over the decision makers. A quick start with a 14-day trial, whatever the size of the firm.",
+      "avoid_when": "Documents must not leave the organisation (pick On-premise), or the contact decides on the budget (Board: pick Vault).",
       "writing_brief": "Gaius in the cloud: lite, standard and pro plans and a 14-day trial, hosted in the European Economic Area, with team accounts in separate workspaces. Stress a quick start without an IT project: the team tries it on real matters during the trial. Do not promise the client’s own server, local models or a per-compute-unit licence (those are Vault)."
     }
   },
@@ -430,8 +430,8 @@ export const tiles = [
     "position": 1,
     "data": {
       "price": "",
-      "pick_when": "Mid-size or large firms and in-house teams that work on confidential documents and want the whole team on it.",
-      "avoid_when": "A single lawyer who just wants to try the tool (pick SaaS).",
+      "pick_when": "The contact is the Board: they decide on the budget for the firm or the team. A private environment, a pilot before the decision and no per-user fees.",
+      "avoid_when": "The contact will try it themselves first (Champion: pick SaaS), or data must stay on the client’s own servers (pick On-premise).",
       "writing_brief": "Gaius Vault: a private environment for a legal team or firm, licensed monthly per compute unit with no per-user fees, with a pilot before the decision. Stress control over documents (never used to train models, access per team and matter), legal sources and the firm’s own documents in one environment, and a cost that does not grow with every user. Do not promise installation on the client’s own server (that is the on-prem product)."
     }
   },
@@ -1365,7 +1365,7 @@ export const tileTags = {
 // Content revision. A database seeded with an older revision is updated on startup (src/db.js ensureTiles):
 // new solutions are added, solution pins follow this file, missing guidance is filled in, and a tile
 // description is replaced only if it still has the previous revision's text (edits made by hand stay).
-export const tileUpgrade = { rev: 9, previousDescriptions: {
+export const tileUpgrade = { rev: 10, previousGuidance: {"product:saas": {"pick_when": "A small firm or a single lawyer, no requirement for data to stay on site, quick start with a trial.", "avoid_when": "Documents must not leave the organisation, or the client needs company-wide access without per-user limits."}, "product:vault": {"pick_when": "Mid-size or large firms and in-house teams that work on confidential documents and want the whole team on it.", "avoid_when": "A single lawyer who just wants to try the tool (pick SaaS)."}}, previousDescriptions: {
   "role:champion": "The enthusiast on the team who brings Gaius in and has to win over colleagues.",
   "role:board": "The board, managing partner or director who signs off the decision and the budget.",
   "role:cto": "Technical sign-off: architecture, security, deployment.",
@@ -1390,7 +1390,7 @@ export const tileUpgrade = { rev: 9, previousDescriptions: {
   "pain:group-scale": "Many companies and legal teams, and documents must follow one standard.",
   "pain:templates-at-scale": "Good templates exist, but they must be filled by hand with data from hundreds of matters.",
   "pain:weak-case-law-search": "LEX and Legalis often miss rulings or make them hard to find.",
-  "product:saas": "Gaius in the cloud: lite, standard and pro plans.",
+  "product:saas": ["Gaius in the cloud: lite, standard and pro plans.", "Gaius in the cloud (Gaius Pro): lite, standard and pro plans, 14-day trial. Good for small firms and single lawyers."],
   "product:vault": "A private Gaius Vault environment for a legal team or law firm.",
   "product:on-prem": "Vault on the client’s own infrastructure, no public cloud."
 } };
