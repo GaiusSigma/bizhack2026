@@ -1006,7 +1006,7 @@ export const solutionBlocks = [
       "effect": "Contracts and know-how stay with you, and the team gets a sanctioned AI tool instead of private accounts.",
       "value": "Confidentiality you can show to clients, auditors and IT, without giving up AI.",
       "order": 27,
-      "source": "Sales sheet: \"Gaius Vault to wewnętrzne AI na serwerze w Państwa sieci: modele są preinstalowane, wystarczy jeden adres IP…\""
+      "source": "Sales sheet, tab \"Prawny – produkcja v2\", row 4 (CIO / CISO sequence): \"Gaius Vault is an internal AI on a server in your network: the models are preinstalled and one IP address is enough…\" (translated)"
     },
     "tags": [
       "pain:confidentiality",
@@ -1028,7 +1028,7 @@ export const solutionBlocks = [
       "effect": "A concrete security answer for client questionnaires and the IT team.",
       "value": "Fewer lost deals and delays over security questions.",
       "order": 28,
-      "source": "Sales sheet: \"pliki na „Moim dysku” są obowiązkowo szyfrowane, klucze ma użytkownik, a szyfrowanie od początku jest postkwantowe (PQC).\""
+      "source": "Sales sheet, tab \"Prawny – produkcja v2\", row 3 (in-house lawyer sequence), also tab \"cold mail\", rows 2–3: \"files on My drive are always encrypted, the user holds the keys, and the encryption is post-quantum (PQC) from the start.\" (translated)"
     },
     "tags": [
       "pain:confidentiality",
@@ -1049,7 +1049,7 @@ export const solutionBlocks = [
       "effect": "IT gets the facts it needs to approve, instead of blocking by default.",
       "value": "A shorter approval path and no surprises after rollout.",
       "order": 29,
-      "source": "Sales sheet (CIO sequence): \"Gaius Vault – sieć, ruch wychodzący, modele, aktualizacje.\""
+      "source": "Sales sheet, tab \"Prawny – produkcja (FS)\", row 5 (CIO / CISO sequence): \"Gaius Vault: network, outbound traffic, models, updates.\" (translated)"
     },
     "tags": [
       "pain:confidentiality",
@@ -1070,7 +1070,7 @@ export const solutionBlocks = [
       "effect": "One sanctioned tool for the whole organisation instead of many private accounts.",
       "value": "Shadow AI under control across departments and companies, at a cost that doesn’t grow per user.",
       "order": 30,
-      "source": "Sales sheet: \"Gaius Vault daje taką alternatywę całej firmie – prawnemu, zakupom, sprzedaży – a dane zostają na serwerze.\""
+      "source": "Sales sheet, tab \"Prawny – produkcja (FS)\", row 2 (head of legal, food and FMCG sequence): \"Gaius Vault gives the whole company this alternative, legal, procurement and sales, and the data stays on the server.\" (translated)"
     },
     "tags": [
       "pain:shadow-ai",
@@ -1091,7 +1091,7 @@ export const solutionBlocks = [
       "effect": "Review happens where the contract already is, without copying text between tools.",
       "value": "Faster turnaround on contracts with the lawyer still in control.",
       "order": 31,
-      "source": "Sales sheet: \"Gaius Vault analizuje je bezpośrednio w Wordzie i wskazuje ryzykowne postanowienia – prawnik decyduje, co dalej.\""
+      "source": "Sales sheet, tab \"Prawny – produkcja (FS)\", row 7 (company event sequence): \"Gaius Vault analyses them directly in Word and flags risky clauses; the lawyer decides what comes next.\" (translated)"
     },
     "tags": [
       "pain:copy-to-word",
@@ -1338,7 +1338,7 @@ export const tileTags = {
 // Content revision. A database seeded with an older revision is updated on startup (src/db.js ensureTiles):
 // new solutions are added, solution pins follow this file, missing guidance is filled in, and a tile
 // description is replaced only if it still has the previous revision's text (edits made by hand stay).
-export const tileUpgrade = { rev: 2, previousDescriptions: {
+export const tileUpgrade = { rev: 3, previousDescriptions: {
   "role:champion": "The enthusiast on the team who brings Gaius in and has to win over colleagues.",
   "role:board": "The board, managing partner or director who signs off the decision and the budget.",
   "role:cto": "Technical sign-off: architecture, security, deployment.",
