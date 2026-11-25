@@ -244,6 +244,7 @@ export const DOCS = {
               file: { type: 'string', format: 'binary', description: 'A .figcraft, .json, .fig, .penpot, .sketch or .svg file' },
               id: { type: 'string', description: 'Template id (defaults to the file name)' },
               name: { type: 'string', description: 'Template name' },
+              base: { type: 'string', description: 'Optional: the updated_at of the version you edited (x-updated-at of GET …/file). If the file was saved since, nothing is stored and the answer is 409 with code "stale"' },
             },
           },
         },

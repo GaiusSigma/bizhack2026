@@ -11,6 +11,14 @@ set -eu
 HTML_DIR=/usr/share/nginx/html
 cp "$HTML_DIR/index.html.orig" "$HTML_DIR/index.html"
 
+# Behind a path prefix (Coolify: https://host/figcraft, prefix stripped by the proxy) nginx cannot tell
+# /figcraft from /figcraft/, so it serves index.html for both. Without the slash the relative
+# ./figcraft-web-*.js and .wasm resolve to the domain root (404) and the page hangs on "Loading FigCraft…".
+# Add the slash in the browser before anything loads (paths ending in / or a file name stay as they are).
+redirect='<script>(function(p){if(p.slice(-1)!="/")if(p.split("/").pop().indexOf(".")<0)location.replace(p+"/"+location.search+location.hash)})(location.pathname)</script>'
+sed -i "s#<meta charset=\"utf-8\">#&${redirect}#" "$HTML_DIR/index.html"
+grep -q 'location.replace(p+"/"' "$HTML_DIR/index.html" || { echo "figcraft-web: failed to insert the trailing-slash redirect into index.html" >&2; exit 1; }
+
 url="${FIGCRAFT_SERVER_URL:-}"
 if [ -z "$url" ] && [ -n "${FIGCRAFT_PUBLIC_URL:-}" ]; then
   base="${FIGCRAFT_PUBLIC_URL%/}"

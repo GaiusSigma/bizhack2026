@@ -155,6 +155,9 @@ export const slugify = (s) => String(s).normalize('NFKD').replace(/[\u0300-\u036
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
 export const UPLOAD_ACCEPT = '.figcraft,.json,.fig,.penpot,.sketch,.svg';
 
+// FigCraft web editor page: {template: id} | {offer: id} | {new: 1}
+export const editorUrl = (q) => `/static/editor.html?${new URLSearchParams(q)}`;
+
 export const go = (...parts) => { location.hash = `#/${parts.filter((p) => p != null && p !== '').map(encodeURIComponent).join('/')}`; };
 
 // Tiles by id and category labels (shared by the offer and tile screens).

@@ -1,6 +1,6 @@
 // Offers from tiles: the offer list and a readable three-column offer view
 // (client and pain coverage · slides with "why it is here" · FigCraft preview).
-import { $, api, autosize, debounce, download, go, h, loadAll, modal, state, tileById, tileLabel, toast, ui } from '../lib.js';
+import { $, api, autosize, debounce, download, editorUrl, go, h, loadAll, modal, state, tileById, tileLabel, toast, ui } from '../lib.js';
 import { cleanSelection, slotMatches } from '../selection.js';
 import { scoreTags, segmentOk, selectionOf, selectionSummary, tilePicker } from './new-offer.js';
 
@@ -91,6 +91,9 @@ export async function viewOffer(offerId, slideId) {
     h('div', { class: 'pbar' },
       h('button', { class: 'btn primary', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/pdf`, `${offer.name}.pdf`) }, 'Download PDF'),
       h('button', { class: 'btn', title: 'The finished offer as a FigCraft file for manual edits', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/figcraft`, `${offer.name}.figcraft`) }, 'Download .figcraft'),
+      state.meta.figcraftEditor
+        ? h('a', { class: 'btn', href: editorUrl({ offer: offer.id }), target: '_blank', title: 'The finished offer in the FigCraft web editor (saves are downloads; edit slides in the library)' }, 'Open in FigCraft')
+        : state.meta.figcraftWebUrl ? h('a', { class: 'btn', href: state.meta.figcraftWebUrl, target: '_blank' }, 'Open FigCraft') : null,
       h('span', { class: 'spacer' }), pstatus),
     shots);
 

@@ -2,7 +2,7 @@
 // that scripts and n8n can use (see /static/api.html). Slides are rendered by FigCraft.
 
 import {
-  $, CATEGORY_LABELS, UPLOAD_ACCEPT, api, autosize, debounce, download, go, h, kvEditor, loadAll, modal, plural, saver, slugify, state, tileLabel, toast, ui,
+  $, CATEGORY_LABELS, UPLOAD_ACCEPT, api, autosize, debounce, download, editorUrl, go, h, kvEditor, loadAll, modal, plural, saver, slugify, state, tileLabel, toast, ui,
 } from './lib.js';
 import { viewNewOffer } from './views/new-offer.js';
 import { viewOffer, viewOfferList } from './views/offer.js';
@@ -355,7 +355,9 @@ async function viewOffers(offerId, slideId) {
     h('div', { class: 'pbar' },
       h('button', { class: 'btn primary', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/pdf`, `${offer.name}.pdf`) }, 'Download PDF'),
       h('button', { class: 'btn', title: 'The finished offer as a FigCraft file for manual touch-ups', onclick: () => download(`/offers/${encodeURIComponent(offer.id)}/figcraft`, `${offer.name}.figcraft`) }, 'Download .figcraft'),
-      state.meta.figcraftWebUrl ? h('a', { class: 'btn', href: state.meta.figcraftWebUrl, target: '_blank' }, 'Open FigCraft') : null,
+      state.meta.figcraftEditor
+        ? h('a', { class: 'btn', href: editorUrl({ offer: offer.id }), target: '_blank', title: 'The finished offer in the FigCraft web editor (saves are downloads; edit slides in the library)' }, 'Open in FigCraft')
+        : state.meta.figcraftWebUrl ? h('a', { class: 'btn', href: state.meta.figcraftWebUrl, target: '_blank' }, 'Open FigCraft') : null,
       h('span', { class: 'spacer' }),
       pstatus),
     shots);
@@ -725,7 +727,8 @@ function viewTemplates(focusId) {
       h('li', {}, 'Give the texts that should change field names: ', h('code', {}, '{{data.title}}'), ', ', h('code', {}, '{{offer.client}}'), '. Everything else stays as you drew it.'),
       h('li', {}, 'Name the cards for knowledge blocks ', h('code', {}, '#item'), ', and the texts inside them ', h('code', {}, '{{title}}'), ', ', h('code', {}, '{{body}}'), ', ', h('code', {}, '{{effect}}'), '…'),
       h('li', {}, 'Draw interchangeable cards (different icons, colours, layouts) inside an ', h('code', {}, '@set'), ' frame, and put ', h('code', {}, '#pick:set'), ' slots on the slide. Card descriptions for the AI: Components tab.'),
-      h('li', {}, 'Save a .figcraft file (or the page as .json) and drag it here. .fig, .penpot, .sketch and .svg work too.')),
+      h('li', {}, 'Save a .figcraft file (or the page as .json) and drag it here. .fig, .penpot, .sketch and .svg work too.'),
+      state.meta.figcraftEditor ? h('li', {}, 'Or skip the files: ', h('b', {}, 'Edit in FigCraft'), ' opens a file from the library in the browser and Ctrl+S saves it straight back; ', h('b', {}, 'New in FigCraft'), ' starts a new one.') : null),
     h('table', {},
       h('tr', {}, h('td', {}, h('code', {}, 'Effect: {{effect}}')), h('td', {}, 'fixed text + a field; an empty result hides the layer')),
       h('tr', {}, h('td', {}, h('code', {}, '{{offer.client|upper}}')), h('td', {}, 'offer variable in upper case')),
@@ -736,7 +739,8 @@ function viewTemplates(focusId) {
   const drop = h('div', { class: 'dropzone' },
     h('b', {}, 'Drag slide files here'), h('span', {}, ' or '),
     h('label', { class: 'btn primary' }, 'Choose files', fileInput(null)), ' ',
-    h('button', { class: 'btn', onclick: pasteJsonDialog }, 'Paste JSON'));
+    h('button', { class: 'btn', onclick: pasteJsonDialog }, 'Paste JSON'),
+    state.meta.figcraftEditor ? [' ', h('a', { class: 'btn', href: editorUrl({ new: 1 }), target: '_blank', title: 'Design a new slide file in the FigCraft web editor; saving adds it here' }, 'New in FigCraft')] : null);
   const view = h('div', { class: 'editor library' }, h('div', { class: 'bar' }, h('h2', {}, `Slide library (${state.library.length})`)), drop, help);
 
   for (const t of state.templates) {
@@ -748,9 +752,12 @@ function viewTemplates(focusId) {
         h('input', { class: 'lib-name', value: t.name, oninput: (e) => save({ name: e.target.value }) }), status,
         h('span', { class: 'hint' }, `${plural(slides.length, 'slide')} · ${plural(state.components.filter((c) => c.source === t.id && !c.missing).length, 'component')} · ${t.size > 1048576 ? `${(t.size / 1048576).toFixed(1)} MB` : `${Math.ceil(t.size / 1024)} KB`} · ${new Date(t.updated_at).toLocaleString('en-GB')}`),
         h('span', { class: 'spacer' }),
+        state.meta.figcraftEditor
+          ? h('a', { class: 'btn sm primary', href: editorUrl({ template: t.id }), target: '_blank', title: 'Edit in the FigCraft web editor; Ctrl+S saves it back here' }, 'Edit in FigCraft')
+          : null,
         h('a', { class: 'btn sm', href: `/api/templates/${encodeURIComponent(t.id)}/file` }, 'Download .figcraft'),
         h('label', { class: 'btn sm', title: 'Upload a corrected version of this file' }, 'Replace', fileInput(t.id)),
-        state.meta.figcraftWebUrl ? h('a', { class: 'btn sm', href: state.meta.figcraftWebUrl, target: '_blank' }, 'FigCraft') : null,
+        !state.meta.figcraftEditor && state.meta.figcraftWebUrl ? h('a', { class: 'btn sm', href: state.meta.figcraftWebUrl, target: '_blank' }, 'FigCraft') : null,
         h('button', { class: 'btn sm danger', onclick: async () => {
           const used = state.offers.length ? ' Offers that use these slides will show an error.' : '';
           if (!confirm(`Delete "${t.name}" (${plural(slides.length, 'slide')}) from the library?${used}`)) return;
