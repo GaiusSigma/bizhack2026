@@ -138,12 +138,85 @@ async function download(path, fallbackName) {
 }
 
 // ------------------------------------------------------------------ stan i routing
-const state = { blocks: [], offers: [], templates: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
+const state = { blocks: [], offers: [], templates: [], library: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
 
 async function loadAll() {
-  [state.blocks, state.offers, state.templates, state.meta] = await Promise.all([
-    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/meta'),
+  [state.blocks, state.offers, state.templates, state.library, state.meta] = await Promise.all([
+    api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/library'), api('GET', '/meta'),
   ]);
+}
+
+const slugify = (s) => String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
+const UPLOAD_ACCEPT = '.figcraft,.json,.fig,.penpot,.sketch,.svg';
+
+// Wgranie plików ze slajdami (każda ramka najwyższego poziomu = slajd w bibliotece).
+async function uploadSlideFiles(files, { replaceId } = {}) {
+  let last = null;
+  for (const file of files) {
+    const id = replaceId || slugify(file.name.replace(/\.[a-z]+$/i, ''));
+    const existing = state.templates.find((t) => t.id === id);
+    if (existing && !replaceId && !confirm(`Plik „${existing.name}” już jest w bibliotece. Podmienić go na ${file.name}?`)) continue;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('id', id);
+    toast(`Wgrywam ${file.name}…`);
+    const res = await fetch('/api/templates', { method: 'POST', body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { toast(`${file.name}: ${data.error || res.statusText}`, true); continue; }
+    toast(`${file.name}: ${data.frames.length} slajd(ów) w bibliotece`);
+    last = data;
+  }
+  await loadAll();
+  return last;
+}
+
+function pasteJsonDialog() {
+  const name = h('input', { placeholder: 'np. Case study ACME' });
+  const text = h('textarea', { class: 'code', placeholder: '{"format": "figcraft", "nodes": {…}, "pages": […]}', style: 'min-height: 260px' });
+  const close = modal(h('div', {},
+    h('h3', {}, 'Wklej JSON slajdów'),
+    h('p', { class: 'hint' }, 'JSON strony albo całego pliku z FigCraft (Zapisz jako… .json). Każda ramka najwyższego poziomu stanie się slajdem. Obrazki z JSON-a nie przechodzą: slajdy z obrazkami wgrywaj jako .figcraft.'),
+    h('label', { class: 'f' }, 'Nazwa w bibliotece'), name,
+    h('label', { class: 'f' }, 'JSON'), text,
+    h('div', { class: 'bar', style: 'margin-top:14px' }, h('span', { class: 'spacer' }),
+      h('button', { class: 'btn', onclick: () => close() }, 'Anuluj'),
+      h('button', { class: 'btn primary', onclick: async () => {
+        if (!name.value.trim()) return toast('Podaj nazwę', true);
+        const id = slugify(name.value);
+        if (state.templates.some((t) => t.id === id) && !confirm(`„${name.value}” już jest w bibliotece. Podmienić?`)) return;
+        const res = await fetch(`/api/templates?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name.value.trim())}`, {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: text.value,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return toast(data.error || res.statusText, true);
+        close();
+        toast(`${data.frames.length} slajd(ów) w bibliotece`);
+        await loadAll();
+        go('templates', data.id);
+      } }, 'Dodaj'))));
+}
+
+// Okienko wyboru slajdu z biblioteki (miniatury). Zwraca nazwę slajdu albo null.
+function pickSlide(title = 'Wybierz slajd z biblioteki') {
+  return new Promise((resolve) => {
+    let picked = null;
+    const groups = {};
+    for (const s of state.library) (groups[s.source_name] ||= []).push(s);
+    const close = modal(h('div', {},
+      h('div', { class: 'bar' }, h('h3', { style: 'flex:1' }, title),
+        h('label', { class: 'btn sm' }, '+ Wgraj nowy', h('input', { type: 'file', accept: UPLOAD_ACCEPT, multiple: true, hidden: true, onchange: async (e) => {
+          const t = await uploadSlideFiles([...e.target.files]);
+          if (t?.frames?.length === 1) { picked = t.frames[0].name; close(); }
+          else { close(); resolve(await pickSlide(title)); }
+        } }))),
+      Object.entries(groups).map(([src, slides]) => [
+        h('div', { class: 'lib-group' }, src),
+        h('div', { class: 'lib-grid' }, slides.map((s) => h('button', { class: 'lib-card', onclick: () => { picked = s.frame; close(); } },
+          h('img', { src: s.thumb, alt: s.frame, loading: 'lazy' }), h('span', {}, s.frame)))),
+      ])));
+    onModalClose = () => resolve(picked);
+  });
 }
 
 function route() {
@@ -169,7 +242,6 @@ es.onmessage = debounce(async (e) => {
   else refreshLists?.();
 }, 300);
 
-const framesOf = (templateId) => state.templates.find((t) => t.id === templateId)?.frames || [];
 
 // ------------------------------------------------------------------ edytor bloku (Wiedza i okienko z oferty)
 function blockEditor(block, { onDeleted, inModal = false } = {}) {
@@ -288,7 +360,7 @@ async function viewOffers(offerId, slideId) {
   const newOffer = async () => {
     const name = prompt('Nazwa nowej oferty:');
     if (!name) return;
-    const o = await api('POST', '/offers', { name, template_id: state.templates[0]?.id, data: { client: '', price: '' } });
+    const o = await api('POST', '/offers', { name, data: { client: '', price: '' } });
     await loadAll();
     go('offers', o.id);
   };
@@ -309,8 +381,7 @@ async function viewOffers(offerId, slideId) {
     toast(e.message, true);
     return go('offers');
   }
-  const frames = framesOf(offer.template_id);
-  const framesByName = Object.fromEntries(frames.map((f) => [f.name, f]));
+  const framesByName = Object.fromEntries(state.library.map((s) => [s.frame, s]));
   const blocksById = Object.fromEntries(state.blocks.map((b) => [b.id, b]));
 
   // --- podgląd z FigCraft (PNG)
@@ -386,25 +457,15 @@ async function viewOffers(offerId, slideId) {
     renderSlides();
   };
 
-  const addSlide = () => {
-    if (!frames.length) return toast('Najpierw wybierz szablon oferty', true);
-    const frameSel = h('select', {}, frames.map((f) => h('option', { value: f.name }, f.name)));
-    const close = modal(h('div', {},
-      h('h3', {}, 'Nowy slajd'),
-      h('label', { class: 'f' }, 'Slajd z szablonu'), frameSel,
-      h('div', { class: 'hint' }, 'Slajd trafi za aktualnie wybranym (albo na koniec).'),
-      h('div', { class: 'bar', style: 'margin-top:16px' }, h('span', { class: 'spacer' }),
-        h('button', { class: 'btn primary', onclick: async () => {
-          const idx = offer.slides.findIndex((s) => s.id === slideId);
-          const s = await api('POST', `/offers/${encodeURIComponent(offer.id)}/slides`, { frame: frameSel.value, data: {}, ...(idx >= 0 ? { position: offer.slides[idx].position + 1 } : {}) });
-          close();
-          go('offers', offer.id, s.id);
-        } }, 'Dodaj'))));
+  // Nowy slajd: wybór z miniatur biblioteki; trafia za aktualnie wybranym (albo na koniec).
+  const addSlide = async () => {
+    const frame = await pickSlide('Dodaj slajd do oferty');
+    if (!frame) return;
+    const idx = offer.slides.findIndex((s) => s.id === slideId);
+    const s = await api('POST', `/offers/${encodeURIComponent(offer.id)}/slides`, { frame, data: {}, ...(idx >= 0 ? { position: offer.slides[idx].position + 1 } : {}) });
+    await loadAll();
+    go('offers', offer.id, s.id);
   };
-
-  const templateSel = h('select', { onchange: (e) => saveOffer({ template_id: e.target.value }) },
-    h('option', { value: '' }, '(brak)'), state.templates.map((t) => h('option', { value: t.id }, t.name)));
-  templateSel.value = offer.template_id || '';
 
   const offerPanel = h('div', {},
     h('div', { class: 'bar' },
@@ -421,8 +482,6 @@ async function viewOffers(offerId, slideId) {
     h('div', { class: 'id' }, `id: ${offer.id}`),
     h('label', { class: 'f' }, 'Nazwa oferty'),
     h('input', { value: offer.name, oninput: (e) => saveOffer({ name: e.target.value }) }),
-    h('label', { class: 'f' }, 'Szablon FigCraft'),
-    templateSel,
     h('label', { class: 'f' }, 'Zmienne oferty (w szablonie: {{offer.client}}, {{offer.price}}…)'),
     kvEditor(offer.data || {}, ['client', 'price'], (data) => saveOffer({ data })),
     h('div', { class: 'bar', style: 'margin-top:18px' }, h('h2', { style: 'font-size:14px' }, `Slajdy (${offer.slides.length})`), h('button', { class: 'btn sm', onclick: addSlide }, '+ slajd')),
@@ -472,12 +531,17 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
     renderSlides();
   }, 350);
   const frame = framesByName[slide.frame];
-  const frames = Object.keys(framesByName);
-
-  const frameSel = h('select', { onchange: async (e) => { await api('PATCH', `/slides/${encodeURIComponent(slide.id)}`, { frame: e.target.value }); route(); } },
-    frames.includes(slide.frame) ? null : h('option', { value: slide.frame }, `${slide.frame} (brak w szablonie)`),
-    frames.map((f) => h('option', { value: f }, f)));
-  frameSel.value = slide.frame;
+  const frameBox = h('div', { class: 'frame-pick' },
+    frame ? h('img', { src: frame.thumb, alt: slide.frame }) : h('div', { class: 'shot-error' }, 'brak w bibliotece'),
+    h('div', {},
+      h('div', {}, h('code', {}, slide.frame)),
+      frame ? h('div', { class: 'hint' }, `z pliku „${frame.source_name}”`) : null,
+      h('button', { class: 'btn sm', style: 'margin-top:6px', onclick: async () => {
+        const f = await pickSlide('Zmień wygląd slajdu');
+        if (!f || f === slide.frame) return;
+        await api('PATCH', `/slides/${encodeURIComponent(slide.id)}`, { frame: f });
+        route();
+      } }, 'Zmień slajd…')));
 
   // --- bloki: lista wybranych albo zapytanie
   const useQuery = !!(slide.query && (slide.query.type || slide.query.tag)) && !slide.block_ids?.length;
@@ -528,7 +592,7 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
         await api('DELETE', `/slides/${encodeURIComponent(slide.id)}`);
         onDeleted();
       } }, 'Usuń')),
-    h('label', { class: 'f' }, 'Slajd z szablonu'), frameSel,
+    h('label', { class: 'f' }, 'Wygląd (slajd z biblioteki)'), frameBox,
     fields.item.length ? h('div', { class: 'hint' }, `Pola kart: ${fields.item.map((k) => `{{${k}}}`).join(', ')}`) : null,
     h('label', { class: 'f' }, 'Treść slajdu (**słowo** = wyróżnienie z szablonu; puste pole ukrywa warstwę)'),
     kvEditor(slide.data || {}, fields.data, (data) => save({ data })),
@@ -536,72 +600,79 @@ function slideEditor(slide, offer, framesByName, blocksById, renderSlides, onDel
   );
 }
 
-// ------------------------------------------------------------------ widok: Szablony
-function viewTemplates(templateId) {
+// ------------------------------------------------------------------ widok: Biblioteka slajdów
+// Sprzedawca projektuje slajd w FigCraft (ramka 1920×1080), zapisuje plik albo JSON strony i wrzuca go tutaj.
+function viewTemplates(focusId) {
   refreshLists = null;
-  const upload = (id) => h('input', { type: 'file', accept: '.figcraft', hidden: true, onchange: async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    if (id) fd.append('id', id);
-    toast('Wgrywam szablon…');
-    const res = await fetch('/api/templates', { method: 'POST', body: fd });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return toast(data.error || res.statusText, true);
-    toast(id ? 'Szablon podmieniony' : 'Szablon dodany');
-    await loadAll();
-    go('templates', data.id);
+  const fileInput = (replaceId) => h('input', { type: 'file', accept: UPLOAD_ACCEPT, multiple: !replaceId, hidden: true, onchange: async (e) => {
+    const t = await uploadSlideFiles([...e.target.files], { replaceId });
+    e.target.value = '';
+    go('templates', t?.id || replaceId || '');
+    route();
   } });
 
-  const listEl = h('div', { class: 'items' },
-    state.templates.map((t) => h('div', { class: `item ${t.id === templateId ? 'active' : ''}`, onclick: () => go('templates', t.id) },
-      h('div', {}, t.name), h('div', { class: 'sub' }, `${t.id} · ${t.frames.length} slajdów`))));
-  const editor = h('div', { class: 'editor' });
-  $('#view').replaceChildren(
-    h('div', { class: 'col list', style: 'width: 260px' },
-      h('div', { class: 'tools' }, h('label', { class: 'btn primary' }, '+ Wgraj .figcraft', upload(null))), listEl),
-    editor);
+  const help = h('details', { class: 'help', open: state.templates.length < 2 },
+    h('summary', {}, 'Jak dodać nowy slajd?'),
+    h('ol', {},
+      h('li', {}, 'W FigCraft narysuj ramkę 1920×1080 i nazwij ją, np. ', h('code', {}, 'case-study'), '. Nazwa ramki to nazwa slajdu w bibliotece.'),
+      h('li', {}, 'Teksty, które mają się zmieniać, nazwij polami: ', h('code', {}, '{{data.title}}'), ', ', h('code', {}, '{{offer.client}}'), '. Reszta zostaje taka, jak ją narysujesz.'),
+      h('li', {}, 'Karty na bloki z bazy wiedzy nazwij ', h('code', {}, '#item'), ', a teksty w nich ', h('code', {}, '{{title}}'), ', ', h('code', {}, '{{body}}'), ', ', h('code', {}, '{{effect}}'), '…'),
+      h('li', {}, 'Zapisz plik .figcraft (albo stronę jako .json) i przeciągnij go tutaj. Działa też .fig, .penpot, .sketch i .svg.')),
+    h('table', {},
+      h('tr', {}, h('td', {}, h('code', {}, 'Efekt: {{effect}}')), h('td', {}, 'tekst stały + pole; pusty wynik ukrywa warstwę')),
+      h('tr', {}, h('td', {}, h('code', {}, '{{offer.client|upper}}')), h('td', {}, 'zmienna oferty wielkimi literami')),
+      h('tr', {}, h('td', {}, h('code', {}, '#item:lines')), h('td', {}, 'wiersz z pola data.lines („etykieta | wartość”): {{title}}, {{value}}')),
+      h('tr', {}, h('td', {}, h('code', {}, '**tekst**')), h('td', {}, 'w treści: styl 1. wyróżnienia z oryginalnego tekstu (np. czerwony akcent)')),
+      h('tr', {}, h('td', {}, h('code', {}, '[[2:tekst]]')), h('td', {}, 'w nazwie warstwy: styl 2. wyróżnienia'))));
 
-  const t = state.templates.find((x) => x.id === templateId);
-  if (!t) {
-    editor.replaceChildren(h('div', { class: 'help' },
-      h('h2', {}, 'Szablony FigCraft'),
-      h('p', {}, 'Wygląd oferty projektujesz w FigCraft. Każda ramka najwyższego poziomu w pliku to slajd szablonu, a jej nazwa to jego identyfikator. Pola z bazy wiążesz nazwami warstw:'),
-      h('table', {},
-        h('tr', {}, h('td', {}, h('code', {}, '{{data.title}}')), h('td', {}, 'treść slajdu z edytora oferty')),
-        h('tr', {}, h('td', {}, h('code', {}, '{{offer.client|upper}}')), h('td', {}, 'zmienna oferty, opcjonalnie wielkimi literami')),
-        h('tr', {}, h('td', {}, h('code', {}, 'Efekt: {{effect}}')), h('td', {}, 'tekst stały + pole; pusty wynik ukrywa warstwę')),
-        h('tr', {}, h('td', {}, h('code', {}, '#item')), h('td', {}, 'karta na blok; w środku {{title}}, {{body}}, {{n}} i pola bloku. Nadmiarowe karty znikają, brakujące są dokładane')),
-        h('tr', {}, h('td', {}, h('code', {}, '#item:lines')), h('td', {}, 'wiersz z pola data.lines („etykieta | wartość”): {{title}}, {{value}}')),
-        h('tr', {}, h('td', {}, h('code', {}, '[[2:tekst]]')), h('td', {}, 'w nazwie warstwy: styl 2. wyróżnienia z oryginalnego tekstu')),
-        h('tr', {}, h('td', {}, h('code', {}, '**tekst**')), h('td', {}, 'w treści: styl 1. wyróżnienia (np. czerwony akcent)'))),
-      h('p', {}, 'Żeby zmienić wygląd: pobierz szablon, popraw go w FigCraft (desktop albo web), wgraj z powrotem przyciskiem „Podmień plik”. Oferty od razu użyją nowej wersji.')));
-    return;
+  const drop = h('div', { class: 'dropzone' },
+    h('b', {}, 'Przeciągnij tu pliki ze slajdami'), h('span', {}, ' albo '),
+    h('label', { class: 'btn primary' }, 'Wybierz pliki', fileInput(null)), ' ',
+    h('button', { class: 'btn', onclick: pasteJsonDialog }, 'Wklej JSON'));
+  const view = h('div', { class: 'editor library' }, h('div', { class: 'bar' }, h('h2', {}, `Biblioteka slajdów (${state.library.length})`)), drop, help);
+
+  for (const t of state.templates) {
+    const slides = state.library.filter((s) => s.source === t.id);
+    const status = h('span', { class: 'status' });
+    const save = saver(status, (patch) => api('PATCH', `/templates/${encodeURIComponent(t.id)}`, patch));
+    view.append(h('section', { class: `lib-file ${t.id === focusId ? 'focus' : ''}`, id: `lib-${t.id}` },
+      h('div', { class: 'bar' },
+        h('input', { class: 'lib-name', value: t.name, oninput: (e) => save({ name: e.target.value }) }), status,
+        h('span', { class: 'hint' }, `${slides.length} slajd(ów) · ${t.size > 1048576 ? `${(t.size / 1048576).toFixed(1)} MB` : `${Math.ceil(t.size / 1024)} KB`} · ${new Date(t.updated_at).toLocaleString('pl-PL')}`),
+        h('span', { class: 'spacer' }),
+        h('a', { class: 'btn sm', href: `/api/templates/${encodeURIComponent(t.id)}/file` }, 'Pobierz .figcraft'),
+        h('label', { class: 'btn sm', title: 'Wgraj poprawioną wersję tego pliku' }, 'Podmień', fileInput(t.id)),
+        state.meta.figcraftWebUrl ? h('a', { class: 'btn sm', href: state.meta.figcraftWebUrl, target: '_blank' }, 'FigCraft') : null,
+        h('button', { class: 'btn sm danger', onclick: async () => {
+          const used = state.offers.length ? ' Oferty, które używają tych slajdów, pokażą błąd.' : '';
+          if (!confirm(`Usunąć „${t.name}” (${slides.length} slajdów) z biblioteki?${used}`)) return;
+          await api('DELETE', `/templates/${encodeURIComponent(t.id)}`);
+          await loadAll(); route();
+        } }, 'Usuń')),
+      h('div', { class: 'lib-grid' }, slides.map((s) => h('figure', { class: 'lib-card' },
+        h('img', { src: s.thumb, alt: s.frame, loading: 'lazy' }),
+        h('figcaption', {},
+          h('code', {}, s.frame),
+          h('div', { class: 'hint' }, [
+            s.fields.data.length ? `pola: ${s.fields.data.join(', ')}` : 'slajd stały',
+            s.slots ? `karty #item: ${s.slots} (${s.fields.item.join(', ')})` : null,
+          ].filter(Boolean).join(' · '))))))));
   }
+  $('#view').replaceChildren(view);
+  if (focusId) $(`#lib-${CSS.escape(focusId)}`)?.scrollIntoView({ block: 'start' });
 
-  const status = h('span', { class: 'status' });
-  const save = saver(status, (patch) => api('PATCH', `/templates/${encodeURIComponent(t.id)}`, patch));
-  editor.replaceChildren(
-    h('div', { class: 'bar' }, h('h2', {}, t.name), status,
-      h('a', { class: 'btn', href: `/api/templates/${encodeURIComponent(t.id)}/file` }, 'Pobierz .figcraft'),
-      h('label', { class: 'btn' }, 'Podmień plik', upload(t.id)),
-      state.meta.figcraftWebUrl ? h('a', { class: 'btn', href: state.meta.figcraftWebUrl, target: '_blank' }, 'Otwórz FigCraft') : null,
-      h('button', { class: 'btn danger', onclick: async () => {
-        if (!confirm(`Usunąć szablon „${t.name}”? Oferty, które go używają, przestaną się renderować.`)) return;
-        await api('DELETE', `/templates/${encodeURIComponent(t.id)}`);
-        await loadAll(); go('templates');
-      } }, 'Usuń')),
-    h('div', { class: 'id' }, `id: ${t.id} · ${(t.size / 1024 / 1024).toFixed(1)} MB · zmieniony ${new Date(t.updated_at).toLocaleString('pl-PL')}`),
-    h('label', { class: 'f' }, 'Nazwa'), h('input', { value: t.name, oninput: (e) => save({ name: e.target.value }) }),
-    h('label', { class: 'f' }, `Slajdy w szablonie (${t.frames.length})`),
-    h('table', { class: 'frames' },
-      h('tr', {}, h('th', {}, 'slajd'), h('th', {}, 'pola slajdu {{data.*}}'), h('th', {}, 'karty #item'), h('th', {}, 'pola kart')),
-      t.frames.map((f) => h('tr', {},
-        h('td', {}, h('code', {}, f.name)),
-        h('td', {}, f.fields.data.join(', ') || '–'),
-        h('td', {}, f.slots ? `${f.slots} (${f.fields.sources.join(', ')})` : '–'),
-        h('td', {}, f.fields.item.join(', ') || '–')))));
+  // przeciąganie plików na stronę
+  view.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  view.addEventListener('dragleave', (e) => { if (e.target === view) drop.classList.remove('over'); });
+  view.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    const files = [...e.dataTransfer.files];
+    if (!files.length) return;
+    const t = await uploadSlideFiles(files);
+    go('templates', t?.id || '');
+    route();
+  });
 }
 
 // ------------------------------------------------------------------ import

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { openDb } from '../src/db.js';
-import { parseMarks, parseTemplate, renderPdf } from '../src/figcraft.js';
+import { buildLibrary, normalizeUpload, parseMarks, parseTemplate, renderPdf, renderThumbnails } from '../src/figcraft.js';
 import seed, { TEMPLATE, slides as seedSlides } from '../seed/seed.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdtempSync } from 'node:fs';
@@ -122,4 +122,46 @@ test('render PDF przez figcraft-cli: dodatkowe i ukryte karty', { skip: !hasCli 
   });
   assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
   assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length, 2);
+});
+
+// Minimalny dokument FigCraft JSON z jedną stroną i jednym slajdem (tak wygląda „JSON per page”).
+const caseJson = {
+  format: 'figcraft', version: 1, name: 'case', pages: [1], next_id: 5, current_page: 1, imageIndex: [],
+  styles: [], variables: { collections: [], variables: [] }, document_colors: [], comments: [],
+  nodes: {
+    1: { id: 1, name: 'Page 1', type: 'page', children: [2], width: 0, height: 0 },
+    2: { id: 2, name: 'case-study', type: 'frame', parent: 1, children: [3], width: 1920, height: 1080,
+      fills: [{ type: 'solid', color: { r: 0.11, g: 0.12, b: 0.13, a: 1 }, opacity: 1, visible: true, blend: 'normal' }] },
+    3: { id: 3, name: '{{data.title}}', type: 'text', parent: 2, characters: 'Tytuł', width: 1200, height: 100,
+      transform: [1, 0, 0, 1, 100, 100], auto_resize: 'height',
+      style: { font_family: 'Inter', font_style: 'Regular', font_size: 64, line_height: { unit: 'auto' }, letter_spacing: { unit: 'percent', value: 0 }, decoration: 'none', case: 'original', fills: null, link: null },
+      fills: [{ type: 'solid', color: { r: 1, g: 1, b: 1, a: 1 }, opacity: 1, visible: true, blend: 'normal' }] },
+  },
+};
+
+test('biblioteka: JSON strony + szablon -> jeden PDF ze slajdami z obu plików', { skip: !hasCli && 'brak figcraft-cli' }, async () => {
+  const caseFile = await normalizeUpload(Buffer.from(JSON.stringify(caseJson)), 'case.json');
+  const caseParsed = parseTemplate(caseFile);
+  assert.deepEqual(caseParsed.frames.map((f) => [f.name, f.fields.data]), [['case-study', ['title']]]);
+
+  const thumbs = await renderThumbnails(caseFile, caseParsed);
+  assert.equal(thumbs['case-study'].subarray(1, 4).toString(), 'PNG');
+
+  const lib = await buildLibrary([{ file: TEMPLATE_FILE }, { file: caseFile }]);
+  assert.equal(lib.parsed.pages.length, 2);
+  assert.ok(lib.parsed.frames.some((f) => f.name === 'case-study'));
+  const pdf = await renderPdf({
+    templateBuf: lib.buf,
+    parsed: lib.parsed,
+    offer: { client: 'ACME' },
+    slides: [
+      { frame: 'okladka', data: { title: 'Gaius Vault' }, items: {} },
+      { frame: 'case-study', data: { title: 'Case study: ACME' }, items: {} },
+    ],
+  });
+  assert.equal((pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length, 2);
+});
+
+test('nieobsługiwany format pliku jest odrzucany', async () => {
+  await assert.rejects(normalizeUpload(Buffer.from('x'), 'notatki.txt'), /Nieobsługiwany plik/);
 });

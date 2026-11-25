@@ -16,7 +16,7 @@
 </head>
 <body>
 <h1>Offer Studio API</h1>
-<p>Wszystko, co robi interfejs, da się zrobić przez REST/JSON. Slajdy, podgląd i PDF renderuje FigCraft z szablonu <code>.figcraft</code>. Każda zmiana odświeża otwarte podglądy ofert.</p>
+<p>Wszystko, co robi interfejs, da się zrobić przez REST/JSON. Slajdy, podgląd i PDF renderuje FigCraft z biblioteki slajdów (pliki <code>.figcraft</code>/JSON). Każda zmiana odświeża otwarte podglądy ofert.</p>
 
 <h2>Logowanie</h2>
 <p><code>Authorization: Bearer &lt;STUDIO_API_TOKEN&gt;</code> (skrypty, n8n) albo Basic auth z hasłem <code>STUDIO_PASSWORD</code> (dowolny login).</p>
@@ -42,12 +42,12 @@
 <h2>Oferty i slajdy</h2>
 <table>
 <tr><td>GET /api/offers</td><td>Lista ofert</td></tr>
-<tr><td>POST /api/offers</td><td><code>{name, template_id?, data, slides?: [...]}</code></td></tr>
+<tr><td>POST /api/offers</td><td><code>{name, data, slides?: [...]}</code></td></tr>
 <tr><td>GET /api/offers/:id</td><td>Oferta ze slajdami</td></tr>
 <tr><td>PATCH /api/offers/:id</td><td>Np. <code>{"data": {"client": "ACME S.A.", "price": "12 000"}}</code></td></tr>
 <tr><td>POST /api/offers/:id/duplicate</td><td>Kopia oferty ze slajdami (opcjonalnie <code>{name}</code>)</td></tr>
 <tr><td>DELETE /api/offers/:id</td><td>Usunięcie oferty i jej slajdów</td></tr>
-<tr><td>POST /api/offers/:id/slides</td><td><code>{frame, data, block_ids?, query?, position?}</code>; <code>frame</code> to nazwa slajdu w szablonie</td></tr>
+<tr><td>POST /api/offers/:id/slides</td><td><code>{frame, data, block_ids?, query?, position?}</code>; <code>frame</code> to nazwa slajdu w bibliotece</td></tr>
 <tr><td>PATCH /api/slides/:id</td><td>Zmiana slajdu (<code>data</code> scalane jak w blokach)</td></tr>
 <tr><td>DELETE /api/slides/:id</td><td>Usunięcie slajdu</td></tr>
 <tr><td>PUT /api/offers/:id/order</td><td><code>{"ids": [...]}</code>: nowa kolejność wszystkich slajdów</td></tr>
@@ -61,17 +61,20 @@
 
 curl -o oferta.pdf $URL/api/offers/gaius-vault-bazowa/pdf -H "Authorization: Bearer $TOKEN"</pre>
 
-<h2>Szablony FigCraft</h2>
+<h2>Biblioteka slajdów (FigCraft)</h2>
 <table>
-<tr><td>GET /api/templates</td><td>Lista szablonów z opisem slajdów (pola <code>data.*</code>, liczba kart <code>#item</code>, pola kart)</td></tr>
-<tr><td>GET /api/templates/:id</td><td>Jeden szablon z opisem slajdów</td></tr>
+<tr><td>GET /api/library</td><td>Wszystkie slajdy: <code>[{frame, source, source_name, width, height, fields, slots, thumb}]</code></td></tr>
+<tr><td>GET /api/templates</td><td>Pliki ze slajdami (z listą slajdów każdego pliku)</td></tr>
 <tr><td>GET /api/templates/:id/file</td><td>Plik <code>.figcraft</code> do edycji w FigCraft</td></tr>
-<tr><td>POST /api/templates</td><td>multipart: <code>file</code> (.figcraft), opcjonalnie <code>id</code> i <code>name</code>. Istniejące <code>id</code> = podmiana pliku</td></tr>
+<tr><td>POST /api/templates</td><td>multipart: <code>file</code> (.figcraft, .json, .fig, .penpot, .sketch, .svg), opcjonalnie <code>id</code> i <code>name</code>. Istniejące <code>id</code> = podmiana pliku</td></tr>
+<tr><td>POST /api/templates?id=&amp;name=</td><td>z <code>content-type: application/json</code>: sam JSON strony/dokumentu FigCraft (albo Figma REST API)</td></tr>
 <tr><td>PATCH /api/templates/:id</td><td><code>{"name": "..."}</code></td></tr>
-<tr><td>DELETE /api/templates/:id</td><td>Usunięcie</td></tr>
+<tr><td>DELETE /api/templates/:id</td><td>Usunięcie pliku i jego slajdów z biblioteki</td></tr>
 </table>
-<p>Pola wiąże się nazwami warstw w FigCraft: <code>{{data.title}}</code> (treść slajdu), <code>{{offer.client|upper}}</code> (zmienna oferty), <code>#item</code> (karta na blok, w środku <code>{{title}}</code>, <code>{{body}}</code>, <code>{{n}}</code> i pola bloku, np. <code>{{effect}}</code>), <code>#item:lines</code> (wiersz z pola <code>data.lines</code>: <code>etykieta | wartość</code>), <code>[[2:tekst]]</code> (styl 2. wyróżnienia z szablonu). W treści <code>**słowo**</code> dostaje styl 1. wyróżnienia. Pusty wynik ukrywa warstwę.</p>
-<pre>curl -X POST $URL/api/templates -H "Authorization: Bearer $TOKEN" -F id=gaius -F file=@gaius-template.figcraft</pre>
+<p>Każda ramka najwyższego poziomu (ze wszystkich stron) to slajd; nazwa ramki musi być unikalna w całej bibliotece (konflikt = 409). Pola wiąże się nazwami warstw: <code>{{data.title}}</code> (treść slajdu), <code>{{offer.client|upper}}</code> (zmienna oferty), <code>#item</code> (karta na blok, w środku <code>{{title}}</code>, <code>{{body}}</code>, <code>{{n}}</code> i pola bloku, np. <code>{{effect}}</code>), <code>#item:lines</code> (wiersz z pola <code>data.lines</code>: <code>etykieta | wartość</code>), <code>[[2:tekst]]</code> (styl 2. wyróżnienia). W treści <code>**słowo**</code> dostaje styl 1. wyróżnienia. Pusty wynik ukrywa warstwę.</p>
+<pre>curl -X POST $URL/api/templates -H "Authorization: Bearer $TOKEN" -F file=@case-study.figcraft
+
+curl -X POST "$URL/api/templates?id=case-study&amp;name=Case%20study" -H "Authorization: Bearer $TOKEN"   -H "content-type: application/json" --data-binary @case-study.json</pre>
 
 <h2>Eksport i import</h2>
 <table>

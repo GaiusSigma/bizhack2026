@@ -7,7 +7,9 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HttpError, openDb, slugify } from './db.js';
-import { describeTemplate, hashOf, parseTemplate, renderFigcraft, renderPdf, renderPreview } from './figcraft.js';
+import {
+  buildLibrary, describeTemplate, hashOf, normalizeUpload, parseTemplate, renderFigcraft, renderPdf, renderPreview, renderThumbnails, UPLOAD_EXT,
+} from './figcraft.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const env = process.env;
@@ -47,16 +49,73 @@ if (store.isEmpty() && env.STUDIO_SEED !== 'false') {
 const listeners = new Set();
 const emit = (ev) => { for (const fn of listeners) fn(ev); };
 
-// ------------------------------------------------------------------ render przez FigCraft
+// ------------------------------------------------------------------ biblioteka slajdów (FigCraft)
+// Pliki ze slajdami (tabela templates) -> każdy rozbierany osobno (lista slajdów, pola),
+// a do renderu sklejane w jeden dokument biblioteki (cache do następnej zmiany plików).
 const parsedCache = new Map();
 function template(id) {
-  if (!id) throw new HttpError(400, 'Oferta nie ma wybranego szablonu');
   const { file, updated_at } = store.templateFile(id);
   const hit = parsedCache.get(id);
   if (hit?.updated_at === updated_at) return { file, parsed: hit.parsed, updated_at };
   const parsed = parseTemplate(file);
   parsedCache.set(id, { updated_at, parsed });
   return { file, parsed, updated_at };
+}
+
+let libCache = null;
+let libBuilding = null;
+async function library() {
+  const sources = store.list('templates');
+  const key = hashOf(sources.map((s) => [s.id, s.updated_at]));
+  if (libCache?.key === key) return libCache;
+  if (libBuilding?.key === key) return libBuilding.promise;
+  const promise = buildLibrary(sources.map((s) => ({ file: store.templateFile(s.id).file })))
+    .then((lib) => (libCache = { key, ...lib }))
+    .finally(() => { if (libBuilding?.key === key) libBuilding = null; });
+  libBuilding = { key, promise };
+  return promise;
+}
+
+// Lista slajdów biblioteki: [{frame, source, source_name, width, height, fields, slots, thumb}]
+function librarySlides() {
+  return store.list('templates').flatMap((t) => {
+    const { parsed, updated_at } = template(t.id);
+    const v = hashOf([t.id, updated_at]).slice(0, 8);
+    return describeTemplate(parsed).map((f) => ({
+      frame: f.name, source: t.id, source_name: t.name, width: f.width, height: f.height, fields: f.fields, slots: f.slots,
+      thumb: `/thumb/${encodeURIComponent(t.id)}/${v}/${encodeURIComponent(f.name)}`,
+    }));
+  });
+}
+
+const thumbCache = new Map(); // `${id}@${updated_at}` -> Promise<{frame: png}>
+function thumbs(id) {
+  const { file, parsed, updated_at } = template(id);
+  const key = `${id}@${updated_at}`;
+  if (!thumbCache.has(key)) {
+    for (const k of thumbCache.keys()) if (k.startsWith(`${id}@`)) thumbCache.delete(k);
+    const p = renderThumbnails(file, parsed);
+    p.catch(() => thumbCache.delete(key));
+    thumbCache.set(key, p);
+  }
+  return thumbCache.get(key);
+}
+
+// Wgranie pliku ze slajdami: konwersja do .figcraft, walidacja nazw slajdów (unikalne w całej bibliotece).
+async function uploadSource({ buf, filename, id, name }) {
+  const file = await normalizeUpload(buf, filename);
+  const parsed = parseTemplate(file);
+  if (!parsed.frames.length) throw new HttpError(400, 'W pliku nie ma żadnej ramki (slajdu) najwyższego poziomu');
+  const names = parsed.frames.map((f) => f.name);
+  const dupes = [...new Set(names.filter((n, i) => names.indexOf(n) !== i))];
+  if (dupes.length) throw new HttpError(400, `Ramki w pliku muszą mieć różne nazwy. Powtarzają się: ${dupes.join(', ')}`);
+  const sourceId = id || slugify(String(filename || parsed.name || 'slajdy').replace(/\.[a-z]+$/i, ''));
+  const taken = librarySlides().filter((s) => s.source !== sourceId && names.includes(s.frame));
+  if (taken.length) {
+    throw new HttpError(409, `Slajdy o tych nazwach są już w innym pliku: ${taken.map((s) => `„${s.frame}” (${s.source_name})`).join(', ')}. Zmień nazwę ramki w FigCraft albo podmień tamten plik.`);
+  }
+  const t = store.putTemplate({ id: sourceId, name: name || store.get('templates', sourceId)?.name || String(filename || parsed.name).replace(/\.[a-z]+$/i, ''), file });
+  return { ...t, frames: describeTemplate(parsed) };
 }
 
 // Bloki slajdu: jawna lista `block_ids` (w tej kolejności) albo zapytanie `query` {type, tag, limit}.
@@ -80,17 +139,18 @@ const lines = (text) =>
     return { title, value, ...Object.fromEntries(rest.map((v, i) => [`value${i + 2}`, v])) };
   });
 
-function renderInput(offerId, { includeHidden }) {
+async function renderInput(offerId, { includeHidden }) {
   const offer = store.getOffer(offerId);
-  const tpl = template(offer.template_id);
-  const frames = Object.fromEntries(tpl.parsed.frames.map((f) => [f.name, f]));
+  const lib = await library();
+  const frames = {};
+  for (const f of lib.parsed.frames) frames[f.name] ??= f;
   const report = [];
   const slides = [];
   for (const s of offer.slides) {
     const f = frames[s.frame];
     const entry = { id: s.id, frame: s.frame, hidden: s.hidden };
     report.push(entry);
-    if (!f) { entry.error = `Szablon nie ma slajdu "${s.frame}"`; continue; }
+    if (!f) { entry.error = `W bibliotece nie ma slajdu "${s.frame}"`; continue; }
     if (s.hidden && !includeHidden) { entry.skipped = true; continue; }
     const items = {};
     for (const source of f.fields.sources) items[source] = source === 'blocks' ? resolveBlocks(s) : lines(s.data?.[source]);
@@ -100,8 +160,8 @@ function renderInput(offerId, { includeHidden }) {
   return {
     offer,
     report,
-    input: { templateBuf: tpl.file, parsed: tpl.parsed, slides, offer: { id: offer.id, name: offer.name, ...offer.data } },
-    key: hashOf({ t: offer.template_id, u: tpl.updated_at, o: offer.data, s: slides }),
+    input: { templateBuf: lib.buf, parsed: lib.parsed, slides, offer: { id: offer.id, name: offer.name, ...offer.data } },
+    key: hashOf({ l: lib.key, o: offer.data, s: slides }),
   };
 }
 
@@ -109,7 +169,15 @@ function renderInput(offerId, { includeHidden }) {
 const previews = new Map(); // offerId -> {key, pngs, report, ms, error}
 const inflight = new Map();
 async function preview(offerId) {
-  const { key, input, report } = renderInput(offerId, { includeHidden: true });
+  let ri;
+  try {
+    ri = await renderInput(offerId, { includeHidden: true });
+  } catch (e) {
+    if (e instanceof HttpError && e.status === 404) throw e;
+    const offer = store.getOffer(offerId);
+    return { key: 'error', pngs: [], ms: 0, error: e.message, report: offer.slides.map((s) => ({ id: s.id, frame: s.frame, hidden: s.hidden })) };
+  }
+  const { key, input, report } = ri;
   const cached = previews.get(offerId);
   if (cached?.key === key) return cached;
   const running = inflight.get(offerId);
@@ -172,6 +240,13 @@ app.use('/static/*', serveStatic({
 }));
 app.get('/', (c) => c.html(readFileSync(join(ROOT, 'public', 'index.html'), 'utf8')));
 
+app.get('/thumb/:source/:v/:frame', async (c) => {
+  const all = await thumbs(c.req.param('source'));
+  const png = all[c.req.param('frame')];
+  if (!png) return c.text('not found', 404);
+  return c.body(png, 200, { 'content-type': 'image/png', 'cache-control': 'private, max-age=86400, immutable' });
+});
+
 app.get('/preview-img/:offer/:key/:n', (c) => {
   const p = previews.get(c.req.param('offer'));
   const n = Number.parseInt(c.req.param('n'), 10);
@@ -229,8 +304,9 @@ api.delete('/blocks/:id', (c) => {
   return c.body(null, 204);
 });
 
-// szablony (.figcraft)
+// biblioteka slajdów: pliki ze slajdami (tabela templates) i lista wszystkich slajdów
 const withFrames = (t) => ({ ...t, frames: describeTemplate(template(t.id).parsed) });
+api.get('/library', (c) => c.json(librarySlides()));
 api.get('/templates', (c) => c.json(store.list('templates').map(withFrames)));
 api.get('/templates/:id', (c) => c.json(withFrames(store.mustGet('templates', c.req.param('id')))));
 api.get('/templates/:id/file', (c) => {
@@ -240,19 +316,31 @@ api.get('/templates/:id/file', (c) => {
     'content-disposition': `attachment; filename="${slugify(t.name)}.figcraft"`,
   });
 });
-// multipart: file (.figcraft), opcjonalnie id i name. Istniejące id = podmiana pliku szablonu.
+// Nowy plik ze slajdami albo podmiana istniejącego (to samo id). Każda ramka najwyższego poziomu = slajd.
+//  - multipart: `file` (.figcraft, .json, .fig, .penpot, .sketch, .svg), opcjonalnie `id` i `name`
+//  - application/json: sam JSON strony/dokumentu FigCraft (albo Figma REST API); id i name w query
 api.post('/templates', async (c) => {
-  const form = await c.req.parseBody();
-  const file = form.file;
-  if (!(file instanceof File)) throw new HttpError(400, 'Wyślij plik .figcraft w polu "file" (multipart/form-data)');
-  if (file.size > 100 * 1024 * 1024) throw new HttpError(413, 'Plik większy niż 100 MB');
-  const buf = Buffer.from(await file.arrayBuffer());
-  const parsed = parseTemplate(buf); // walidacja
-  const id = (typeof form.id === 'string' && form.id) || slugify(file.name.replace(/\.figcraft$/i, ''));
-  const name = (typeof form.name === 'string' && form.name) || store.get('templates', id)?.name || parsed.name || id;
-  const t = store.putTemplate({ id, name, file: buf });
+  let upload;
+  if ((c.req.header('content-type') || '').includes('application/json')) {
+    const raw = Buffer.from(await c.req.arrayBuffer());
+    try { JSON.parse(raw.toString('utf8')); } catch { throw new HttpError(400, 'To nie jest poprawny JSON'); }
+    const id = c.req.query('id') || undefined;
+    upload = { buf: raw, filename: `${id || 'slajdy'}.json`, id, name: c.req.query('name') };
+  } else {
+    const form = await c.req.parseBody();
+    const file = form.file;
+    if (!(file instanceof File)) throw new HttpError(400, `Wyślij plik w polu "file" (${UPLOAD_EXT.join(', ')})`);
+    upload = {
+      buf: Buffer.from(await file.arrayBuffer()),
+      filename: file.name,
+      id: typeof form.id === 'string' && form.id ? form.id : undefined,
+      name: typeof form.name === 'string' && form.name ? form.name : undefined,
+    };
+  }
+  if (upload.buf.length > 100 * 1024 * 1024) throw new HttpError(413, 'Plik większy niż 100 MB');
+  const t = await uploadSource(upload);
   changed('templates', t.id);
-  return c.json(withFrames(t), 201);
+  return c.json(t, 201);
 });
 api.patch('/templates/:id', async (c) => {
   const { name } = await body(c);
@@ -273,7 +361,6 @@ api.post('/offers', async (c) => {
   const b = await body(c);
   if (!b.name) throw new HttpError(400, 'Oferta musi mieć "name"');
   const { slides = [], ...offer } = b;
-  if (!offer.template_id) offer.template_id = store.list('templates')[0]?.id ?? null;
   const created = store.tx(() => {
     const o = store.insert('offers', offer, offer.name);
     slides.forEach((s, i) => store.insert('slides', { ...s, offer_id: o.id, position: i }, 'slide'));
@@ -319,7 +406,7 @@ api.get('/offers/:id/preview', async (c) => {
   });
 });
 api.get('/offers/:id/pdf', async (c) => {
-  const { offer, input } = renderInput(c.req.param('id'), { includeHidden: false });
+  const { offer, input } = await renderInput(c.req.param('id'), { includeHidden: false });
   if (!input.slides.length) throw new HttpError(400, 'Oferta nie ma widocznych slajdów');
   const pdf = await renderPdf(input);
   return c.body(pdf, 200, {
@@ -329,7 +416,7 @@ api.get('/offers/:id/pdf', async (c) => {
 });
 // Gotowy dokument oferty jako .figcraft: do ręcznych poprawek w FigCraft.
 api.get('/offers/:id/figcraft', async (c) => {
-  const { offer, input } = renderInput(c.req.param('id'), { includeHidden: false });
+  const { offer, input } = await renderInput(c.req.param('id'), { includeHidden: false });
   const file = await renderFigcraft(input);
   return c.body(file, 200, {
     'content-type': 'application/octet-stream',
@@ -371,6 +458,8 @@ api.get('/export', (c) => {
 api.post('/import', async (c) => {
   const counts = store.importAll(await body(c), c.req.query('mode') || 'merge');
   parsedCache.clear();
+  thumbCache.clear();
+  libCache = null;
   previews.clear();
   emit({ table: '*', id: null });
   return c.json({ imported: counts });

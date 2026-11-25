@@ -5,9 +5,10 @@ Wygląd slajdów, podgląd i PDF robi **FigCraft**: dashboard trzyma dane, a Fig
 
 - **Wiedza**: bloki (use case'y, problemy, argumenty, wiersze porównań, składniki pakietów…).
   Typ i tagi to dowolne napisy, a pola specyficzne dla typu (np. `effect` w use case) dodajesz sam.
-- **Szablony**: pliki `.figcraft`. Każda ramka najwyższego poziomu to slajd szablonu, a pola wiąże się
-  nazwami warstw (niżej). Wygląd zmieniasz w FigCraft i wgrywasz plik z powrotem, bez deployu.
-- **Oferty**: lista slajdów. Slajd = slajd szablonu + treść + bloki (konkretne albo
+- **Slajdy (biblioteka)**: każdy może dorzucić nowy slajd zaprojektowany w FigCraft: przeciąga plik
+  (`.figcraft`, JSON strony, `.fig`, `.penpot`, `.sketch`, `.svg`) i każda ramka najwyższego poziomu staje się
+  slajdem do wyboru w ofertach (z miniaturą). Pola wiąże się nazwami warstw (niżej). Bez deployu.
+- **Oferty**: lista slajdów. Slajd = wygląd z biblioteki + treść + bloki (konkretne albo
   „wszystkie use case'y z tagiem kancelaria”). Obok edytora jest podgląd renderowany przez FigCraft,
   odświeżany po każdej zmianie, także przez API.
 - **Eksport**: „Pobierz PDF” (FigCraft, tekst zostaje tekstem) i „Pobierz .figcraft” (gotowa oferta
@@ -16,15 +17,26 @@ Wygląd slajdów, podgląd i PDF robi **FigCraft**: dashboard trzyma dane, a Fig
 - **API**: wszystko przez REST, opis pod `/static/api.html`.
 
 Na start baza zawiera treść z `gaius-offer.figcraft` (40 bloków, oferta bazowa z 11 slajdami)
-i szablon `seed/gaius-template.figcraft`, czyli ten sam plik z oznaczonymi polami.
+i plik `seed/gaius-template.figcraft` (ten sam plik z oznaczonymi polami) jako pierwszy wpis biblioteki.
 
-## Jak oznaczyć szablon w FigCraft
+## Jak dodać nowy slajd
 
-Zmieniasz tylko **nazwy warstw**, wygląd zostaje Twój:
+1. W FigCraft narysuj ramkę (np. 1920×1080) i nazwij ją, np. `case-study`. Nazwa ramki to nazwa slajdu
+   w bibliotece i musi być unikalna w całej bibliotece (konflikt jest odrzucany z czytelnym komunikatem).
+2. Teksty, które mają się zmieniać, nazwij polami (tabela niżej). Reszta zostaje taka, jak ją narysujesz.
+3. Zapisz plik albo stronę jako JSON i przeciągnij do zakładki **Slajdy** (albo „Wklej JSON”).
+   Podmiana pliku o tej samej nazwie aktualizuje wszystkie oferty, które używają jego slajdów.
+
+JSON nie niesie obrazków: slajdy z obrazkami wgrywaj jako `.figcraft`.
+
+Pod spodem wszystkie pliki są sklejane w jeden dokument (`file.import` w `figcraft-cli`) i z niego
+renderowane są oferty, więc slajdy z różnych plików mieszają się w jednym PDF.
+
+Nazwy warstw:
 
 | Nazwa warstwy | Co robi |
 |---|---|
-| `use-case` (ramka najwyższego poziomu) | identyfikator slajdu szablonu |
+| `use-case` (ramka najwyższego poziomu) | nazwa slajdu w bibliotece |
 | `{{data.title}}` (tekst) | treść slajdu z edytora oferty |
 | `{{offer.client\|upper}}` | zmienna oferty, opcjonalnie wielkimi literami |
 | `Efekt dla biznesu: {{effect}}` | tekst stały + pole; pusty wynik ukrywa warstwę |

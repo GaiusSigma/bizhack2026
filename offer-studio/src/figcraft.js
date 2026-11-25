@@ -56,10 +56,12 @@ export function parseTemplate(buffer) {
   if (!files['document.json']) throw new HttpError(400, 'W pliku .figcraft brakuje document.json');
   const doc = JSON.parse(Buffer.from(files['document.json']).toString('utf8'));
   const N = doc.nodes;
-  const page = N[String(doc.pages[0])];
+  // Slajdy to ramki najwyższego poziomu ze wszystkich stron (plik może mieć ich kilka).
+  const tops = doc.pages.flatMap((pid) =>
+    (N[String(pid)]?.children || []).map((fid) => ({ page: Number(pid), frame: N[String(fid)] })))
+    .filter((x) => x.frame && x.frame.type === 'frame');
 
-  const frames = (page.children || []).map((fid) => {
-    const frame = N[String(fid)];
+  const frames = tops.map(({ page, frame }) => {
     const texts = []; // {id, name, slot (id slotu albo null), runs}
     const slots = []; // {id, source, parentLayout}
     const walk = (id, slotId) => {
@@ -91,6 +93,7 @@ export function parseTemplate(buffer) {
     for (const s of sources) if (s !== 'blocks') dataKeys.add(s);
     return {
       id: frame.id,
+      page,
       name: frame.name,
       width: frame.width,
       height: frame.height,
@@ -99,7 +102,7 @@ export function parseTemplate(buffer) {
       fields: { data: [...dataKeys], item: [...itemKeys], sources },
     };
   });
-  return { name: doc.name, frames };
+  return { name: doc.name, pages: doc.pages.map(Number), frames, images: (doc.imageIndex || []).length };
 }
 
 // Krótki opis do API/UI (bez wewnętrznych id).
@@ -178,21 +181,28 @@ const results = (stdout) =>
   stdout.split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l));
 
 // ------------------------------------------------------------------ budowa dokumentu oferty
-// slides: [{ id, frame, data, items: { blocks: [...], lines: [...] }, label }]
+// slides: [{ id, frame, data, items: { blocks: [...], lines: [...] } }]
+// templateBuf/parsed: dokument biblioteki (wszystkie pliki ze slajdami sklejone w jeden).
 async function build({ templateBuf, parsed, slides, offer, dir }) {
-  const frames = Object.fromEntries(parsed.frames.map((f) => [f.name, f]));
+  const frames = {};
+  for (const f of parsed.frames) frames[f.name] ??= f;
   for (const s of slides) {
-    if (!frames[s.frame]) throw new HttpError(400, `Szablon nie ma slajdu "${s.frame}"`);
+    if (!frames[s.frame]) throw new HttpError(400, `W bibliotece nie ma slajdu "${s.frame}"`);
   }
   await writeFile(join(dir, 'template.figcraft'), templateBuf);
 
-  // Przebieg 1: kopie ramek (w kolejności oferty, w jednym rzędzie) + dodatkowe sloty.
-  const p1 = [];
+  // Przebieg 1: kopie ramek na nowej stronie „oferta” (w kolejności oferty, w jednym rzędzie)
+  // + dodatkowe sloty; na końcu znikają wszystkie strony biblioteki.
+  const p1 = [{ command: 'page.add', as: 'out', params: { name: 'oferta' } }];
   const extras = []; // {slide, slotId, count}
+  let x = 0;
   slides.forEach((s, i) => {
     const f = frames[s.frame];
+    const copyId = { $ref: `s${i}`, field: 'ids/0' };
     p1.push({ command: 'edit.duplicate', as: `s${i}`, params: { ids: [f.id], dx: 0, dy: 0, map: true } });
-    p1.push({ command: 'node.set', params: { ids: [{ $ref: `s${i}`, field: 'ids/0' }], props: { name: `slide-${String(i + 1).padStart(3, '0')}`, x: i * (f.width + 200), y: -100_000 } } });
+    p1.push({ command: 'object.moveToPage', params: { ids: [copyId], page: { $ref: 'out' } } });
+    p1.push({ command: 'node.set', params: { ids: [copyId], props: { name: `slide-${String(i + 1).padStart(3, '0')}`, x, y: 0 } } });
+    x += f.width + 200;
     for (const source of f.fields.sources) {
       const group = f.slots.filter((sl) => sl.source === source);
       const need = (s.items[source] || []).length - group.length;
@@ -204,7 +214,8 @@ async function build({ templateBuf, parsed, slides, offer, dir }) {
       if (need > 0) extras.push({ slide: i, source, count: need, lastSlot: lastSlot.id });
     }
   });
-  p1.push({ command: 'edit.delete', params: { ids: parsed.frames.map((f) => f.id) } });
+  p1.push({ command: 'page.select', params: { id: { $ref: 'out' } } });
+  for (const page of parsed.pages) p1.push({ command: 'page.delete', params: { id: page } });
   await writeFile(join(dir, 'pass1.json'), JSON.stringify(p1));
   const r1 = results(await cli(['run', 'pass1.json', '--in', 'template.figcraft', '--out', 'pass1.figcraft'], dir));
   const byName = {};
@@ -326,3 +337,62 @@ export async function renderPreview(input, { scale = 0.5 } = {}) {
 }
 
 export const hashOf = (obj) => createHash('sha1').update(JSON.stringify(obj)).digest('hex').slice(0, 16);
+
+// ------------------------------------------------------------------ biblioteka slajdów
+// Formaty, które FigCraft umie otworzyć; wszystko zamieniamy na .figcraft przy wgrywaniu.
+export const UPLOAD_EXT = ['.figcraft', '.json', '.fig', '.penpot', '.sketch', '.svg'];
+
+export async function normalizeUpload(buf, filename) {
+  const ext = (/\.[a-z]+$/i.exec(filename || '')?.[0] || '').toLowerCase();
+  if (!UPLOAD_EXT.includes(ext)) throw new HttpError(400, `Nieobsługiwany plik "${filename}". Dozwolone: ${UPLOAD_EXT.join(', ')}`);
+  if (ext === '.figcraft') return buf;
+  const dir = await workdir('conv');
+  try {
+    await writeFile(join(dir, `in${ext}`), buf);
+    await cli(['convert', `in${ext}`, 'out.figcraft'], dir).catch((e) => {
+      throw new HttpError(400, `FigCraft nie otworzył pliku "${filename}": ${e.message}`);
+    });
+    return await readFile(join(dir, 'out.figcraft'));
+  } finally {
+    rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+// Wszystkie pliki ze slajdami sklejone w jeden dokument (strony doklejane przez file.import).
+export async function buildLibrary(sources) {
+  if (!sources.length) throw new HttpError(400, 'Biblioteka slajdów jest pusta: wgraj plik ze slajdami');
+  if (sources.length === 1) return { buf: sources[0].file, parsed: parseTemplate(sources[0].file) };
+  const dir = await workdir('lib');
+  try {
+    const steps = [];
+    for (const [i, s] of sources.entries()) {
+      await writeFile(join(dir, `src${i}.figcraft`), s.file);
+      if (i > 0) steps.push({ command: 'file.import', params: { path: join(dir, `src${i}.figcraft`) } });
+    }
+    await writeFile(join(dir, 'import.json'), JSON.stringify(steps));
+    await cli(['run', 'import.json', '--in', 'src0.figcraft', '--out', 'library.figcraft'], dir);
+    const buf = await readFile(join(dir, 'library.figcraft'));
+    return { buf, parsed: parseTemplate(buf) };
+  } finally {
+    rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+// Miniatury wszystkich slajdów jednego pliku: { nazwaRamki: Buffer PNG }.
+export async function renderThumbnails(buf, parsed, { scale = 0.25 } = {}) {
+  const dir = await workdir('thumb');
+  try {
+    await writeFile(join(dir, 'src.figcraft'), buf);
+    const steps = parsed.frames.map((f, i) => ({
+      command: 'file.export',
+      params: { ids: [f.id], format: 'png', scale, path: join(dir, `t${i}.png`) },
+    }));
+    await writeFile(join(dir, 'thumbs.json'), JSON.stringify(steps));
+    await cli(['run', 'thumbs.json', '--in', 'src.figcraft'], dir);
+    const out = {};
+    for (const [i, f] of parsed.frames.entries()) out[f.name] ??= await readFile(join(dir, `t${i}.png`)).catch(() => null);
+    return out;
+  } finally {
+    rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
