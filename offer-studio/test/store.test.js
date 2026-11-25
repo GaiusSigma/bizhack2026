@@ -532,3 +532,33 @@ test('tile content update: the stored base deck gets the seed’s writing hints 
     assert.deepEqual(st.data_by_role_product, f.data_by_role_product, `${st.key}: data_by_role_product`);
   }
 });
+
+test('tile content update: guidance rewritten in the seed replaces the old seed text, guidance edited by hand stays', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  const prev = seed.tileUpgrade.previousGuidance;
+  const [changedId, keptId] = Object.keys(prev);
+  s.update('tiles', changedId, { data: { ...prev[changedId] } });
+  s.update('tiles', keptId, { data: { pick_when: 'Our own rule' } });
+  s.setSetting('tile_content_rev', String(seed.tileUpgrade.rev - 1));
+  s.ensureTiles(seed);
+  const fresh = seed.tiles.find((t) => t.id === changedId).data;
+  assert.equal(s.get('tiles', changedId).data.pick_when, fresh.pick_when);
+  assert.equal(s.get('tiles', changedId).data.avoid_when, fresh.avoid_when);
+  assert.equal(s.get('tiles', keptId).data.pick_when, 'Our own rule');
+});
+
+test('tile content update: a description from any older seed version is replaced', () => {
+  const s = openDb(':memory:');
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  const olds = [].concat(seed.tileUpgrade.previousDescriptions['product:saas']);
+  assert.ok(olds.length >= 2);
+  for (const old of olds) {
+    s.update('tiles', 'product:saas', { description: old });
+    s.setSetting('tile_content_rev', String(seed.tileUpgrade.rev - 1));
+    s.ensureTiles(seed);
+    assert.equal(s.get('tiles', 'product:saas').description, seed.tiles.find((t) => t.id === 'product:saas').description, old);
+  }
+});

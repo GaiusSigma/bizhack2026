@@ -114,17 +114,18 @@ export function applyContent(ctx, answer, { strict = true } = {}) {
 
 // What the library knows about this client's situation, for the model writing the copy: per selected pain its
 // description, typical quotes (from other clients, not this one), the solutions that fit the client's segment and
-// product (best match first) and proof (differentiators, comparisons, pillars). A pain without content says so
-// (no_solution) instead of borrowing another pain's solution.
+// product (best match first) and proof (differentiators, comparisons, pillars). With nothing for the segment, a general
+// solution of the same pain from another segment (general: true, product still fits); with nothing at all, no_solution.
+// Never another pain's solution.
 export const SOLUTION_TYPES = ['solution', 'use_case'];
 export const PROOF_TYPES = ['differentiator', 'comparison', 'pillar'];
 const PER_PAIN = 3;
 
 export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
   const about = (id) => ({ id, label: tiles[id]?.label || id, description: tiles[id]?.description || '' });
-  const fitting = (types, pain) => blocks
+  const fitting = (types, pain, { anySegment = false } = {}) => blocks
     .map((b, i) => ({ b, i, ...score(b.tags, sel) }))
-    .filter((x) => types.includes(x.b.type) && x.matched.includes(pain) && segmentOk(x.b.tags, sel) && productOk(x.b.tags, sel))
+    .filter((x) => types.includes(x.b.type) && x.matched.includes(pain) && (anySegment || segmentOk(x.b.tags, sel)) && productOk(x.b.tags, sel))
     .sort((a, b) => b.score - a.score || a.i - b.i)
     .slice(0, PER_PAIN)
     .map((x) => x.b);
@@ -140,7 +141,9 @@ export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
     segment: about(sel.segment),
     product: about(sel.product),
     pains: sel.pains.map((id) => {
-      const solutions = fitting(SOLUTION_TYPES, id).map(solution);
+      let solutions = fitting(SOLUTION_TYPES, id).map(solution);
+      // nothing for this segment: a general answer from another segment that still fits the product
+      if (!solutions.length) solutions = fitting(SOLUTION_TYPES, id, { anySegment: true }).slice(0, 2).map((b) => ({ ...solution(b), general: true }));
       return {
         ...about(id), typical_quotes: tiles[id]?.quotes || [], solutions,
         proof: fitting(PROOF_TYPES, id).map(proof),

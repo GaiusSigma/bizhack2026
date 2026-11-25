@@ -50,7 +50,7 @@ const steps = [
       },
     },
     write: {
-      title: { hint: 'A title that fits what the client asked about or discussed on the call, in their terms. 3–8 words, at most two lines (use \\n).', max: 60 },
+      title: { hint: 'A title that fits what the client asked about or discussed on the call, in their terms. 3–8 words, at most two lines (use \\n). Say what changes for them, not just their name. Never set the organisation against its own people (e.g. not "…, not your lawyers").', max: 60 },
       lead: {
         hint: 'One sentence: what the product is for this client, in the language of their field. Factual, no sales adjectives.', max: 150,
         hint_by_role: {
@@ -255,6 +255,14 @@ const steps = [
       },
     },
     data_by_role: {
+      [CHAMPION]: {
+        steps: lines([
+          ['Talk to your DPO', 'To agree on the data processing rules and have the data processing agreement ready.'],
+          ['Talk to IT', 'To check server and network access, so the pilot can start on day one.'],
+          ['A short meeting with us', 'To pick the matters for the pilot and decide who from the team takes part.'],
+          ['Talk to the decision makers', 'So the partners or the board know what you are testing and how you will judge the result.'],
+        ]),
+      },
       [BOARD]: {
         lead: 'A few decisions that give the pilot a clear owner and a clear basis for your decision.',
         steps: lines([
@@ -266,6 +274,16 @@ const steps = [
       },
     },
     data_by_role_product: {
+      [CHAMPION]: {
+        [SAAS]: {
+          steps: lines([
+            ['Talk to your DPO', 'To agree on the data processing rules and have the data processing agreement ready.'],
+            ['Talk to IT', 'To check accounts and sign-in, so the trial can start on day one.'],
+            ['A short meeting with us', 'To pick the matters for the trial and decide who from the team takes part.'],
+            ['Talk to the decision makers', 'So the partners or the board know what you are testing and how you will judge the result.'],
+          ]),
+        },
+      },
       [BOARD]: {
         [SAAS]: {
           steps: lines([
@@ -288,10 +306,10 @@ const steps = [
         },
       },
       steps: {
-        hint: 'Steps the client should take first: talk to the DPO, to IT, a short meeting with us, talk to the board. Leave out a step the client already did (e.g. a signed agreement). A 5th step only for something the client itself raised on the call.', min: 3, max: 5,
+        hint: 'Steps the client should take first: talk to the DPO, to IT, a short meeting with us, talk to the decision makers. Leave out a step the client already did (e.g. a signed agreement). A 5th step only for something the client itself raised on the call.', min: 3, max: 5,
         hint_by_role: {
-          [BOARD]: 'the board does not talk to itself: name a pilot owner and agree on success criteria instead of "Talk to the board".',
-          [CHAMPION]: 'keep "Talk to the board": the champion needs the decision makers on board.',
+          [BOARD]: 'the decision makers do not talk to themselves: name a pilot owner and agree on success criteria instead of a step about talking to the decision makers.',
+          [CHAMPION]: 'keep a step about talking to the decision makers, named as the client calls them (the partners in a law firm, the board in a company).',
         },
         hint_by_product: {
           [SAAS]: 'the IT step is about accounts and sign-in, no server work.',

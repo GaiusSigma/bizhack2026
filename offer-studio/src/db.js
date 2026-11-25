@@ -683,8 +683,12 @@ export class Store {
       const patch = {};
       const data = {};
       for (const k of ['pick_when', 'avoid_when', 'writing_brief']) if (!cur.data?.[k] && t.data?.[k]) data[k] = t.data[k];
+      // guidance rewritten in the seed: replaced only where it is still the old seed text (not edited by hand)
+      const was = seed.tileUpgrade?.previousGuidance?.[t.id] || {};
+      for (const k of ['pick_when', 'avoid_when']) if (was[k] != null && cur.data?.[k] === was[k] && t.data?.[k] && t.data[k] !== was[k]) data[k] = t.data[k];
       if (Object.keys(data).length) patch.data = data;
-      if (prev[t.id] != null && cur.description === prev[t.id] && t.description !== cur.description) patch.description = t.description;
+      // previous seed wording: one text or a list of older versions
+      if (prev[t.id] != null && [].concat(prev[t.id]).includes(cur.description) && t.description !== cur.description) patch.description = t.description;
       if (Object.keys(patch).length) this.update('tiles', t.id, patch);
     }
   }
