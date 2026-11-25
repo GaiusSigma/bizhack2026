@@ -10,6 +10,12 @@ const FIELD_LABELS = {
   note: 'Note at the bottom', quote: 'Quote', quote_lead: 'Text under the quote', kicker: 'Kicker', text: 'Text',
   price_label: 'Price label', price_note: 'Price note', lines: 'Rows (each: label | value)',
   col_area: 'Column header: area', col_them: 'Column header: others', col_us: 'Column header: Gaius',
+  // 2026 deck: list fields hold one card per line, columns separated by |
+  areas: 'Areas (each: area | what the client said)', solutions: 'Areas (each: area | how the product handles it)',
+  concerns: 'Concerns (each: concern | our answer)', tool: 'Compared tool',
+  rows: 'Rows (each: area | the tool | our product)', features: 'Security features (each: title | text)',
+  steps: 'Steps (each: step | why)', services: 'Services (each: name | scope | time or package)',
+  calendar: 'Text under the QR box',
 };
 const TYPE_LABELS = {
   solution: 'solution', use_case: 'use case', problem: 'problem', pillar: 'pillar', signal: 'signal', step: 'rollout step',
@@ -159,7 +165,7 @@ export async function viewOffer(offerId, slideId) {
         h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Contact'), sel.role ? chip(sel.role) : '–'),
         h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Segment'), sel.segment ? chip(sel.segment) : '–'),
         h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Product'), sel.product ? chip(sel.product) : '–')),
-      h('div', { class: `coverage ${cov.missing.length ? 'partial' : 'full'}` },
+      !offer.coverage ? '' : h('div', { class: `coverage ${cov.missing.length ? 'partial' : 'full'}` },
         h('div', { class: 'cov-head' }, `${cov.covered.length} of ${total} pains solved`),
         h('ul', {},
           cov.covered.map((p) => h('li', { class: 'ok' }, '✓ ', tileLabel(p))),
@@ -267,7 +273,7 @@ export async function viewOffer(offerId, slideId) {
             h('span', { class: 'sc-n' }, i + 1),
             h('div', { class: 'sc-main' },
               h('div', { class: 'sc-title' }, s.origin?.label || plain(s.data?.title) || s.frame,
-                s.origin?.chosen_by ? h('span', { class: 'badge model' }, `chosen by ${s.origin.chosen_by}`) : s.locked ? h('span', { class: 'badge' }, 'edited by hand') : null,
+                s.origin?.chosen_by ? h('span', { class: 'badge model' }, `chosen by ${s.origin.chosen_by}`) : s.origin?.written_by ? h('span', { class: 'badge model' }, `written by ${s.origin.written_by}`) : s.locked ? h('span', { class: 'badge' }, 'edited by hand') : null,
                 s.hidden ? h('span', { class: 'badge muted' }, 'hidden') : null,
                 !s.origin ? h('span', { class: 'badge muted' }, 'added by hand') : null),
               answers.length ? h('div', { class: 'sc-answers hint' }, `Answers: ${answers.map((a) => ANSWER_LABELS[a] || a).join(', ')}`) : null,

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import seed, { TEMPLATE } from '../seed/seed.js';
 import { tiles, solutionBlocks, tileTags } from '../seed/tiles.js';
-import { scenarios } from '../seed/scenarios.js';
+import { DECK_TEMPLATE, scenarios } from '../seed/scenarios.js';
 import { parseTemplate } from '../src/figcraft.js';
 
 const TILE_RE = /^(role|segment|pain|product):[a-z0-9][a-z0-9-]{0,59}$/;
@@ -63,7 +63,7 @@ test('pinning: every id in tileTags exists in the seed, every tag is an existing
 });
 
 // ------------------------------------------------------------------ scenariusze
-const frames = Object.fromEntries(parseTemplate(readFileSync(new URL(`../seed/${TEMPLATE.file}`, import.meta.url))).frames.map((f) => [f.name, f]));
+const frames = Object.fromEntries(parseTemplate(readFileSync(new URL(`../seed/${DECK_TEMPLATE.file}`, import.meta.url))).frames.map((f) => [f.name, f]));
 
 test('scenarios: every frame exists in the template, and data and data_by_product keys are frame fields', () => {
   for (const sc of scenarios) {
@@ -173,14 +173,31 @@ test('content language: everything people see is in English (proper names aside)
   assert.deepEqual(offenders, []);
 });
 
-test('base deck: the 8 slides of the base presentation, in its order, each saying what it answers', () => {
+test('base deck: the ten slides of the 2026 deck, in order, the comparison optional', () => {
   const base = scenarios.find((s) => s.id === 'base');
-  assert.deepEqual(base.steps.map((s) => s.frame), ['cover', 'problems', 'what-is', 'why', 'use-case', 'pricing', 'comparison', 'contact']);
-  const answers = Object.fromEntries(base.steps.map((s) => [s.key, s.answers || []]));
-  assert.deepEqual(answers.problems, ['pain']);
-  assert.deepEqual(answers.pricing, ['product']);
-  assert.deepEqual(answers.cover, []);
-  // slot sizes of the base presentation
-  const max = Object.fromEntries(base.steps.filter((s) => s.fill.kind === 'blocks').map((s) => [s.key, s.fill.max]));
-  assert.deepEqual(max, { problems: 5, 'what-is': 3, 'use-cases': 6, pricing: 3, comparison: 7, contact: 1 });
+  assert.deepEqual(base.steps.map((s) => s.frame), ['title', 'starting-point', 'use-areas', 'team-support', 'tool-comparison', 'security', 'preparation', 'rollout-process', 'add-on-services', 'contact-person']);
+  assert.deepEqual(base.steps.filter((s) => s.optional).map((s) => s.key), ['tool-comparison']);
+  const contact = base.steps.find((s) => s.key === 'contact-person');
+  assert.deepEqual(contact.fill, { kind: 'blocks', type: 'person', min: 1, max: 1 });
+});
+
+test('base deck: every field a model writes is a field of its slide, and the default copy fits the limits', () => {
+  for (const st of scenarios.find((s) => s.id === 'base').steps) {
+    const f = frames[st.frame];
+    for (const [key, w] of Object.entries(st.write || {})) {
+      const where = `${st.key}.${key}`;
+      assert.ok(f.fields.data.includes(key), `${where}: the slide has no such field`);
+      assert.ok(w.hint, `${where}: no hint`);
+      for (const d of [st.data, ...Object.values(st.data_by_product || {})]) {
+        if (d[key] == null) continue;
+        if (!w.columns) { assert.ok(d[key].length <= w.max, `${where}: default copy over ${w.max} characters`); continue; }
+        // list field: the slide's cards print exactly these columns; the default items fit the count
+        assert.ok(f.fields.sources.includes(key), `${where}: the slide has no #item:${key} cards`);
+        for (const col of Object.keys(w.columns)) assert.ok(f.fields.item.includes(col), `${where}: the cards have no {{${col}}}`);
+        const rows = d[key].split('\n');
+        assert.ok(rows.length >= w.min && rows.length <= w.max, `${where}: ${rows.length} default items`);
+        for (const r of rows) assert.equal(r.split('|').length, Object.keys(w.columns).length, `${where}: "${r}"`);
+      }
+    }
+  }
 });

@@ -21,6 +21,47 @@ A minimal dashboard for collecting knowledge about an offer and assembling prese
 Out of the box the database holds the content of `gaius-offer.figcraft` (40 blocks, a base offer with
 11 slides) and `seed/gaius-template.figcraft` (the same file with marked-up fields) as the first library entry.
 
+## The 2026 deck: copy written per client
+
+The base deck (the `base` scenario) uses the **Gaius deck 2026** template (`seed/gaius-deck.figcraft`, library id
+`gaius-deck`): ten slides, from the title slide to the contact person. Most of its copy is written for each client
+by a model from the call transcript or the enquiry; n8n does that (workflow `n8n/workflows/offer-studio-deck.json`).
+
+| Slide (frame) | Written per client | Fixed or from product material |
+|---|---|---|
+| `title` | title, one-sentence lead | client name, date |
+| `starting-point` | who the organisation is, 3–4 areas of work in the client's words | |
+| `use-areas` | for each area, the product feature that handles it | |
+| `team-support` | lead, 1–2 concerns from the call with our answers | the "from similar rollouts" card |
+| `tool-comparison` | the tool the client mentioned, 4–6 comparison rows | **optional**: hidden until written |
+| `security` | lead answering the client's security concern | the six features (per product) |
+| `preparation` | title, lead, 3–5 steps before the pilot or the contract | |
+| `rollout-process` | | the five rollout stages |
+| `add-on-services` | lead, workshops / developer hours / development plans | |
+| `contact-person` | the next step | the person (a `person` block) |
+
+What a model may write, and how long, lives in the scenario: each step's `write` lists its fields with a hint and a
+character limit, and list fields (a slide's repeated cards) with an item count and columns. Change the hints in
+`seed/scenarios.js` (or the Scenarios tab), not in n8n: n8n reads them from the API.
+
+- `GET /api/offers/:id/content`: per slide, the fields to write with hint, limit and current value.
+- `PUT /api/offers/:id/content` with `{"slides": {"starting-point": {"lead": "…", "areas": [{"title": "…", "value": "…"}]}, "tool-comparison": {"hide": true}}}`.
+  Unknown fields, texts over their limit and wrong item counts are refused with one 400 that lists every problem.
+  Written slides are kept on recompute, like manual edits, and show "written by …" in the offer.
+
+The slides print `{{offer.product_name}}` (Gaius Vault, or Gaius-Lex for SaaS; `data.product_name` on the offer
+overrides it) and `{{offer.date}}` (the offer's creation date). Offers built with this deck have no pain-coverage
+box: their slides are written, not picked from knowledge blocks.
+
+**Changing the design.** The designer works on `seed/source/gaius-deck.figcraft` (Polish placeholders, plain
+groups). `node seed/build-deck.mjs` turns it into the template: it names the slides, binds the fields, translates
+fixed copy to English and turns card groups into auto-layout frames so written copy wraps and cards grow. Then
+upload the result on the Slides tab (it replaces `gaius-deck`), or start with an empty database.
+
+**Existing databases.** On the first start of this version the `gaius-deck` template joins the library and the
+`base` scenario moves onto it; the previous base deck is kept as the `base-2025` scenario, and offers made from it
+keep their slides (the 2025 template stays in the library).
+
 ## Editing slides in the browser (FigCraft web)
 
 Offer Studio ships the FigCraft web editor (WebAssembly) and serves it at `/figcraft/`, so slide files

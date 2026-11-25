@@ -1,0 +1,825 @@
+{
+  "name": "Lead → oferta Gaius Vault (Offer Studio)",
+  "nodes": [
+    {
+      "id": "241784ea-98ac-402b-aa96-06481eb7a82a",
+      "name": "Website form",
+      "webhookId": "dd7c4b67-f5f6-40f4-9325-1ca924d5ff78",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -208,
+        -176
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dd7c4b67-f5f6-40f4-9325-1ca924d5ff78",
+        "options": {}
+      }
+    },
+    {
+      "id": "3318ddda-e56c-4af0-b856-b7d68ded9974",
+      "name": "Transkrypcja z fireflies",
+      "webhookId": "9d26baf6-af2b-4aa5-9e93-03a5eb1586ba",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -208,
+        16
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "9d26baf6-af2b-4aa5-9e93-03a5eb1586ba",
+        "options": {}
+      }
+    },
+    {
+      "id": "af6a2baf-8646-45c4-9cb2-94cee7cd8f6f",
+      "name": "Gmail Trigger",
+      "disabled": true,
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -208,
+        208
+      ],
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      }
+    },
+    {
+      "id": "aef6593c-4da1-44c9-865f-8850869ee38c",
+      "name": "Normalizuj zgłoszenie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -80
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Jedno zgłoszenie (formularz n8n, landing tekst/głos, Fireflies, Gmail) -> wspólny format dla reszty workflow.\n// Bierzemy WSZYSTKIE źródła treści naraz (transkrypcja nagrania, tekst, persona, wiadomość), a nie tylko pierwsze znalezione.\nconst j = $json;\nconst b = j.body && typeof j.body === 'object' ? j.body : j; // webhook trzyma dane w body\nconst str = (v) => (v == null ? '' : typeof v === 'object' ? String(v.text ?? v.value ?? '') : String(v)).trim();\nconst pick = (...vals) => vals.map(str).find(Boolean) || '';\nconst get = (k) => b[k] ?? j[k];\n\nlet source = 'inne';\ntry {\n  source = { Form: 'formularz n8n', 'Website form': 'formularz WWW', 'Transkrypcja z fireflies': 'Fireflies', 'Gmail Trigger': 'Gmail' }[$prevNode.name] || $prevNode.name;\n} catch {}\nif (b.source) source = `${source} (${b.source}${b.mode ? `, ${b.mode}` : ''})`;\n\n// --- treść: każda część osobno, z etykietą ---\nconst parts = [];\nconst add = (label, v) => {\n  const t = str(v);\n  if (t && !parts.some((p) => p.text === t)) parts.push({ label, text: t });\n};\n\n// Fireflies: podsumowanie i wypowiedzi\nconst ff = b.data?.transcript || b.transcript || {};\nadd('Podsumowanie spotkania (Fireflies)', b.summary?.overview || ff.summary?.overview);\nconst sentences = b.sentences || ff.sentences;\nif (Array.isArray(sentences)) add('Transkrypcja spotkania', sentences.map((s) => `${s.speaker_name || s.speaker || ''}: ${s.text || s.raw_text || ''}`).join('\\n'));\n\n// Landing: nagranie głosowe, tekst klienta, przykładowa persona\nconst voice = b.voice || {};\nadd(`Transkrypcja nagrania głosowego${voice.seconds ? ` (${voice.seconds} s)` : ''}`, voice.transcript || voice.sampleTranscript);\nadd('Tekst od klienta', b.brief?.text);\nadd('Opis potrzeb', pick(get('Opis potrzeb'), get('message'), get('wiadomosc'), get('wiadomość'), get('opis'), get('notes'), get('description')));\nif (typeof b.transcript === 'string') add('Transkrypcja', b.transcript);\nadd('Treść', pick(get('text'), get('textPlain'), get('snippet')));\nif (b.tryItAs?.text) add(`Przykładowa persona wybrana na stronie: ${b.tryItAs.label || b.tryItAs.persona || ''}`, b.tryItAs.text);\n\nconst subject = pick(get('Subject'), get('subject'));\nif (subject && /Gmail/.test(source)) parts.unshift({ label: 'Temat e-maila', text: subject });\n\nconst text = parts.map((p) => `## ${p.label}\\n${p.text}`).join('\\n\\n').slice(0, 20000);\n\n// --- kontakt ---\nlet email = pick(get('E-mail'), get('email'), get('mail'), get('From'), get('from'));\nconst m = email.match(/[\\w.+-]+@[\\w-]+\\.[\\w.-]+/);\nemail = m ? m[0] : email;\n\n// --- podpowiedzi -> id kafelków (wybór klienta ma pierwszeństwo przed personą demo) ---\nconst low = (s) => str(s).toLowerCase();\nconst asTile = (prefix, v) => (v ? (v.startsWith(`${prefix}:`) ? v : `${prefix}:${v}`) : null);\nconst segRaw = low(pick(b.brief?.segment, get('Segment'), get('segment'), b.tryItAs?.segment));\nconst roleRaw = low(pick(b.brief?.role, b.pickedRole, get('Twoja rola'), get('Rola'), get('role'), b.tryItAs?.role));\nconst prodRaw = low(pick(get('Produkt'), get('product'), get('produkt')));\nconst hints = {\n  segment: /^(segment:)?(law-firm|in-house|public-sector|finance|tax-advisors|notaries|mass-claims)$/.test(segRaw) ? asTile('segment', segRaw)\n    : /kancel|law/.test(segRaw) ? 'segment:law-firm' : /dział|dzial|in-house|firm/.test(segRaw) ? 'segment:in-house' : /publi|urząd|urzad/.test(segRaw) ? 'segment:public-sector' : null,\n  role: /^(role:)?(board|champion|cto|gc|budget|dpo)$/.test(roleRaw) ? asTile('role', roleRaw)\n    : /zarz|partner|board|dyrek|prezes|ceo/.test(roleRaw) ? 'role:board' : /prawnik|lider|champion|radca|adwokat/.test(roleRaw) ? 'role:champion' : null,\n  product: /^(product:)?(saas|vault|on-prem)$/.test(prodRaw) ? asTile('product', prodRaw)\n    : /on-?prem|serwer/.test(prodRaw) ? 'product:on-prem' : /saas|chmur/.test(prodRaw) ? 'product:saas' : /vault/.test(prodRaw) ? 'product:vault' : null,\n};\nfor (const k of Object.keys(hints)) if (!hints[k]) delete hints[k];\n\nreturn {\n  json: {\n    source,\n    company: pick(get('Firma'), get('company'), get('firma'), get('organization'), get('organizacja'), get('client'), get('klient')),\n    contact_name: pick(get('Imię i nazwisko'), get('name'), get('imie'), get('contact'), get('kontakt')) || pick(get('From'), get('from')).replace(/<.*>/, '').trim(),\n    email,\n    hints,\n    price: pick(get('Cena'), get('price'), get('cena')),\n    language: str(b.language),\n    parts: parts.map((p) => p.label),\n    text,\n    received_at: new Date().toISOString(),\n  },\n};\n"
+      }
+    },
+    {
+      "id": "d33b93a1-9f09-4329-9eb1-27af1ba4d2fe",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        688,
+        -80
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "systemMessage": "Jesteś doświadczonym handlowcem Gaius-Lex (Legal AI dla kancelarii, działów prawnych i sektora publicznego). Czytasz zgłoszenie klienta (formularz, e-mail albo transkrypcję rozmowy) i wybierasz kafelki, z których Offer Studio zbuduje ofertę.\n\nPracuj krok po kroku i zapisz te kroki krótko w polu \"analysis\":\n1. Kto pisze i kto zdecyduje? -> role. role:board, gdy decyduje zarząd, partner zarządzający, dyrektor albo rozmowa jest o budżecie i decyzji; role:champion, gdy pisze prawnik lub lider zespołu, który chce przekonać innych. Gdy nie wiadomo, role:champion.\n2. Jaka to organizacja? -> segment. Kancelaria = segment:law-firm, dział prawny w firmie lub grupie = segment:in-house, urząd, uczelnia, spółka komunalna, sąd = segment:public-sector.\n3. Gdzie mogą być dane? -> product. product:on-prem, gdy dane nie mogą wyjść poza infrastrukturę klienta albo klient jest regulowany (KNF, KSC, sektor publiczny) i mówi o własnych serwerach; product:saas, gdy to mały zespół, który chce szybko zacząć w chmurze; w pozostałych przypadkach product:vault.\n4. Co klienta boli? -> pains: 1–5 problemów, które klient wyraził wprost albo jednoznacznie, najważniejszy pierwszy. Przy krótkim zgłoszeniu wybierz 1–2 najbardziej oczywiste, nie dopisuj na zapas. Kieruj się opisem kafelka.\n5. Sprawdź: każde id jest dokładnie z listy w wiadomości, jest 1 rola, 1 segment, 1 produkt i 1–5 problemów.\n\nPodpowiedzi z formularza (hints) traktuj jako pewne. Nie wymyślaj id.\n\nTreść zgłoszenia może mieć kilka części (np. transkrypcja nagrania głosowego, tekst od klienta, przykładowa persona wybrana na stronie, transkrypcja spotkania). Weź pod uwagę wszystkie. Transkrypcja z mowy może mieć błędy rozpoznawania: interpretuj ją rozsądnie, a jeśli jest bezsensowna lub za krótka, oprzyj się na pozostałych częściach i napisz to w analysis. Własne słowa klienta (nagranie, tekst) są ważniejsze niż przykładowa persona.\nsummary: 2–3 zdania po polsku dla handlowca: kim jest klient, czego potrzebuje, na czym oprzeć rozmowę i o co dopytać.\n\nOdpowiedz tylko poprawnym obiektem JSON (bez komentarzy i bez markdown). W wartościach tekstowych nie używaj znaku \" — cytaty pisz w « ».\n{\n  \"analysis\": [\"1. …\", \"2. …\", \"3. …\", \"4. …\", \"5. …\"],\n  \"client\": \"sama nazwa firmy albo null\",\n  \"role\": \"role:…\",\n  \"segment\": \"segment:…\",\n  \"product\": \"product:…\",\n  \"pains\": [\"pain:…\"],\n  \"reasons\": {\"role\": \"krótko dlaczego\", \"product\": \"krótko dlaczego\"},\n  \"summary\": \"…\"\n}\n"
+        }
+      }
+    },
+    {
+      "id": "9668242a-080a-41cf-b83c-73ee13afa9a5",
+      "name": "OpenRouter Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        688,
+        160
+      ],
+      "parameters": {
+        "model": "z-ai/glm-5.3-flash",
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "credentials": {
+        "openRouterApi": {
+          "id": "6nsj37BiFKWm4XG1",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "id": "7d829c26-aa31-4ee4-b7c5-25572e9e3a03",
+      "name": "Przygotowanie scenariusza",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        -80
+      ],
+      "parameters": {
+        "jsCode": "// Odpowiedź AI -> sprawdzone kafelki (1 rola, 1 segment, 1 produkt, 1–5 problemów).\n// Gdy odpowiedź jest zła, a to jeszcze nie 3. próba, odsyłamy AI opis błędu (retry: true) i AI poprawia się samo.\nconst MAX_TRIES = 3;\nconst attempt = $runIndex + 1;\nconst lead = $('Normalizuj zgłoszenie').first().json;\nconst tiles = $('Kontekst dla AI').first().json.tiles;\nconst raw = String($json.output ?? $json.text ?? '');\n\n// Tolerancyjny parser: wycina JSON z tekstu i naprawia typowe błędy modeli.\nfunction parseLoose(text) {\n  let s = text.replace(/```(?:json)?/gi, '');\n  const a = s.indexOf('{');\n  const b = s.lastIndexOf('}');\n  if (a < 0 || b <= a) throw new Error('w odpowiedzi nie ma obiektu JSON');\n  s = s.slice(a, b + 1);\n  const tries = [\n    (x) => x,\n    (x) => x.replace(/„([^\"„”\\n]*)\"/g, '„$1”'), // „cytat\" -> „cytat”\n    (x) => x.replace(/[“”]/g, '\\\\\"').replace(/„/g, '\\\\\"'), // typograficzne cudzysłowy\n    (x) => x.replace(/,\\s*([}\\]])/g, '$1'), // przecinek przed } lub ]\n  ];\n  let cur = s;\n  let lastErr;\n  for (const fix of tries) {\n    cur = fix(cur);\n    try { return JSON.parse(cur); } catch (e) { lastErr = e; }\n  }\n  throw new Error(`niepoprawny JSON (${lastErr.message})`);\n}\n\nconst problems = [];\nlet ai = {};\ntry {\n  ai = parseLoose(raw);\n} catch (e) {\n  problems.push(e.message);\n}\n\nconst ids = new Set(tiles.map((t) => t.id));\nconst cat = (id) => tiles.find((t) => t.id === id)?.category;\nconst okIn = (id, category) => id && ids.has(id) && cat(id) === category;\n\nif (!problems.length) {\n  for (const k of ['role', 'segment', 'product']) {\n    if (ai[k] && !okIn(ai[k], k)) problems.push(`\"${k}\": \"${ai[k]}\" nie jest kafelkiem kategorii ${k} z listy`);\n  }\n  const badPains = (Array.isArray(ai.pains) ? ai.pains : []).filter((id) => !okIn(id, 'pain'));\n  if (badPains.length) problems.push(`\"pains\" zawiera nieistniejące kafelki: ${badPains.join(', ')}`);\n  if (!(Array.isArray(ai.pains) && ai.pains.some((id) => okIn(id, 'pain')))) problems.push('\"pains\" musi mieć 1–5 kafelków pain:… z listy');\n}\n\nif (problems.length && attempt < MAX_TRIES) {\n  return [{ json: { retry: true, attempt, problems, raw: raw.slice(0, 4000) } }];\n}\nif (!Object.keys(ai).length) throw new Error(`AI po ${attempt} próbach nie zwróciło poprawnego JSON-a: ${problems.join('; ')}. Odpowiedź: ${raw.slice(0, 300)}`);\n\n// Ostatnia próba albo wszystko OK: bierzemy to, co poprawne, resztę uzupełniamy bezpiecznymi domyślnymi.\nconst one = (category, ...candidates) => candidates.find((id) => okIn(id, category))\n  || tiles.find((t) => t.category === category)?.id;\nconst role = one('role', lead.hints.role, ai.role, 'role:champion');\nconst segment = one('segment', lead.hints.segment, ai.segment);\nconst product = one('product', lead.hints.product, ai.product, 'product:vault');\nlet pains = [...new Set((Array.isArray(ai.pains) ? ai.pains : []).map(String))].filter((id) => okIn(id, 'pain')).slice(0, 5);\nif (!pains.length) pains = [tiles.find((t) => t.category === 'pain').id];\n\nconst client = String(lead.company || ai.client || 'Klient').trim();\nreturn [{\n  json: {\n    retry: false,\n    attempt,\n    warnings: problems,\n    request: { client, tiles: [role, segment, product, ...pains], ...(lead.price ? { price: lead.price } : {}) },\n    client,\n    analysis: ai.analysis || null,\n    summary: String(ai.summary || ''),\n    reasons: ai.reasons || {},\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "30fa6148-2275-4ee1-ba52-0167a7e2118f",
+      "name": "Send a message",
+      "webhookId": "04d3ed7a-3e6e-473b-aca8-3da5eeeeee28",
+      "disabled": true,
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        -80
+      ],
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "content": "={{ $json.message }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "f6b84604-22fe-4017-b0b9-2518851da913",
+      "name": "Form",
+      "webhookId": "89fcc9e5-4fc9-4377-8af7-422dd9a92eac",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -208,
+        -368
+      ],
+      "parameters": {
+        "formTitle": "Zapytanie o ofertę Gaius Vault",
+        "formDescription": "Opisz krótko, czym zajmuje się zespół i co chcesz usprawnić. Przygotujemy ofertę dopasowaną do Twoich potrzeb.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Firma",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Imię i nazwisko"
+            },
+            {
+              "fieldLabel": "E-mail",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Segment",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Kancelaria"
+                  },
+                  {
+                    "option": "Dział prawny (in-house)"
+                  },
+                  {
+                    "option": "Administracja publiczna"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Twoja rola",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Prawnik / lider zespołu"
+                  },
+                  {
+                    "option": "Zarząd / partner zarządzający"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Opis potrzeb",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Cena",
+              "placeholder": "np. 12 000 zł netto / mies. (opcjonalnie, dla handlowca)"
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Dziękujemy! Oferta jest w przygotowaniu."
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "15c45463-499a-48cd-a610-0293e51492dd",
+      "name": "Kontekst dla AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -80
+      ],
+      "parameters": {
+        "jsCode": "// Kafelki z Offer Studio -> prompt dla AI. AI wybiera kafelki, a ofertę buduje Studio (POST /api/offers/generate).\nconst lead = $('Normalizuj zgłoszenie').first().json;\nconst tiles = ($json.data || []).filter((t) => t.status !== 'soon');\nconst byCat = (cat) => tiles.filter((t) => t.category === cat)\n  .map((t) => `- ${t.id} | ${t.label} | ${String(t.description || '').replace(/\\s+/g, ' ')}`).join('\\n');\n\nconst prompt = `# Zgłoszenie (${lead.source})\nFirma: ${lead.company || '(nie podano)'}\nKontakt: ${lead.contact_name || '-'} ${lead.email ? `<${lead.email}>` : ''}\nPodpowiedzi z formularza: ${JSON.stringify(lead.hints)}\nTreść (${(lead.parts || []).length} części):\n\"\"\"\n${lead.text || '(brak treści)'}\n\"\"\"\n\n# Kafelki: rola (dokładnie 1)\n${byCat('role')}\n\n# Kafelki: segment (dokładnie 1)\n${byCat('segment')}\n\n# Kafelki: produkt (dokładnie 1)\n${byCat('product')}\n\n# Kafelki: problemy (1–5, najważniejsze najpierw)\n${byCat('pain')}\n\nOdpowiedz wyłącznie obiektem JSON według schematu z instrukcji systemowej.`;\n\nreturn [{ json: { prompt, tiles: tiles.map((t) => ({ id: t.id, category: t.category })) } }];\n"
+      }
+    },
+    {
+      "id": "0c025d2b-ee0a-4f1c-a835-cfcdc0c3e8da",
+      "name": "Utwórz ofertę",
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "position": [
+        1360,
+        -80
+      ],
+      "parameters": {
+        "resource": "__custom",
+        "method": "POST",
+        "path": "/api/offers/generate",
+        "body": "={{ JSON.stringify($json.request) }}",
+        "options": {}
+      },
+      "credentials": {
+        "offerStudioApi": {
+          "id": "SmkglQILXxrZqREQ",
+          "name": "Offer Studio API"
+        }
+      }
+    },
+    {
+      "id": "ad9df91b-53c0-4cae-931b-fc6816c6417a",
+      "name": "Pobierz PDF",
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "position": [
+        3152,
+        -80
+      ],
+      "parameters": {
+        "resource": "__custom",
+        "path": "={{ '/api/offers/' + encodeURIComponent($('Pola slajdów').first().json.offer_id) + '/pdf' }}",
+        "options": {
+          "binaryPropertyName": "data",
+          "timeout": 300
+        }
+      },
+      "credentials": {
+        "offerStudioApi": {
+          "id": "SmkglQILXxrZqREQ",
+          "name": "Offer Studio API"
+        }
+      }
+    },
+    {
+      "id": "2e751a5c-a67c-48c7-b3ae-d0c7244896f3",
+      "name": "Podsumowanie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3376,
+        -80
+      ],
+      "parameters": {
+        "jsCode": "// Krótkie podsumowanie dla zespołu (Discord) + PDF w binarnym polu \"data\".\nconst plan = $('Przygotowanie scenariusza').first().json;\nconst lead = $('Normalizuj zgłoszenie').first().json;\nconst check = $('Sprawdź treść').last().json;\nconst offer = $('Zapisz treść').first().json;\nconst STUDIO_URL = 'https://studio.bizhack.trygaius.com';\nconst link = `${STUDIO_URL}/#/offers/${encodeURIComponent(offer.id)}`;\n\nconst slides = offer.slides || [];\nconst written = slides.filter((s) => s.origin && s.origin.written_by).map((s) => s.origin.label || s.frame);\nconst comparison = slides.find((s) => s.frame === 'tool-comparison');\n\nconst message = [\n  `📄 Nowa oferta: **${offer.name || plan.client}**`,\n  `Źródło: ${lead.source}${lead.contact_name ? ` · ${lead.contact_name}` : ''}${lead.email ? ` <${lead.email}>` : ''}`,\n  `Kafelki: ${plan.request.tiles.join(', ')}`,\n  `Treść od AI: ${written.length ? written.join(', ') : 'brak (teksty domyślne)'}${comparison ? ` · porównanie z narzędziem: ${comparison.hidden ? 'ukryte' : 'pokazane'}` : ''}`,\n  check.warnings && check.warnings.length ? `⚠️ Pominięte przy zapisie (zostały teksty domyślne): ${check.warnings.slice(0, 5).join('; ')}` : '',\n  plan.summary ? `\\n${plan.summary}` : '',\n  `\\nEdycja w Offer Studio: ${link}`,\n].filter(Boolean).join('\\n');\n\nreturn [{\n  json: { offer_id: offer.id, offer_name: offer.name, offer_url: link, pdf_url: `${STUDIO_URL}/api/offers/${encodeURIComponent(offer.id)}/pdf`, tiles: plan.request.tiles, written, warnings: check.warnings || [], message },\n  binary: $input.first().binary,\n}];"
+      }
+    },
+    {
+      "id": "feec805b-0f5f-4019-a266-06ac4babc2fc",
+      "name": "Kafelki",
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "position": [
+        240,
+        -80
+      ],
+      "parameters": {
+        "resource": "__custom",
+        "path": "/api/tiles",
+        "options": {
+          "splitArray": false
+        }
+      },
+      "credentials": {
+        "offerStudioApi": {
+          "id": "SmkglQILXxrZqREQ",
+          "name": "Offer Studio API"
+        }
+      }
+    },
+    {
+      "id": "769f4d4e-63de-43d2-b725-b728832c5e99",
+      "name": "Odpowiedź AI poprawna?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1136,
+        -80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "610d1502-4df9-474c-8caa-31dc2b38890d",
+              "leftValue": "={{ $json.retry }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "ef2b4713-26ab-4f1d-ace6-2cbc6397cc6f",
+      "name": "Samopoprawka AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        -300
+      ],
+      "parameters": {
+        "jsCode": "// Samopoprawka: ten sam prompt + lista błędów z poprzedniej odpowiedzi. Wraca do AI Agent.\nconst base = $('Kontekst dla AI').first().json.prompt;\nreturn [{\n  json: {\n    prompt: `${base}\n\n# Poprawka (próba ${$json.attempt + 1})\nTwoja poprzednia odpowiedź nie przeszła walidacji:\n${$json.problems.map((p) => `- ${p}`).join('\\n')}\n\nPoprzednia odpowiedź:\n\"\"\"\n${$json.raw}\n\"\"\"\n\nZwróć cały obiekt JSON jeszcze raz, poprawiony. Używaj wyłącznie id kafelków z listy. W tekstach nie używaj znaku \" (cytaty pisz w « »).`,\n  },\n}];\n"
+      }
+    },
+    {
+      "parameters": {
+        "resource": "__custom",
+        "path": "={{ '/api/offers/' + encodeURIComponent(($json.offer || $json).id) + '/content' }}",
+        "options": {
+          "splitArray": false
+        }
+      },
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        -80
+      ],
+      "id": "a0337218-633f-48d4-b841-cf0fa1f42c31",
+      "name": "Pola slajdów",
+      "credentials": {
+        "offerStudioApi": {
+          "id": "SmkglQILXxrZqREQ",
+          "name": "Offer Studio API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pola slajdów z Offer Studio (GET /api/offers/:id/content) + zgłoszenie -> prompt dla AI, które pisze treść oferty.\n// Opisy pól (co napisać, limit znaków, liczba kart) są w scenariuszu w Offer Studio (zakładka Scenarios), nie tutaj.\nconst lead = $('Normalizuj zgłoszenie').first().json;\nconst plan = $('Przygotowanie scenariusza').first().json;\nconst ctx = $json;\n\nconst describe = (f) => f.kind === 'text'\n  ? `tekst, maks. ${f.max} znaków. ${f.hint}\\n    domyślnie: ${JSON.stringify(f.current)}`\n  : `lista ${f.min}–${f.max} pozycji. ${f.hint}\\n    kolumny: ${Object.entries(f.columns).map(([k, c]) => `${k} (maks. ${c.max} znaków): ${c.hint}`).join('; ')}\\n    domyślnie: ${JSON.stringify(f.current)}`;\nconst slides = ctx.slides.map((s) => [\n  `## ${s.step} (${s.label})${s.optional ? ' [OPCJONALNY: napisz go tylko, gdy ma podstawę w zgłoszeniu; inaczej {\"hide\": true}]' : ''}`,\n  ...Object.entries(s.fields).map(([k, f]) => `- ${k}: ${describe(f)}`),\n].join('\\n')).join('\\n\\n');\n\nconst prompt = `# Klient\nFirma: ${ctx.client}\nProdukt w ofercie: ${ctx.product_name}\nKafelki: ${(ctx.client_tiles || []).map((t) => `${t.label || t.id}`).join(', ')}\nNotatka handlowca (z analizy zgłoszenia): ${plan.summary || '-'}\n\n# Zgłoszenie (${lead.source})\n\"\"\"\n${lead.text || '(brak treści)'}\n\"\"\"\n\n# Slajdy i pola do napisania\n${slides}\n\nOdpowiedz wyłącznie obiektem JSON według schematu z instrukcji systemowej.`;\n\nreturn [{ json: { prompt, offer_id: ctx.offer_id, context: ctx } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        -80
+      ],
+      "id": "00733669-6b27-41c3-a7fa-5fc79d3c7c54",
+      "name": "Kontekst treści"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "systemMessage": "Jesteś handlowcem Gaius-Lex (Legal AI dla kancelarii, działów prawnych i sektora publicznego). Piszesz treść prezentacji ofertowej dla jednego klienta na podstawie jego zgłoszenia (transkrypcja rozmowy, e-mail albo formularz). Prezentacja jest PO ANGIELSKU: każde pole piszesz po angielsku, nawet gdy zgłoszenie jest po polsku. Nazwy własne (firma, osoby, narzędzia) zostaw w oryginale.\n\nZasady:\n1. Pisz tylko na podstawie zgłoszenia. Nie wymyślaj faktów: liczb, nazwisk, dat, narzędzi, obaw. Gdy w zgłoszeniu nie ma podstawy do pola, pomiń to pole: zostanie tekst domyślny.\n2. Trzymaj się opisu pola i limitu znaków. Krótko i rzeczowo, bez przymiotników sprzedażowych, bez straszenia. Słowa klienta są lepsze niż ogólniki.\n3. Nazwę produktu bierz z \"Produkt w ofercie\".\n4. use-areas: te same obszary i w tej samej kolejności co areas na slajdzie starting-point.\n5. tool-comparison: tylko gdy klient wspomniał inne narzędzie (np. ChatGPT, Copilot, Lex, inny Legal AI). Inaczej zwróć dla niego {\"hide\": true} i nic więcej.\n6. W nowej linii tytułu (title) używaj \\n. W pozostałych polach nie łam linii.\n\nOdpowiedz tylko poprawnym obiektem JSON (bez komentarzy i bez markdown). W tekstach nie używaj znaku \" (cytaty pisz w ‘ ’). Zwracaj tylko pola, które piszesz:\n{\n  \"slides\": {\n    \"<klucz slajdu>\": {\n      \"<pole tekstowe>\": \"…\",\n      \"<pole listy>\": [{\"title\": \"…\", \"value\": \"…\"}]\n    },\n    \"tool-comparison\": {\"hide\": true}\n  }\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2032,
+        -80
+      ],
+      "id": "e62fcf3f-dbf5-465b-8d50-2c6e7d71108d",
+      "name": "AI: treść slajdów",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "model": "z-ai/glm-5.3-flash",
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        160
+      ],
+      "id": "7b8a58b1-f560-4124-bd13-bb8471eaf342",
+      "name": "OpenRouter (treść)",
+      "credentials": {
+        "openRouterApi": {
+          "id": "6nsj37BiFKWm4XG1",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Odpowiedź AI -> treść slajdów sprawdzona według pól z Offer Studio (te same reguły co PUT /api/offers/:id/content).\n// Zła odpowiedź, a to jeszcze nie 3. próba: odsyłamy AI listę błędów (retry: true).\n// Ostatnia próba: zostawiamy to, co poprawne (pole za długie albo z złą liczbą pozycji zostaje domyślne).\nconst MAX_TRIES = 3;\nconst attempt = $runIndex + 1;\nconst ctx = $('Kontekst treści').first().json.context;\nconst raw = String($json.output ?? $json.text ?? '');\n\nfunction parseLoose(text) {\n  let s = text.replace(/```(?:json)?/gi, '');\n  const a = s.indexOf('{');\n  const b = s.lastIndexOf('}');\n  if (a < 0 || b <= a) throw new Error('w odpowiedzi nie ma obiektu JSON');\n  s = s.slice(a, b + 1);\n  const tries = [\n    (x) => x,\n    (x) => x.replace(/„([^\"„”\\n]*)\"/g, '„$1”'),\n    (x) => x.replace(/[“”]/g, '\\\\\"').replace(/„/g, '\\\\\"'),\n    (x) => x.replace(/,\\s*([}\\]])/g, '$1'),\n  ];\n  let cur = s;\n  let lastErr;\n  for (const fix of tries) {\n    cur = fix(cur);\n    try { return JSON.parse(cur); } catch (e) { lastErr = e; }\n  }\n  throw new Error(`niepoprawny JSON (${lastErr.message})`);\n}\n\nconst problems = [];\nlet ai = {};\ntry { ai = parseLoose(raw); } catch (e) { problems.push(e.message); }\n\nconst clean = (v) => String(v ?? '').replace(/\\s*\\|\\s*/g, ' / ').replace(/\\s*\\n\\s*/g, ' ').trim();\nconst byStep = Object.fromEntries(ctx.slides.map((s) => [s.step, s]));\nconst out = {};\nfor (const [step, fields] of Object.entries((ai && ai.slides) || {})) {\n  const slot = byStep[step];\n  if (!slot) { problems.push(`\"${step}\": nie ma takiego slajdu (są: ${Object.keys(byStep).join(', ')})`); continue; }\n  if (!fields || typeof fields !== 'object') { problems.push(`\"${step}\": oczekiwany obiekt pól`); continue; }\n  const ok = {};\n  for (const [key, value] of Object.entries(fields)) {\n    const at = `${step}.${key}`;\n    if (key === 'hide') {\n      if (slot.optional) ok.hide = !!value; else problems.push(`\"${at}\": ukryć można tylko slajd opcjonalny`);\n      continue;\n    }\n    const f = slot.fields[key];\n    if (!f) { problems.push(`\"${at}\": tego pola się nie pisze (pola: ${Object.keys(slot.fields).join(', ')})`); continue; }\n    if (f.kind === 'text') {\n      const v = typeof value === 'string' ? value.trim() : '';\n      if (!v) { problems.push(`\"${at}\": oczekiwany niepusty tekst`); continue; }\n      if (v.length > f.max) { problems.push(`\"${at}\": ${v.length} znaków, maks. ${f.max}`); continue; }\n      ok[key] = v;\n      continue;\n    }\n    if (!Array.isArray(value)) { problems.push(`\"${at}\": oczekiwana lista ${f.min}–${f.max} pozycji`); continue; }\n    if (value.length < f.min || value.length > f.max) { problems.push(`\"${at}\": ${value.length} pozycji, oczekiwane ${f.min}–${f.max}`); continue; }\n    const items = [];\n    let bad = false;\n    value.forEach((item, i) => {\n      const row = {};\n      for (const [k, col] of Object.entries(f.columns)) {\n        const v = clean(item && item[k]);\n        if (k === 'title' && !v) { problems.push(`\"${at}[${i}].title\": pusty`); bad = true; }\n        if (col.max && v.length > col.max) { problems.push(`\"${at}[${i}].${k}\": ${v.length} znaków, maks. ${col.max}`); bad = true; }\n        row[k] = v;\n      }\n      items.push(row);\n    });\n    if (!bad) ok[key] = items;\n  }\n  if (Object.keys(ok).length) out[step] = ok;\n}\n\nif (problems.length && attempt < MAX_TRIES) {\n  return [{ json: { retry: true, attempt, problems, raw: raw.slice(0, 6000) } }];\n}\nif (!Object.keys(out).length && problems.length) {\n  // nic poprawnego: oferta zostaje z tekstami domyślnymi, handlowiec dostaje ostrzeżenie\n  return [{ json: { retry: false, attempt, warnings: problems, body: null } }];\n}\nreturn [{ json: { retry: false, attempt, warnings: problems, body: { written_by: 'n8n (AI)', slides: out } } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        -80
+      ],
+      "id": "1c4c069c-5fb2-4e5a-8233-a79aff5bc8aa",
+      "name": "Sprawdź treść"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "37e348b4-8d87-43b1-87e2-0c67bee980a5",
+              "leftValue": "={{ $json.retry }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2480,
+        -80
+      ],
+      "id": "3b1f4b87-0a4c-4fd2-9258-f71f32f19fa9",
+      "name": "Treść poprawna?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Samopoprawka: ten sam prompt + lista błędów z poprzedniej odpowiedzi. Wraca do AI: treść slajdów.\nconst base = $('Kontekst treści').first().json.prompt;\nreturn [{\n  json: {\n    prompt: `${base}\n\n# Poprawka (próba ${$json.attempt + 1})\nTwoja poprzednia odpowiedź nie przeszła walidacji:\n${$json.problems.map((p) => `- ${p}`).join('\\n')}\n\nPoprzednia odpowiedź:\n\"\"\"\n${$json.raw}\n\"\"\"\n\nZwróć cały obiekt JSON jeszcze raz, poprawiony. Skróć teksty ponad limit. W tekstach nie używaj znaku \".`,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        -300
+      ],
+      "id": "b2be9efd-e149-49d6-b6ca-8388f2a83498",
+      "name": "Samopoprawka treści"
+    },
+    {
+      "parameters": {
+        "resource": "__custom",
+        "method": "PUT",
+        "path": "={{ '/api/offers/' + encodeURIComponent($('Pola slajdów').first().json.offer_id) + '/content' }}",
+        "body": "={{ JSON.stringify($json.body || { slides: {} }) }}",
+        "options": {}
+      },
+      "type": "CUSTOM.offerStudio",
+      "typeVersion": 1,
+      "position": [
+        2704,
+        -80
+      ],
+      "id": "57278f84-f0de-413c-8470-6d67bb3c29ce",
+      "name": "Zapisz treść",
+      "credentials": {
+        "offerStudioApi": {
+          "id": "SmkglQILXxrZqREQ",
+          "name": "Offer Studio API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    }
+  ],
+  "connections": {
+    "Form": {
+      "main": [
+        [
+          {
+            "node": "Normalizuj zgłoszenie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Website form": {
+      "main": [
+        [
+          {
+            "node": "Normalizuj zgłoszenie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transkrypcja z fireflies": {
+      "main": [
+        [
+          {
+            "node": "Normalizuj zgłoszenie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalizuj zgłoszenie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizuj zgłoszenie": {
+      "main": [
+        [
+          {
+            "node": "Kafelki",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kafelki": {
+      "main": [
+        [
+          {
+            "node": "Kontekst dla AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kontekst dla AI": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Przygotowanie scenariusza",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Przygotowanie scenariusza": {
+      "main": [
+        [
+          {
+            "node": "Odpowiedź AI poprawna?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Odpowiedź AI poprawna?": {
+      "main": [
+        [
+          {
+            "node": "Utwórz ofertę",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Samopoprawka AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Samopoprawka AI": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Utwórz ofertę": {
+      "main": [
+        [
+          {
+            "node": "Pola slajdów",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz PDF": {
+      "main": [
+        [
+          {
+            "node": "Podsumowanie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Podsumowanie": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pola slajdów": {
+      "main": [
+        [
+          {
+            "node": "Kontekst treści",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kontekst treści": {
+      "main": [
+        [
+          {
+            "node": "AI: treść slajdów",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: treść slajdów": {
+      "main": [
+        [
+          {
+            "node": "Sprawdź treść",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sprawdź treść": {
+      "main": [
+        [
+          {
+            "node": "Treść poprawna?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Treść poprawna?": {
+      "main": [
+        [
+          {
+            "node": "Zapisz treść",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Samopoprawka treści",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Samopoprawka treści": {
+      "main": [
+        [
+          {
+            "node": "AI: treść slajdów",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisz treść": {
+      "main": [
+        [
+          {
+            "node": "Pobierz PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter (treść)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: treść slajdów",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}

@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyzeLead, pickComponents } from './ai.js';
+import { applyContent, contentContext } from './content.js';
 import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import {
@@ -85,6 +86,26 @@ if (env.STUDIO_SEED !== 'false') {
 if (env.STUDIO_SEED !== 'false') {
   const added = store.ensureTiles(seedModule.default);
   if (Object.values(added).some(Boolean)) console.log('offer-studio: added tiles and scenarios', added);
+}
+// The 2026 deck: its template joins the library, and the base deck moves onto it. The previous base deck
+// (2025 template) is kept as the `base-2025` scenario, and offers made from it keep their slides.
+if (env.STUDIO_SEED !== 'false') {
+  const deck = seedModule.DECK_TEMPLATE;
+  if (!store.get('templates', deck.id)) {
+    store.putTemplate({ id: deck.id, name: deck.name, file: readFileSync(join(ROOT, 'seed', deck.file)) });
+    console.log(`offer-studio: added the ${deck.name} template`);
+  }
+  const base = store.get('scenarios', 'base');
+  const fresh = seedModule.default.scenarios.find((s) => s.id === 'base');
+  if (base && fresh && !base.steps.some((s) => s.frame === 'starting-point')) {
+    store.tx(() => {
+      if (!store.get('scenarios', seedModule.PREVIOUS_BASE)) {
+        store.insert('scenarios', { id: seedModule.PREVIOUS_BASE, name: `${base.name} (2025)`, steps: base.steps });
+      }
+      store.update('scenarios', 'base', { name: fresh.name, steps: fresh.steps });
+    });
+    console.log(`offer-studio: the base deck now uses the ${deck.name} template (previous one kept as ${seedModule.PREVIOUS_BASE})`);
+  }
 }
 
 // ------------------------------------------------------------------ live: Server-Sent Events
@@ -222,6 +243,18 @@ function resolveBlocks(slide, ctx = {}) {
   });
 }
 
+// Product names printed on the slides ({{offer.product_name}}); an offer can override it with data.product_name.
+const PRODUCT_NAMES = { 'product:saas': 'Gaius-Lex', 'product:vault': 'Gaius Vault', 'product:on-prem': 'Gaius Vault' };
+const ddmmyyyy = (iso) => {
+  const d = new Date(iso || Date.now());
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+};
+// Offer variables for {{offer.…}} fields: the offer's data plus product_name and date when it does not set them.
+const offerVars = (offer) => {
+  const product = (offer.data?.tiles || []).find((t) => t.startsWith('product:'));
+  return { id: offer.id, name: offer.name, product_name: PRODUCT_NAMES[product] || 'Gaius', date: ddmmyyyy(offer.created_at), ...offer.data };
+};
+
 // The offer's role and product from its tiles (for role- and product-specific copy).
 const offerCtx = (offer) => {
   const tiles = offer.data?.tiles || [];
@@ -268,7 +301,7 @@ async function renderInput(offerId, { includeHidden }) {
   return {
     offer,
     report,
-    input: { templateBuf: lib.buf, parsed: lib.parsed, slides, offer: { id: offer.id, name: offer.name, ...offer.data } },
+    input: { templateBuf: lib.buf, parsed: lib.parsed, slides, offer: offerVars(offer) },
     key: hashOf({ l: lib.key, o: offer.data, s: slides.map((x) => ({ ...x, picks: Object.fromEntries(Object.entries(x.picks).map(([k, v]) => [k, v.map((p) => [p.comp.id, p.data])])) })) }),
   };
 }
@@ -355,7 +388,12 @@ function offerView(id) {
   const ids = offer.data?.tiles;
   if (!Array.isArray(ids)) return offer;
   offer.tiles = ids.map((t) => store.get('tiles', t) || { id: t, missing: true });
-  offer.coverage = coverage(offer.slides, ids.filter((t) => t.startsWith('pain:')), blocksById(), Object.fromEntries(store.listComponents().map((c) => [c.id, c])));
+  // Pain coverage counts knowledge blocks and cards on the slides. A deck whose copy is written per client
+  // (the 2026 deck: only a person block) has none, so there is nothing to count: coverage is null.
+  const blocks = blocksById();
+  const counted = offer.slides.some((s) => !s.hidden && (Object.values(s.picks || {}).some((p) => p?.length)
+    || (s.block_ids || []).some((id) => blocks[id] && blocks[id].type !== 'person')));
+  offer.coverage = counted ? coverage(offer.slides, ids.filter((t) => t.startsWith('pain:')), blocks, Object.fromEntries(store.listComponents().map((c) => [c.id, c]))) : null;
   return offer;
 }
 
@@ -699,6 +737,38 @@ api.put('/offers/:id/slots', async (c) => {
       const { reasons, ...content } = p;
       // chosen elements are kept on recompute, like manual edits
       store.update('slides', slideId, { ...content, locked: true, origin: { ...(cur.origin || {}), reasons, chosen_by: chosenBy || 'model' } });
+    }
+    store.touch('offers', id);
+  });
+  changed('slides', null, { offer_id: id });
+  return c.json(offerView(id));
+});
+// Slide copy written by a model (n8n): what it may write, and where it sends it.
+function contentFor(offerId) {
+  const offer = store.getOffer(offerId);
+  if (!offer.data?.scenario_id) throw new HttpError(400, 'This offer was not created from tiles');
+  const sel = parseSelection(offer.data.tiles, store.list('tiles'));
+  const ctx = contentContext(offer, scenarioFor(sel));
+  const tiles = Object.fromEntries(store.list('tiles').map((t) => [t.id, t]));
+  ctx.product_name = offerVars(offer).product_name;
+  ctx.client_tiles = ctx.tiles.map((id) => ({ id, label: tiles[id]?.label, description: tiles[id]?.description }));
+  return ctx;
+}
+api.get('/offers/:id/content', (c) => c.json(contentFor(c.req.param('id'))));
+api.put('/offers/:id/content', async (c) => {
+  const id = c.req.param('id');
+  const b = await body(c);
+  const { patches } = applyContent(contentFor(id), b);
+  store.tx(() => {
+    for (const [slideId, p] of Object.entries(patches)) {
+      const cur = store.mustGet('slides', slideId);
+      // written copy is kept on recompute, like manual edits
+      store.update('slides', slideId, {
+        data: { ...(cur.data || {}), ...p.data },
+        ...(p.hidden !== undefined ? { hidden: p.hidden } : {}),
+        locked: true,
+        origin: { ...(cur.origin || {}), written_by: String(b.written_by || 'model') },
+      });
     }
     store.touch('offers', id);
   });

@@ -1,7 +1,9 @@
 // Starter data, loaded into an EMPTY database only. The content comes from gaius-offer.figcraft,
 // and the template (seed/gaius-template.figcraft) is the same file with {{…}} fields in its layer names.
 // Same format as an /api/export dump; the server adds the template file itself.
-import { retiredScenarios, scenarios } from './scenarios.js';
+import { DECK_TEMPLATE, PREVIOUS_BASE, retiredScenarios, scenarios } from './scenarios.js';
+
+export { DECK_TEMPLATE, PREVIOUS_BASE };
 import { solutionBlocks, tileTags, tileUpgrade, tiles } from './tiles.js';
 
 const ts = '2026-11-25T00:00:00.000Z';
