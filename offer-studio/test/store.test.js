@@ -360,7 +360,7 @@ test('tiles: invalid ids rejected (400)', () => {
 
 test('export v4 -> import replace restores tiles and scenarios', () => {
   const a = fresh();
-  a.update('scenarios', 'role:board', { steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
+  a.update('scenarios', 'base', { steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
   const dump = JSON.parse(JSON.stringify(a.exportAll()));
   assert.equal(dump.version, 4);
   assert.equal(dump.tiles.length, seed.tiles.length);
@@ -369,7 +369,7 @@ test('export v4 -> import replace restores tiles and scenarios', () => {
   assert.equal(counts.tiles, seed.tiles.length);
   assert.equal(counts.scenarios, seed.scenarios.length);
   assert.deepEqual(b.list('tiles'), a.list('tiles'));
-  assert.deepEqual(b.get('scenarios', 'role:board').steps[0].fill, { kind: 'none' });
+  assert.deepEqual(b.get('scenarios', 'base').steps[0].fill, { kind: 'none' });
 });
 
 test('applyRecompute: creates, hides and orders slides in one transaction, leaves locked alone', () => {

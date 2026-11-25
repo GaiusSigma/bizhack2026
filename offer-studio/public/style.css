@@ -329,3 +329,12 @@ table.cov td.cov-cell { text-align: center; font-variant-numeric: tabular-nums; 
   .slides-col { flex: 1 1 300px; }
   #view > .preview { flex: 0 0 240px; }
 }
+
+/* swappable slots: highlighted elements, model reasons */
+.sc-items li.lit { background: #f2f9f1; border-radius: 4px; padding: 1px 4px; margin-left: -4px; }
+.sc-items .reason { font-size: 12px; color: var(--muted); font-style: italic; }
+.sc-answers { margin-top: 2px; }
+.badge.model { background: #e8f0fe; color: #1f4fa3; }
+.cand.lit { border-color: #9fd19a; background: #f6fbf5; }
+.cand.off { opacity: .6; }
+.chip.tile-chip.sol { background: #eef4fb; color: #2d5a9a; } .sol-linker select { margin-top: 6px; }

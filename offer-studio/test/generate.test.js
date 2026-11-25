@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  WEIGHTS, buildSlides, coverage, mergeRecompute, parseSelection, pickBlocks, pickCards, score, segmentOk, stepApplies, stepData,
+  WEIGHTS, buildSlides, buildSlots, applySlotChoice, elementTiles, coverage, mergeRecompute, parseSelection, pickBlocks, pickCards, score, segmentOk, stepApplies, stepData,
 } from '../src/generate.js';
 
 // ------------------------------------------------------------------ atrapy
@@ -144,14 +144,17 @@ test('buildSlides: a pain without content -> solutions slide still gets min bloc
   assert.deepEqual(coverage(slides, sel.pains, byId), { covered: [], missing: ['pain:bez-tresci'] });
 });
 
-test('coverage: problem blocks and cards do not count, a hidden solution does not count', () => {
-  const byId = Object.fromEntries(BLOCKS.map((b) => [b.id, b]));
-  const slides = [
-    { hidden: false, block_ids: ['pr-a'], picks: { why: [{ component: 'why/t3' }] } },
-    { hidden: true, block_ids: ['rz-b'] },
-    { hidden: false, block_ids: ['uc-a', 'pain:confidentiality'] },
-  ];
-  assert.deepEqual(coverage(slides, ['pain:confidentiality', 'pain:unsearchable-archive'], byId), { covered: ['pain:unsearchable-archive'], missing: ['pain:confidentiality'] });
+test('coverage: a pain counts when an element on a visible slide is linked to it (directly, via a solution or a card); pain tiles and hidden slides do not', () => {
+  const byId = Object.fromEntries([...BLOCKS, { ...block('pr-s', 'problem', []), data: { solutions: ['rz-d'] } }].map((b) => [b.id, b]));
+  const cards = Object.fromEntries(CARDS.map((c) => [c.id, c]));
+  const pains = ['pain:confidentiality', 'pain:unsearchable-archive', 'pain:nda', 'pain:koszt'];
+  assert.deepEqual(coverage([
+    { hidden: false, block_ids: ['pr-a'] },                                // problem block tagged confidentiality
+    { hidden: true, block_ids: ['rz-a'] },                                 // hidden: archive does not count
+    { hidden: false, block_ids: ['pain:confidentiality'] },                // the pain tile itself does not count
+    { hidden: false, block_ids: ['pr-s'] },                                // via linked solution rz-d -> nda
+  ], pains, byId, cards), { covered: ['pain:confidentiality', 'pain:nda'], missing: ['pain:unsearchable-archive', 'pain:koszt'] });
+  assert.deepEqual(coverage([{ hidden: false, block_ids: [], picks: { why: [{ component: 'why/t3' }] } }], pains, byId, cards).covered, ['pain:confidentiality'], 'a card counts');
 });
 
 // ------------------------------------------------------------------ przeliczanie
@@ -227,4 +230,69 @@ test('pickBlocks: content tagged with products goes only to offers with one of t
   ];
   assert.deepEqual(pickBlocks(pkgs, { min: 2, max: 2 }, SEL).map((x) => x.id), ['pkg-vault', 'pkg-all']);
   assert.deepEqual(pickBlocks(pkgs, { min: 2, max: 2 }, { ...SEL, product: 'product:saas' }).map((x) => x.id), ['pkg-all']);
+});
+
+// ------------------------------------------------------------------ swappable slots
+const SLOT_SCENARIO = {
+  id: 'base',
+  steps: [
+    { key: 'cover', label: 'Cover', frame: 'cover', answers: [], data: {}, fill: { kind: 'none' } },
+    { key: 'problems', label: 'Problems', frame: 'problems', answers: ['pain'], data: {}, fill: { kind: 'blocks', type: 'problem', min: 2, max: 2 } },
+    { key: 'why', label: 'Why', frame: 'why', answers: ['pain', 'role'], data: {}, fill: { kind: 'picks', set: 'why' } },
+  ],
+};
+const SOL = { id: 'sol-x', type: 'solution', title: 'Local research', body: '', data: {}, tags: ['pain:unsearchable-archive'] };
+const SLOT_BLOCKS = [
+  block('pr-1', 'problem', ['pain:confidentiality']),
+  { ...block('pr-2', 'problem', []), data: { solutions: ['sol-x'] } },
+  block('pr-3', 'problem', ['segment:in-house']),
+  SOL,
+];
+const slotOffer = () => {
+  const slides = buildSlides(SLOT_SCENARIO, SEL, { blocks: SLOT_BLOCKS, components: CARDS, slots: { why: 3 } });
+  return { slides: slides.map((sl, i) => ({ ...sl, id: `s${i}`, position: i })) };
+};
+const SLOT_DATA = { blocks: SLOT_BLOCKS, components: CARDS, slots: { why: 3 } };
+
+test('elementTiles: own tiles plus the tiles of linked solutions', () => {
+  const byId = Object.fromEntries(SLOT_BLOCKS.map((b) => [b.id, b]));
+  assert.deepEqual(elementTiles(SLOT_BLOCKS[1], byId), ['pain:unsearchable-archive']);
+  assert.deepEqual(elementTiles(SLOT_BLOCKS[0], byId), ['pain:confidentiality']);
+});
+
+test('buildSlots: slots per slide with capacity, what the slide answers, and highlighted candidates', () => {
+  const ctx = buildSlots(slotOffer(), SLOT_SCENARIO, SEL, SLOT_DATA);
+  assert.deepEqual(ctx.slides.map((s) => s.step), ['cover', 'problems', 'why']);
+  const [cover, problems, why] = ctx.slides;
+  assert.equal(cover.kind, 'none');
+  assert.equal(problems.capacity, 2);
+  assert.deepEqual(problems.answers, ['pain']);
+  const cand = Object.fromEntries(problems.candidates.map((c) => [c.id, c]));
+  assert.deepEqual(Object.keys(cand).sort(), ['pr-1', 'pr-2', 'pr-3'], 'only elements of the slot type');
+  assert.deepEqual(cand['pr-1'].matched, ['pain:confidentiality']);
+  assert.deepEqual(cand['pr-2'].matched, ['pain:unsearchable-archive'], 'through a linked solution');
+  assert.deepEqual(cand['pr-2'].solutions, ['sol-x']);
+  assert.deepEqual(cand['pr-3'].matched, [], 'a segment tile does not count on a slide that answers pains');
+  assert.equal(cand['pr-3'].fits, false, 'other segment');
+  assert.equal(why.capacity, 3);
+  assert.ok(why.candidates.some((c) => c.id === 'why/t3-highlight' && c.matched.includes('role:board')));
+  assert.deepEqual(ctx.client, [SEL.role, SEL.segment, SEL.product, ...SEL.pains]);
+});
+
+test('applySlotChoice: valid choice becomes slide patches with reasons; wrong kind, unknown or too many -> 400', () => {
+  const offer = slotOffer();
+  const ctx = buildSlots(offer, SLOT_SCENARIO, SEL, SLOT_DATA);
+  const patches = applySlotChoice(ctx, [
+    { slide_id: 's1', items: [{ id: 'pr-2', reason: 'Client needs local research' }, { id: 'pr-1' }] },
+    { slide_id: 's2', items: [{ id: 'why/t1' }] },
+  ]);
+  assert.deepEqual(patches.s1.block_ids, ['pr-2', 'pr-1']);
+  assert.deepEqual(patches.s1.reasons, { 'pr-2': 'Client needs local research' });
+  assert.deepEqual(patches.s2.picks, { why: [{ component: 'why/t1' }] });
+  const err = (choice) => { try { applySlotChoice(ctx, choice); } catch (e) { return [e.status, e.message]; } return null; };
+  assert.equal(err([{ slide_id: 's1', items: [{ id: 'sol-x' }] }])[0], 400, 'a solution is not a problem element');
+  assert.match(err([{ slide_id: 's1', items: [{ id: 'nope' }] }])[1], /nope/);
+  assert.match(err([{ slide_id: 's1', items: [{ id: 'pr-1' }, { id: 'pr-2' }, { id: 'pr-3' }] }])[1], /2/);
+  assert.match(err([{ slide_id: 's0', items: [{ id: 'pr-1' }] }])[1], /no swappable/i);
+  assert.match(err([{ slide_id: 'zzz', items: [] }])[1], /zzz/);
 });

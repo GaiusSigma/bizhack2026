@@ -1,11 +1,10 @@
 // New offer from tiles: the salesperson describes the client (role, segment, pains, product),
 // and the deck is built from the role's scenario. The same tile picker serves "Change tiles".
 import { $, CATEGORY_LABELS, api, go, h, loadAll, state, toast } from '../lib.js';
-import { cleanSelection } from '../selection.js';
+import { cleanSelection, elementTiles } from '../selection.js';
 
 export const MAX_PAINS = 5;
 const WEIGHTS = { pain: 3, segment: 2, role: 1, product: 1 };
-const COVERAGE_TYPES = ['solution', 'use_case'];
 
 // The same rules as src/generate.js (the server picks); here only for live hints.
 export const selectionOf = (ids) => {
@@ -26,8 +25,16 @@ export const solutionsFor = (painId, segId) => state.blocks.filter((b) => b.type
   && segmentOk(b.tags, { segment: segId }));
 
 // Pains that have content fitting the segment (a solution or a use case).
-export const painsWithContent = (sel) => sel.pains.filter((p) => state.blocks.some((b) =>
-  COVERAGE_TYPES.includes(b.type) && b.tags.includes(p) && segmentOk(b.tags, sel)));
+// Same rule as the offer's coverage: an element of the base deck's slots linked to the pain (directly or through
+// a linked solution) that fits the segment.
+export const painsWithContent = (sel) => {
+  const steps = state.scenarios.find((s) => s.id === 'base')?.steps || state.scenarios.find((s) => s.id === sel.role)?.steps || [];
+  const types = new Set(steps.filter((s) => s.fill?.kind === 'blocks').map((s) => s.fill.type));
+  const sets = new Set(steps.filter((s) => s.fill?.kind === 'picks').map((s) => s.fill.set));
+  const sols = Object.fromEntries(state.blocks.filter((b) => b.type === 'solution').map((b) => [b.id, b]));
+  const elements = [...state.blocks.filter((b) => types.has(b.type)), ...state.components.filter((c) => sets.has(c.set_name) && !c.missing)];
+  return sel.pains.filter((p) => elements.some((e) => elementTiles(e, sols).includes(p) && segmentOk(e.tags, sel)));
+};
 
 // Under each category: when the selected tiles fit and when they don't (the same guidance the AI model reads).
 const selectedGuide = (chosen) => {
@@ -100,7 +107,7 @@ export function tilePicker(selected, onChange) {
 // Live summary: scenario, slide count, pains with content.
 export function selectionSummary(ids) {
   const sel = selectionOf(ids);
-  const scenario = state.scenarios.find((s) => s.id === sel.role);
+  const scenario = state.scenarios.find((s) => s.id === 'base') || state.scenarios.find((s) => s.id === sel.role);
   const missing = [];
   if (!sel.role) missing.push('a role');
   if (!sel.segment) missing.push('a segment');

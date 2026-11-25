@@ -82,7 +82,7 @@ function painCoverage(t, save) {
 
 // What linked content means for each kind of tile (they are not all judged the same way).
 const LINKED_HELP = {
-  role: 'The deck for this role comes from its scenario (above). Content linked here ranks higher for this role, mostly the "why" cards.',
+  role: 'Every role gets the same base deck (above). Elements linked to this role match it on slides that answer the contact role, e.g. the "why" cards.',
   segment: 'Content linked to a segment goes only to clients in that segment. Content with no segment goes to every segment.',
   pain: 'Solutions and use cases linked to a pain are what makes an offer solve it. Cards and other blocks also rank higher for it.',
   product: 'Content linked to a product goes only to offers with that product, e.g. Vault package items never appear in a SaaS offer.',
@@ -92,8 +92,8 @@ const LINKED_HELP = {
 function tileStatus(t) {
   if (t.status === 'soon') return t.category === 'role' ? 'no scenario yet' : 'not offered yet';
   if (t.category === 'role') {
-    const sc = state.scenarios.find((s) => s.id === t.id);
-    return sc ? `scenario: ${sc.steps.length} slides` : 'no scenario yet';
+    const n = pinnedTo(t.id).length;
+    return `base deck · ${n ? `${n} elements rank higher` : 'no role-specific elements'}`;
   }
   if (t.category === 'pain') {
     return `solutions: ${activeSegments().map((s) => `${s.label.split(' ')[0]} ${solutionsFor(t.id, s.id).length}`).join(' · ')}`;
@@ -105,12 +105,12 @@ function tileStatus(t) {
 
 // For a role tile: which scenario it opens and how long it is.
 function roleScenario(t) {
-  const sc = state.scenarios.find((s) => s.id === t.id);
+  const sc = state.scenarios.find((s) => s.id === 'base') || state.scenarios.find((s) => s.id === t.id);
   return h('div', { class: 'role-sc' },
-    h('label', { class: 'f' }, 'Scenario'),
-    sc ? h('div', {}, h('a', { href: `#/scenarios/${encodeURIComponent(sc.id)}` }, `${sc.name}: ${sc.steps.length} slides`),
+    h('label', { class: 'f' }, 'Slides'),
+    sc ? h('div', {}, h('a', { href: `#/scenarios/${encodeURIComponent(sc.id)}` }, `${sc.name}: ${sc.steps.length} slides, the same for every role`),
       h('div', { class: 'hint' }, sc.steps.map((st) => st.label).join(' → ')))
-      : h('div', { class: 'hint' }, 'No scenario for this role yet, so it cannot be picked in an offer.'));
+      : h('div', { class: 'hint' }, 'No base deck yet.'));
 }
 
 export function viewTiles(selectedId) {
@@ -213,3 +213,21 @@ export function viewTiles(selectedId) {
 }
 
 export { tileLabel };
+
+// Linked solutions: what an element delivers. A solution's tiles count as the element's own when slides are
+// highlighted for a client.
+export function solutionLinker(current, onChange) {
+  let ids = [...(current || [])];
+  const root = h('div', { class: 'sol-linker' });
+  const solutions = () => state.blocks.filter((b) => b.type === 'solution');
+  const render = () => root.replaceChildren(
+    h('div', { class: 'tt-chips' }, ids.length ? ids.map((id) => h('span', { class: 'chip tile-chip small sol' },
+      state.blocks.find((b) => b.id === id)?.title || `${id} (deleted)`,
+      h('button', { class: 'icon', title: 'Unlink', onclick: () => { ids = ids.filter((x) => x !== id); render(); onChange(ids); } }, '×')))
+      : h('span', { class: 'hint' }, 'No solutions linked yet.')),
+    h('select', { onchange: (e) => { if (e.target.value && !ids.includes(e.target.value)) { ids = [...ids, e.target.value]; render(); onChange(ids); } } },
+      h('option', { value: '' }, '+ link a solution…'),
+      solutions().filter((b) => !ids.includes(b.id)).map((b) => h('option', { value: b.id }, b.title))));
+  render();
+  return root;
+}

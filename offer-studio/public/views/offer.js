@@ -1,7 +1,7 @@
 // Offers from tiles: the offer list and a readable three-column offer view
 // (client and pain coverage · slides with "why it is here" · FigCraft preview).
 import { $, api, autosize, debounce, download, go, h, loadAll, modal, state, tileById, tileLabel, toast, ui } from '../lib.js';
-import { cleanSelection } from '../selection.js';
+import { cleanSelection, slotMatches } from '../selection.js';
 import { scoreTags, segmentOk, selectionOf, selectionSummary, tilePicker } from './new-offer.js';
 
 // Human names for slide fields (instead of template keys).
@@ -184,22 +184,31 @@ export async function viewOffer(offerId, slideId) {
     const b = blocksById[id];
     return b ? plain(b.title) : `${id} (deleted block)`;
   };
+  // Highlighting: an element is lit when it is linked (directly or through a solution) to one of the client's
+  // tiles of the kinds this slide answers.
+  const solutionsById = Object.fromEntries(state.blocks.filter((b) => b.type === 'solution').map((b) => [b.id, b]));
+  const answersOf = (slide) => stepOf(slide)?.answers || [];
+  const litFor = (slide, item) => (item ? slotMatches(item, offer.data?.tiles || [], answersOf(slide), solutionsById) : []);
   const whyChips = (slide) => {
-    const all = new Set(Object.values(slide.origin?.matched || {}).flat());
+    const all = new Set([
+      ...slide.block_ids.filter((id) => !id.includes(':')).flatMap((id) => litFor(slide, blocksById[id])),
+      ...Object.values(slide.picks || {}).flat().flatMap((p) => litFor(slide, compsById[p.component])),
+    ]);
     return [...all].map((t) => chip(t));
   };
+  const ANSWER_LABELS = { pain: 'client pains', segment: 'segment', role: 'contact role', product: 'product' };
 
   const blockSwap = (slide, idx, type) => {
     const sel = selectionOf(offer.data.tiles);
     const taken = new Set(slide.block_ids);
-    const cands = state.blocks.filter((b) => b.type === type && segmentOk(b.tags, sel))
-      .map((b) => ({ b, ...scoreTags(b.tags, sel) }))
-      .sort((a, b) => b.score - a.score || a.b.title.localeCompare(b.b.title, 'pl'));
+    const cands = state.blocks.filter((b) => b.type === type)
+      .map((b) => ({ b, ...scoreTags(b.tags, sel), lit: litFor(slide, b), fits: segmentOk(b.tags, sel) }))
+      .sort((a, b) => b.lit.length - a.lit.length || b.fits - a.fits || b.score - a.score || a.b.title.localeCompare(b.b.title, 'en'));
     const close = modal(h('div', {},
       h('h3', {}, idx == null ? 'Add a block' : `Swap: ${itemTitle(slide.block_ids[idx])}`),
-      h('p', { class: 'hint' }, 'The best fits for the client\'s tiles are at the top.'),
-      h('div', { class: 'cand-list' }, cands.map(({ b, matched }) => h('button', {
-        class: 'cand', disabled: taken.has(b.id),
+      h('p', { class: 'hint' }, 'Highlighted elements match what this slide answers for the client. They are at the top.'),
+      h('div', { class: 'cand-list' }, cands.map(({ b, lit, fits }) => h('button', {
+        class: `cand ${lit.length ? 'lit' : ''} ${fits ? '' : 'off'}`, disabled: taken.has(b.id),
         onclick: async () => {
           const next = [...slide.block_ids];
           if (idx == null) next.push(b.id); else next[idx] = b.id;
@@ -207,7 +216,8 @@ export async function viewOffer(offerId, slideId) {
           await patchSlide(slide.id, { block_ids: next });
         },
       }, h('b', {}, plain(b.title)), b.body ? h('span', { class: 'hint' }, plain(b.body).slice(0, 160)) : null,
-      h('span', {}, matched.map((t) => chip(t)), taken.has(b.id) ? h('span', { class: 'hint' }, ' already on the slide') : null))))));
+      h('span', {}, lit.map((t) => chip(t)), fits ? null : h('span', { class: 'hint' }, ' meant for another segment'),
+        taken.has(b.id) ? h('span', { class: 'hint' }, ' already on the slide') : null))))));
   };
 
   const slideEditor = (slide) => {
@@ -226,7 +236,7 @@ export async function viewOffer(offerId, slideId) {
         slide.block_ids.map((id, i) => h('div', { class: 'se-block' }, h('span', {}, itemTitle(id)),
           h('button', { class: 'btn sm', onclick: () => blockSwap(slide, i, type) }, 'Swap'),
           h('button', { class: 'icon', title: 'Remove from the slide', onclick: () => patchSlide(slide.id, { block_ids: slide.block_ids.filter((x) => x !== id) }) }, '×'))),
-        h('button', { class: 'btn sm', onclick: () => blockSwap(slide, null, type) }, '+ dodaj blok')) : null,
+        h('button', { class: 'btn sm', onclick: () => blockSwap(slide, null, type) }, '+ add a block')) : null,
       Object.keys(slide.picks || {}).length ? h('div', { class: 'hint' }, 'Change the cards on this slide in the advanced editor (manual picks or "Pick cards (AI)").') : null,
       h('div', { class: 'se-actions' },
         h('button', { class: 'btn sm', onclick: () => patchSlide(slide.id, { hidden: !slide.hidden }) }, slide.hidden ? 'Show in the offer' : 'Hide from the offer')));
@@ -240,19 +250,25 @@ export async function viewOffer(offerId, slideId) {
         scenario ? h('span', { class: 'hint' }, `scenario: ${scenario.name}`) : null),
       ...offer.slides.map((s, i) => {
         const open = s.id === openId;
-        const items = s.block_ids.map((id) => h('li', {}, itemTitle(id),
-          ...(s.origin?.matched?.[id] || []).filter((t) => t !== id).map((t) => chip(t, 'small'))));
-        const picks = Object.values(s.picks || {}).flat().map((p) => h('li', {}, plain(compsById[p.component]?.title || p.component),
-          ...(s.origin?.matched?.[p.component] || []).map((t) => chip(t, 'small'))));
+        const element = (id, item, title) => {
+          const lit = id.includes(':') ? [] : litFor(s, item);
+          const reason = s.origin?.reasons?.[id];
+          return h('li', { class: lit.length ? 'lit' : '' }, title, ...lit.map((t) => chip(t, 'small')),
+            reason ? h('div', { class: 'reason' }, reason) : null);
+        };
+        const items = s.block_ids.map((id) => element(id, blocksById[id], itemTitle(id)));
+        const picks = Object.values(s.picks || {}).flat().map((p) => element(p.component, compsById[p.component], plain(compsById[p.component]?.title || p.component)));
+        const answers = answersOf(s);
         return h('div', { class: `slide-card ${open ? 'open' : ''} ${s.hidden ? 'is-hidden' : ''}`, 'data-id': s.id },
           h('div', { class: 'sc-head', onclick: () => select(open ? null : s.id) },
             h('span', { class: 'sc-n' }, i + 1),
             h('div', { class: 'sc-main' },
               h('div', { class: 'sc-title' }, s.origin?.label || plain(s.data?.title) || s.frame,
-                s.locked ? h('span', { class: 'badge' }, 'edited by hand') : null,
+                s.origin?.chosen_by ? h('span', { class: 'badge model' }, `chosen by ${s.origin.chosen_by}`) : s.locked ? h('span', { class: 'badge' }, 'edited by hand') : null,
                 s.hidden ? h('span', { class: 'badge muted' }, 'hidden') : null,
                 !s.origin ? h('span', { class: 'badge muted' }, 'added by hand') : null),
-              whyChips(s).length ? h('div', { class: 'sc-why' }, h('span', { class: 'hint' }, 'because: '), whyChips(s)) : null),
+              answers.length ? h('div', { class: 'sc-answers hint' }, `Answers: ${answers.map((a) => ANSWER_LABELS[a] || a).join(', ')}`) : null,
+              whyChips(s).length ? h('div', { class: 'sc-why' }, h('span', { class: 'hint' }, 'matches: '), whyChips(s)) : null),
             s.locked && s.origin ? h('button', { class: 'btn sm', title: 'Discard manual edits and pick content from the tiles', onclick: (e) => { e.stopPropagation(); patchSlide(s.id, { locked: false }); } }, 'Restore automatic') : null),
           items.length || picks.length ? h('ul', { class: 'sc-items' }, items, picks) : null,
           open ? slideEditor(s) : null);
