@@ -3,3 +3,4 @@ node_modules/
 landing/dist/
 landing/.astro/
 .DS_Store
+offer-studio/data/

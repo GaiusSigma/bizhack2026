@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offer Studio API</title>
+<style>
+  body { font: 15px/1.55 system-ui, sans-serif; color: #1d1f21; max-width: 920px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 26px; } h2 { font-size: 18px; margin-top: 36px; border-bottom: 1px solid #eee; padding-bottom: 6px; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  pre { background: #f6f6f6; padding: 12px 14px; border-radius: 8px; overflow: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td, th { text-align: left; padding: 6px 8px; border-top: 1px solid #eee; vertical-align: top; }
+  td:first-child { white-space: nowrap; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Offer Studio API</h1>
+<p>Wszystko, co robi interfejs, da się zrobić przez REST/JSON. Każda zmiana od razu odświeża otwarte podglądy ofert.</p>
+
+<h2>Logowanie</h2>
+<p><code>Authorization: Bearer &lt;STUDIO_API_TOKEN&gt;</code> (skrypty, n8n) albo Basic auth z hasłem <code>STUDIO_PASSWORD</code> (dowolny login).</p>
+
+<h2>Bloki wiedzy</h2>
+<table>
+<tr><td>GET /api/blocks?type=&amp;tag=&amp;q=</td><td>Lista, z filtrami</td></tr>
+<tr><td>POST /api/blocks</td><td>Nowy blok albo tablica bloków. <code>type</code> wymagany; opcjonalnie własne <code>id</code></td></tr>
+<tr><td>GET /api/blocks/:id</td><td>Jeden blok</td></tr>
+<tr><td>PATCH /api/blocks/:id</td><td>Zmiana pól. <code>data</code> jest scalane (klucz = null usuwa pole); <code>?replace=1</code> zastępuje całe <code>data</code></td></tr>
+<tr><td>DELETE /api/blocks/:id</td><td>Usunięcie</td></tr>
+<tr><td>GET /api/meta</td><td>Typy i tagi w użyciu, lista layoutów</td></tr>
+</table>
+<pre>curl -X POST $URL/api/blocks -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" -d '{
+  "id": "uc-due-diligence",
+  "type": "use_case",
+  "title": "Due diligence spółki",
+  "body": "Gaius przegląda dokumenty spółki i zbiera ryzyka w raport.",
+  "data": { "effect": "krótszy czas przeglądu i pełna lista ryzyk." },
+  "tags": ["vault", "kancelaria"]
+}'</pre>
+
+<h2>Oferty i slajdy</h2>
+<table>
+<tr><td>GET /api/offers</td><td>Lista ofert</td></tr>
+<tr><td>POST /api/offers</td><td><code>{name, data, slides?: [...]}</code></td></tr>
+<tr><td>GET /api/offers/:id</td><td>Oferta ze slajdami</td></tr>
+<tr><td>PATCH /api/offers/:id</td><td>Np. <code>{"data": {"client": "ACME S.A.", "price": "12 000"}}</code></td></tr>
+<tr><td>POST /api/offers/:id/duplicate</td><td>Kopia oferty ze slajdami (opcjonalnie <code>{name}</code>)</td></tr>
+<tr><td>DELETE /api/offers/:id</td><td>Usunięcie oferty i jej slajdów</td></tr>
+<tr><td>POST /api/offers/:id/slides</td><td><code>{layout_id, data, block_ids?, query?, position?}</code></td></tr>
+<tr><td>PATCH /api/slides/:id</td><td>Zmiana slajdu (<code>data</code> scalane jak w blokach)</td></tr>
+<tr><td>DELETE /api/slides/:id</td><td>Usunięcie slajdu</td></tr>
+<tr><td>PUT /api/offers/:id/order</td><td><code>{"ids": [...]}</code>: nowa kolejność wszystkich slajdów</td></tr>
+<tr><td>GET /api/offers/:id/html</td><td>Gotowy HTML oferty</td></tr>
+<tr><td>GET /api/offers/:id/pdf</td><td>PDF (<code>?download=0</code> otwiera w przeglądarce)</td></tr>
+</table>
+<p>Bloki na slajdzie: <code>block_ids</code> (konkretne bloki w tej kolejności) albo <code>query</code>, np. <code>{"type": "use_case", "tag": "kancelaria", "limit": 6}</code>.</p>
+<pre>curl -X PATCH $URL/api/offers/gaius-vault-bazowa -H "Authorization: Bearer $TOKEN" \
+  -H "content-type: application/json" -d '{"data": {"client": "ACME S.A."}}'
+
+curl -o oferta.pdf $URL/api/offers/gaius-vault-bazowa/pdf -H "Authorization: Bearer $TOKEN"</pre>
+
+<h2>Layouty, motyw, obrazki</h2>
+<table>
+<tr><td>GET/POST /api/layouts, GET/PATCH/DELETE /api/layouts/:id</td><td>Szablony slajdów: <code>{name, description, template, css}</code></td></tr>
+<tr><td>GET/PUT /api/theme</td><td>Wspólny CSS: <code>{"css": "..."}</code></td></tr>
+<tr><td>GET /api/assets</td><td>Lista obrazków</td></tr>
+<tr><td>POST /api/assets</td><td>multipart: <code>file</code>, opcjonalnie <code>id</code>. Obrazek jest pod <code>/assets/&lt;id&gt;</code></td></tr>
+<tr><td>DELETE /api/assets/:id</td><td>Usunięcie</td></tr>
+</table>
+<p>W szablonie: <code>{{data.*}}</code> to treść slajdu, <code>{{offer.*}}</code> to zmienne oferty, a <code>{{#each blocks}}…{{/each}}</code> przechodzi po blokach (pola z <code>data</code> bloku są dostępne bezpośrednio, np. <code>{{effect}}</code>). Helpery: <code>md</code>, <code>mdi</code> (Markdown, <code>**słowo**</code> = akcent), <code>upper</code>, <code>inc</code>, <code>pad2</code>, <code>or</code>, <code>eq</code>, <code>ne</code>, <code>lines</code>, <code>split</code>, <code>where</code>. Element z atrybutem <code>data-block="{{id}}"</code> da się kliknąć w podglądzie.</p>
+
+<h2>Eksport i import</h2>
+<table>
+<tr><td>GET /api/export</td><td>Cała baza (bloki, layouty, oferty, slajdy, motyw, obrazki w base64) w jednym JSON</td></tr>
+<tr><td>POST /api/import?mode=merge</td><td>Scalenie: nadpisuje rekordy o tych samych id, resztę zostawia</td></tr>
+<tr><td>POST /api/import?mode=replace</td><td>Zastąpienie całej bazy zawartością pliku</td></tr>
+</table>
+
+<h2>Na żywo</h2>
+<p><code>GET /api/events</code> to strumień Server-Sent Events z informacją o każdej zmianie (<code>{table, id, offer_id}</code>).</p>
+</body>
+</html>

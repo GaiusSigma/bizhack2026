@@ -135,7 +135,37 @@ services:
       timeout: 5s
       retries: 3
 
+  # ---------------------------------------------------------------- Offer Studio
+  # Baza wiedzy (bloki) + składanie ofert ze slajdów + podgląd na żywo + PDF. Dane w SQLite.
+  offer-studio:
+    build:
+      context: ./offer-studio
+    environment:
+      - SERVICE_URL_OFFER_STUDIO_3000
+      # Logowanie w przeglądarce: dowolny login + to hasło. API: nagłówek "Authorization: Bearer <token>".
+      - STUDIO_PASSWORD=${SERVICE_PASSWORD_STUDIO}
+      - STUDIO_API_TOKEN=${SERVICE_PASSWORD_64_STUDIOAPI}
+      - STUDIO_SECRET=${SERVICE_PASSWORD_64_STUDIOSECRET}
+      - GOTENBERG_URL=http://gotenberg:3000
+      - STUDIO_INTERNAL_URL=http://offer-studio:3000
+    volumes:
+      - offer-studio-data:/data
+    depends_on:
+      - gotenberg
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Chromium jako usługa: HTML -> PDF dla Offer Studio. Bez domeny, tylko w sieci wewnętrznej.
+  gotenberg:
+    image: gotenberg/gotenberg:9.10.0-chromium
+    restart: unless-stopped
+
 volumes:
   n8n-data:
   postgres-data:
   figcraft-data:
+  offer-studio-data:
