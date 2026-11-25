@@ -412,6 +412,22 @@ export const DOCS = {
     }, ['slides']),
     responses: { 200: json(one('Offer')) },
   },
+  'GET /api/offers/:id/content': {
+    tag: 'Tiles', operationId: 'getOfferContent', summary: 'Slide copy a model writes for the client',
+    description: 'For each slide of the base deck that has copy written per client: the fields, what to write in each (hint), the length limit, the current value, and for list fields (a slide\'s cards) the item count and columns. Optional slides (e.g. the tool comparison) start hidden. Feed this to a model with the call transcript, then send its answer with PUT',
+    parameters: [idParam('offer', '/api/offers')],
+    responses: { 200: json(anyObject) },
+  },
+  'PUT /api/offers/:id/content': {
+    tag: 'Tiles', operationId: 'setOfferContent', summary: 'Write slide copy for the client',
+    description: 'Per slide key: text fields as strings and list fields as items, e.g. {"slides": {"starting-point": {"lead": "...", "areas": [{"title": "Contract review", "value": "..."}]}, "tool-comparison": {"hide": true}}}. Only the fields from GET; texts over their limit, wrong item counts or unknown fields are refused with a 400 that lists every problem. Written slides are kept on recompute, like manual edits. "hide" works on optional slides only; writing an optional slide shows it. Returns the offer',
+    parameters: [idParam('offer', '/api/offers')],
+    requestBody: body({
+      slides: { type: 'object', description: '{"<slide key>": {"<field>": "text" | [{"title", "value", "value2"?}], "hide"?: true}}' },
+      written_by: { type: 'string', description: 'Who wrote it, shown in the offer (default "model")' },
+    }, ['slides']),
+    responses: { 200: json(one('Offer')) },
+  },
   'POST /api/offers/:id/recompute': {
     tag: 'Tiles', operationId: 'recomputeOffer', summary: 'Recompute an offer from tiles',
     description: 'E.g. after a scenario or content change. Slides edited by hand stay',

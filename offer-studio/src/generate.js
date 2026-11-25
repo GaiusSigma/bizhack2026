@@ -146,7 +146,7 @@ export function buildSlides(scenario, sel, { blocks = [], components = [], slots
       data: stepData(step, sel),
       block_ids,
       picks,
-      hidden: false,
+      hidden: !!step.optional, // an optional slide waits until a model writes it
       locked: false,
       origin: { step: step.key, label: step.label || step.key, matched },
     });
