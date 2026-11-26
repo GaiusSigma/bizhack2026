@@ -118,7 +118,8 @@ export function applyContent(ctx, answer, { strict = true } = {}) {
 // solution of the same pain from another segment (general: true, product still fits); with nothing at all, no_solution.
 // Never another pain's solution.
 export const SOLUTION_TYPES = ['solution', 'use_case'];
-export const PROOF_TYPES = ['differentiator', 'comparison', 'pillar'];
+export const PROOF_TYPES = ['differentiator', 'comparison', 'pillar', 'testimonial'];
+export const OBJECTION_TYPE = 'objection';
 const PER_PAIN = 3;
 
 export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
@@ -137,9 +138,19 @@ export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
     const cmp = b.data?.them || b.data?.us ? `Others: ${b.data.them || '-'}. Gaius: ${b.data.us || '-'}` : '';
     return { id: b.id, type: b.type, title: b.title, text: [b.body, cmp].filter(Boolean).join(' ') };
   };
+  // Objections clients raise, with our answer for this product and segment (for the concerns, security and
+  // comparison slides). Only the answers the library has; `no_answer` means none is confirmed.
+  const objection = (b) => ({
+    id: b.id, concern: b.title,
+    answer: [b.data?.by_product?.[sel.product] || b.body, b.data?.by_segment?.[sel.segment]].filter(Boolean).join(' '),
+    ...(b.data?.note ? { note: b.data.note } : {}),
+    ...(b.data?.quotes?.length ? { typical_quotes: b.data.quotes } : {}),
+    ...(b.data?.no_answer ? { no_answer: true } : {}),
+  });
   return {
     segment: about(sel.segment),
     product: about(sel.product),
+    objections: blocks.filter((b) => b.type === OBJECTION_TYPE && segmentOk(b.tags, sel) && productOk(b.tags, sel)).map(objection),
     pains: sel.pains.map((id) => {
       let solutions = fitting(SOLUTION_TYPES, id).map(solution);
       // nothing for this segment: a general answer from another segment that still fits the product
@@ -151,4 +162,13 @@ export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
       };
     }),
   };
+}
+
+// The product name printed on the slides ({{offer.product_name}}). "Gaius-Lex" only for law firms: people outside
+// the legal profession read "Lex" as not meant for them, so other teams see "Gaius". Vault keeps its name.
+export function productName(tiles = []) {
+  const product = tiles.find((t) => String(t).startsWith('product:'));
+  if (product === 'product:vault' || product === 'product:on-prem') return 'Gaius Vault';
+  if (product === 'product:saas') return tiles.includes('segment:law-firm') ? 'Gaius-Lex' : 'Gaius';
+  return 'Gaius';
 }

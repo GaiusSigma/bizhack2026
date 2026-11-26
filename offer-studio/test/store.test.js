@@ -312,7 +312,7 @@ const tileFree = () => ({
   ...seed,
   tiles: undefined,
   scenarios: undefined,
-  blocks: seed.blocks.filter((b) => b.type !== 'solution').map((b) => {
+  blocks: seed.blocks.filter((b) => !seed.solutionBlocks.some((x) => x.id === b.id)).map((b) => {
     const { order: _o, ...data } = b.data;
     return { ...b, data, tags: b.tags.filter((t) => !t.includes(':')) };
   }),

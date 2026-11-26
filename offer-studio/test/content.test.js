@@ -236,3 +236,45 @@ test('evidence pack: in the seed library every active pain has an answer for eve
   }
   assert.deepEqual(missing, []);
 });
+
+test('evidence pack: objections from the sales sheet come with the answer for the offered product and segment', () => {
+  const blocks = [...seedAll.blocks, ...seedSolutions];
+  const pack = (segment, product) => evidencePack({ role: 'role:board', segment, product, pains: ['pain:confidentiality'] }, { tiles: {}, blocks });
+  const byId = (ev) => Object.fromEntries(ev.objections.map((o) => [o.id, o]));
+
+  const firmOnPrem = byId(pack('segment:law-firm', 'product:on-prem'));
+  assert.equal(Object.keys(firmOnPrem).length, 7); // the IT/leadership objection is for in-house and public sector only
+  assert.match(firmOnPrem['obj-formal-security'].answer, /models run locally/);
+  assert.match(firmOnPrem['obj-cost'].answer, /per compute unit/);
+  assert.equal(firmOnPrem['obj-model-ageing'].no_answer, true);
+
+  const firmSaas = byId(pack('segment:law-firm', 'product:saas'));
+  assert.match(firmSaas['obj-formal-security'].answer, /post-quantum/);
+  assert.doesNotMatch(firmSaas['obj-cost'].answer, /compute unit/); // a SaaS offer never promises the Vault licence
+
+  const office = byId(pack('segment:public-sector', 'product:on-prem'));
+  assert.match(office['obj-decision-blocked'].answer, /one IP address.*procurement/s);
+  assert.equal(office['obj-draft-quality'], undefined);
+  for (const o of Object.values(office)) assert.ok(o.answer.length > 40, o.id);
+});
+
+test('evidence pack: testimonials prove the pains they speak about, without naming the person', () => {
+  const blocks = [...seedAll.blocks, ...seedSolutions];
+  const ev = evidencePack({ role: 'role:champion', segment: 'segment:law-firm', product: 'product:saas', pains: ['pain:weak-case-law-search'] }, { tiles: {}, blocks });
+  const proof = ev.pains[0].proof.filter((p) => p.type === 'testimonial');
+  assert.ok(proof.length >= 1);
+  for (const p of proof) assert.doesNotMatch(p.text, /Kudlik|Kobiołka/);
+  const office = evidencePack({ role: 'role:board', segment: 'segment:public-sector', product: 'product:on-prem', pains: ['pain:weak-case-law-search'] }, { tiles: {}, blocks });
+  assert.equal(office.pains[0].proof.filter((p) => p.type === 'testimonial').length, 0);
+});
+
+import { productName } from '../src/content.js';
+
+test('product name on the slides: Gaius-Lex only for law firms, Gaius for other teams, Gaius Vault for Vault', () => {
+  assert.equal(productName(['role:champion', 'segment:law-firm', 'product:saas']), 'Gaius-Lex');
+  assert.equal(productName(['role:champion', 'segment:in-house', 'product:saas']), 'Gaius');
+  assert.equal(productName(['role:board', 'segment:public-sector', 'product:saas']), 'Gaius');
+  assert.equal(productName(['role:board', 'segment:in-house', 'product:vault']), 'Gaius Vault');
+  assert.equal(productName(['role:board', 'segment:law-firm', 'product:on-prem']), 'Gaius Vault');
+  assert.equal(productName([]), 'Gaius');
+});

@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyzeLead, pickComponents } from './ai.js';
-import { applyContent, contentContext, evidencePack } from './content.js';
+import { applyContent, contentContext, evidencePack, productName } from './content.js';
 import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import {
@@ -243,16 +243,15 @@ function resolveBlocks(slide, ctx = {}) {
   });
 }
 
-// Product names printed on the slides ({{offer.product_name}}); an offer can override it with data.product_name.
-const PRODUCT_NAMES = { 'product:saas': 'Gaius-Lex', 'product:vault': 'Gaius Vault', 'product:on-prem': 'Gaius Vault' };
+// Product name printed on the slides ({{offer.product_name}}): productName() in content.js; an offer can override it
+// with data.product_name.
 const ddmmyyyy = (iso) => {
   const d = new Date(iso || Date.now());
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
 };
 // Offer variables for {{offer.…}} fields: the offer's data plus product_name and date when it does not set them.
 const offerVars = (offer) => {
-  const product = (offer.data?.tiles || []).find((t) => t.startsWith('product:'));
-  return { id: offer.id, name: offer.name, product_name: PRODUCT_NAMES[product] || 'Gaius', date: ddmmyyyy(offer.created_at), ...offer.data };
+  return { id: offer.id, name: offer.name, product_name: productName(offer.data?.tiles || []), date: ddmmyyyy(offer.created_at), ...offer.data };
 };
 
 // The offer's role and product from its tiles (for role- and product-specific copy).
