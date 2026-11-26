@@ -31,8 +31,10 @@ test('tiles: valid ids and categories, statuses as agreed', () => {
 });
 
 test('solutions: 27 PRKW rows plus 5 from product sentences, each pinned to >= 1 pain and with a source', () => {
-  assert.equal(solutionBlocks.length, 32);
-  for (const b of solutionBlocks) {
+  const solutions = solutionBlocks.filter((b) => b.type === 'solution');
+  assert.equal(solutions.length, 32);
+  assert.deepEqual([...new Set(solutionBlocks.map((b) => b.type))].sort(), ['objection', 'solution', 'testimonial']);
+  for (const b of solutions) {
     assert.equal(b.type, 'solution');
     assert.match(b.id, /^sol-[a-z0-9-]+$/);
     assert.ok(b.title && b.title.length <= 60, `${b.id}: tytuł`);
@@ -162,7 +164,8 @@ test('content: every block and card is pinned to a tile or marked general', () =
 });
 
 test('content language: everything people see is in English (proper names aside)', () => {
-  const allowed = ['Marszałek'];
+  // proper names: a person, and the sales sheet tab named in sources
+  const allowed = ['Marszałek', 'Kobiołka', 'Bóle (Fireflies)'];
   const polish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/;
   const offenders = [];
   const check = (id, value) => {
@@ -219,5 +222,21 @@ test('product fit: content that names Gaius Vault or the client’s own server n
     if (/own server|your server|on a server in your organisation|local language models/i.test(text(b)) && !/can run on-premise/i.test(text(b))) {
       assert.deepEqual(prods, ['product:on-prem'], `${b.id}: own server -> on-prem only`);
     }
+  }
+});
+
+test('objections: every objection from the sales sheet, each with a sourced answer; testimonials attributed by role only', () => {
+  const objections = solutionBlocks.filter((b) => b.type === 'objection');
+  assert.equal(objections.length, 8); // the 8 rows of type OBIEKCJA in the "Bóle (Fireflies)" tab
+  for (const b of objections) {
+    assert.match(b.id, /^obj-[a-z0-9-]+$/);
+    assert.ok(b.body && b.data.quotes?.length && b.data.source?.startsWith('Sales sheet'), b.id);
+    assert.ok(b.tags.some((t) => t.startsWith('segment:')), b.id);
+  }
+  const testimonials = solutionBlocks.filter((b) => b.type === 'testimonial');
+  assert.equal(testimonials.length, 2);
+  for (const b of testimonials) {
+    assert.ok(!b.body.includes(b.data.author.split(',')[0]), 'a testimonial in the deck does not name the person');
+    assert.ok(b.tags.some((t) => t.startsWith('pain:')), b.id);
   }
 });
