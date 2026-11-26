@@ -23,4 +23,9 @@ if [ -n "${OFFER_STUDIO_API_TOKEN:-}" ] || [ -n "${OFFER_STUDIO_URL:-}" ] || [ -
   export CREDENTIALS_OVERWRITE_DATA
 fi
 
+# Workflows from git (n8n/workflows/*.json with a fixed "id"): imported and published before n8n starts.
+if [ "${N8N_SYNC_WORKFLOWS:-true}" != "false" ] && [ -f /opt/offer-sync-workflows.mjs ]; then
+  node /opt/offer-sync-workflows.mjs || true
+fi
+
 exec /docker-entrypoint.sh "$@"
