@@ -11,8 +11,10 @@ import {
   flowNodes,
   heroSteps,
   includes,
+  measured,
   personas,
   roles,
+  sampleCall,
   segments,
   sources,
   stats,
@@ -28,7 +30,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 ---
 
 <Layout
-  title="Offer Studio · Gaius-Lex · Your tailored offer in under three minutes"
+  title="Offer Studio · Gaius-Lex · Your tailored offer in under a minute"
   description="Private AI for law firms, in-house legal teams and public administration. Tell Gaius who you are and get the offer our sales team would write for you, matched to your role and concerns."
 >
   <header class="topbar">
@@ -53,7 +55,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       <div class="wrap hero">
         <div class="hero__copy">
           <span class="eyebrow rise">Private AI for law firms, in-house legal and public administration.</span>
-          <h1 class="hero__title rise" style="animation-delay: .1s">Your tailored offer in under three minutes<span class="dot">.</span></h1>
+          <h1 class="hero__title rise" style="animation-delay: .1s">Your tailored offer in under a minute<span class="dot">.</span></h1>
           <p class="hero__lead rise" style="animation-delay: .2s">
             Tell Gaius who you are. It builds the offer our sales team would write for you, matched to your role and to
             the concerns your organisation has about AI.
@@ -169,6 +171,21 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
               <p class="fineprint fineprint--tight">Your note is transcribed and used for this offer only.</p>
             </div>
 
+            <div class="gen__panel" role="tabpanel" id="panel-text" aria-labelledby="tab-text" data-panel="text" hidden>
+              <div class="field rise">
+                <label for="call-text" class="field__label">Paste an email or a call transcript</label>
+                <textarea id="call-text" class="paste" rows="7" data-call-text placeholder="Paste the email, the Fireflies transcript or your call notes. Polish or English."></textarea>
+              </div>
+              <div class="paste__tools">
+                <label class="btn btn--outline btn--sm paste__file">
+                  <Icon name="file" size={16} />Load a file<input type="file" accept=".txt,.md,.vtt,.srt,.json,text/plain" data-call-file hidden />
+                </label>
+                <button class="btn btn--outline btn--sm" type="button" data-call-sample><Icon name="quote" size={16} />Use a sample call</button>
+                <span class="paste__count" data-call-count></span>
+              </div>
+              <p class="fineprint fineprint--tight"><Icon name="shield" size={16} />Remove client names before pasting. The text is used for this offer only.</p>
+            </div>
+
             <div class="gen__panel" role="tabpanel" id="panel-role" aria-labelledby="tab-role" data-panel="role" hidden>
               <span class="field__label">Which seat do you sit in?</span>
               <div class="role-grid">
@@ -225,6 +242,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
               <article class="offer rise">
                 <div class="offer__head">
                   <span class="overline"><span>Offer for <span data-offer="who"></span></span></span>
+                  <div class="offer__tiles" data-offer-tiles hidden></div>
                   <h2 class="offer__title" data-offer="headline"></h2>
                   <span class="offer__meta"><Icon name="clock" size={14} /><span data-offer-meta>Generated in 2 min 41 s · sample data</span></span>
                   <span class="offer__saved slidein" style="animation-delay: .4s"><Icon name="check" size={14} strokeWidth={2.5} /><span data-offer-saved>Saved to CRM · alert posted to #sales on Discord (mock)</span></span>
@@ -249,13 +267,19 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                   <div class="offer__attach">
                     <span class="offer__meta">Attached for your team</span>
                     <span class="offer__file"><Icon name="file" size={16} stroke="#9b5155" /><span data-offer="attach"></span></span>
-                    <span class="offer__price">Price: [YOUR PRICE]</span>
+                    <span class="offer__price">Pilot: up to 14 days, unlimited accounts for the team</span>
                   </div>
                   <div class="offer__actions">
+                    <button class="btn btn--ink btn--sm" type="button" data-offer-view hidden><Icon name="eye" size={16} />View the deck</button>
                     <a class="btn btn--outline btn--sm" data-offer-pdf target="_blank" rel="noopener" aria-disabled="true"><Icon name="download" size={16} />Download PDF</a>
-                    <a class="btn btn--ink btn--sm" href="#generator"><Icon name="calendar" size={16} />Book a demo</a>
+                    <a class="btn btn--outline btn--sm" href="https://gaius-lex.pl" target="_blank" rel="noopener"><Icon name="calendar" size={16} />Book a demo</a>
                   </div>
                 </div>
+                <details class="offer__note" data-offer-note hidden>
+                  <summary><Icon name="chat" size={16} stroke="#9b5155" />What our sales team gets with it</summary>
+                  <p data-offer-note-text></p>
+                  <span class="offer__meta">Written in Polish for the Gaius-Lex sales team, as it arrives in #sales.</span>
+                </details>
               </article>
             </div>
           </div>
@@ -271,6 +295,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
             <span class="overline"><Icon name="workflow" size={16} />AI-native sales, end to end</span>
             <h2 class="h2">From the first conversation to the CRM, with no one retyping anything.</h2>
             <p class="lead">An email arrives or a meeting ends. n8n picks it up, Offer Studio writes the offer, the opportunity lands in our CRM and the team gets a ping on Discord.</p>
+            <p class="flow__live"><Icon name="spark" size={16} stroke="#9b5155" />This runs the production workflow on the sample below. The deck and the team note are real; the CRM and Discord delivery are mocked.</p>
           </div>
           <button class="btn btn--ink btn--lg pulse" type="button" data-run-flow>
             <Icon name="play" size={18} /><span data-run-flow-label>Run the workflow</span>
@@ -325,13 +350,22 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
               <span class="flow__placeholder-hint">Pick a source and run the workflow.</span>
             </div>
             <div class="flow__out" data-flow-out hidden>
+              <details class="flow__sample" open>
+                <summary>What came in</summary>
+                <p data-flow-sample>{startSource.sample}</p>
+              </details>
               <div class="discord slidein">
                 <span class="discord__avatar"><Icon name="spark" /></span>
                 <div class="discord__body">
                   <span class="discord__meta"><b>Offer Studio</b> <span class="discord__bot">BOT</span> <span class="discord__time">#sales · today 09:41</span></span>
                   <span class="discord__strong">New offer ready for <b data-flow-who>{startSource.who}</b></span>
                   <span>Source: <span data-flow-source>{startSource.short}</span>. Opportunity moved to <b class="discord__hl">Offer</b>. Offer PDF attached.</span>
-                  <span class="discord__link">Open in CRM<Icon name="arrow" size={14} /></span>
+                  <span class="discord__tiles" data-flow-tiles hidden></span>
+                  <span class="discord__note" data-flow-note hidden></span>
+                  <span class="discord__actions">
+                    <button class="discord__link" type="button" data-flow-view hidden><Icon name="file" size={14} />Open the deck</button>
+                    <span class="discord__link">Open in CRM<Icon name="arrow" size={14} /></span>
+                  </span>
                 </div>
               </div>
               <div class="crm slidein" style="animation-delay: .2s">
@@ -340,7 +374,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <div class="crm__stages">
                   <span>New</span><span>Trial</span><span class="is-current pulse">Offer</span><span>Won</span>
                 </div>
-                <span class="crm__next"><Icon name="calendar" size={16} stroke="#9b5155" />Offer attached · next activity: follow-up call in 2 days · owner [SALESPERSON]</span>
+                <span class="crm__next"><Icon name="calendar" size={16} stroke="#9b5155" />Offer attached · next activity: follow-up call in 2 days · owner: sales team</span>
               </div>
             </div>
           </div>
@@ -432,13 +466,27 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
               <span class="stat__label">{st.label}</span>
               <span class:list={['stat__before', { 'is-struck': st.strike }]}>{st.before}</span>
               <span class="stat__after">{st.after}</span>
+              <span class="stat__note">{st.note}</span>
             </div>
           ))}
         </div>
-        <p class="fineprint">Baseline from the Gaius-Lex sales team, November 2026. Tested on [N] sample offers.</p>
+        <p class="live-run" data-live-run hidden><Icon name="clock" size={16} /><span data-live-run-text></span></p>
+        <p class="fineprint">
+          After: measured on {measured.decks} decks from the production n8n workflow, {measured.from?.slice(0, 10)} to {measured.to?.slice(0, 10)}, {measured.failed} failed runs.
+          Before: the Gaius-Lex sales team, November 2026. Re-measure with <code>node scripts/measure.mjs</code>.
+        </p>
       </div>
     </section>
   </main>
+
+  <dialog class="deck" data-deck aria-label="Your offer deck">
+    <div class="deck__bar">
+      <span class="deck__title" data-deck-title>Your offer</span>
+      <a class="btn btn--outline btn--sm" data-deck-download><Icon name="download" size={16} />Download PDF</a>
+      <button class="btn btn--ink btn--sm" type="button" data-deck-close>Close</button>
+    </div>
+    <iframe class="deck__frame" data-deck-frame title="Offer deck (PDF)"></iframe>
+  </dialog>
 
   <footer class="footer">
     <div class="wrap footer__inner">
@@ -447,7 +495,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
         <span>Built at BizHack AI Hackathon · Budapest · 24–26 November 2026</span>
       </div>
       <div class="footer__links">
-        <a href="#generator"><Icon name="code" size={16} />Source code on GitHub [REPO LINK]</a>
+        <a href="https://github.com/GaiusSigma/bizhack2026" target="_blank" rel="noopener"><Icon name="code" size={16} />Source code on GitHub</a>
         <span>MIT licence</span>
         <span class="footer__note"><Icon name="shield" size={16} />Sample data only. No real client records.</span>
       </div>
@@ -457,7 +505,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
 <script>
   import { icons } from '../lib/icons';
-  import { personas, roles, sources, buildSteps, flowNodes } from '../lib/data';
+  import { personas, roles, sources, buildSteps, flowNodes, pains, sampleCall } from '../lib/data';
 
   // Every "Generate my offer" click posts the form here (override with PUBLIC_OFFER_WEBHOOK_URL at build time).
   const OFFER_WEBHOOK_URL = String(import.meta.env.PUBLIC_OFFER_WEBHOOK_URL || 'https://n8n.bizhack.trygaius.com/webhook/dd7c4b67-f5f6-40f4-9325-1ca924d5ff78');
@@ -470,6 +518,39 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   const state = { mode: 'email', persona: personas[0].id, role: roles[0].id, rec: false };
   // What the visitor actually clicked (preselected defaults do not count).
   const touched = { persona: false, role: false };
+
+  // "Paste a call": an email, a transcript or notes, typed, pasted or loaded from a file.
+  const callBox = $<HTMLTextAreaElement>('[data-call-text]')!;
+  const callCount = $('[data-call-count]')!;
+  const callText = () => callBox.value.trim();
+  const showCount = () => {
+    const n = callText().length;
+    callCount.textContent = n ? `${n.toLocaleString('en')} characters` : '';
+  };
+  callBox.addEventListener('input', showCount);
+  $('[data-call-sample]')?.addEventListener('click', () => {
+    callBox.value = sampleCall;
+    showCount();
+    callBox.focus();
+  });
+  // A Fireflies JSON export becomes "Speaker: sentence" lines; anything else is read as text.
+  const fromFile = (raw: string) => {
+    try {
+      const j = JSON.parse(raw);
+      const t = j?.data?.transcript || j?.transcript || j;
+      const lines = (t?.sentences || []).map((x: any) => `${x.speaker_name || x.speaker || ''}: ${x.text || x.raw_text || ''}`);
+      const overview = t?.summary?.overview;
+      if (lines.length || overview) return [t.title, overview, lines.join('\n')].filter(Boolean).join('\n\n');
+    } catch { /* not JSON */ }
+    return raw;
+  };
+  $<HTMLInputElement>('[data-call-file]')?.addEventListener('change', async (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    callBox.value = fromFile(await file.text()).slice(0, 20000);
+    (e.target as HTMLInputElement).value = '';
+    showCount();
+  });
   let genTimers: number[] = [];
   let genRun = 0;
 
@@ -759,9 +840,10 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     fileName?: string;
     known: boolean;
     ms: number;
+    // From the deck's response headers: the tiles Offer Studio built it from, and the note for our sales team
+    tiles?: string[];
+    note?: string;
   };
-  // The final deck from the last answer; released when a new one arrives.
-  let deckUrl: string | null = null;
 
   const typedEmail = () => $<HTMLInputElement>('#email')?.value.trim() || '';
   // The landing only collects input; n8n interprets it. We send what the visitor actually gave us and
@@ -770,16 +852,21 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   const leadPayload = () => {
     const email = typedEmail() || null;
     // "Try it as" counts when a chip was clicked, or when it is what the Email tab submits (no email typed).
-    const usedTryItAs = touched.persona || (state.mode === 'email' && !email);
+    // A pasted call goes alone (a real case must not be mixed with a demo persona or an older voice note).
+    const pasted = state.mode === 'text';
+    const usedTryItAs = !pasted && (touched.persona || (state.mode === 'email' && !email));
     // A role counts when it was clicked, or when the visitor generates from the Pick your role tab.
     const usedRole = touched.role || state.mode === 'role';
-    const usedVoice = !!(voice.audio || voice.transcript);
+    const usedVoice = !pasted && !!(voice.audio || voice.transcript);
+    const text = pasted ? callText() || null : null;
     const p = personas.find((x) => x.id === state.persona) ?? personas[0];
     return {
       source: `landing-${state.mode}`,
       mode: state.mode,
-      touched: [email && 'email', usedTryItAs && 'tryItAs', usedRole && 'pickedRole', usedVoice && 'voice'].filter(Boolean),
+      touched: [email && 'email', usedTryItAs && 'tryItAs', usedRole && 'pickedRole', usedVoice && 'voice', text && 'text'].filter(Boolean),
       email,
+      // An email or call transcript the visitor pasted ("Paste a call")
+      text,
       // A demo persona: its text is sample copy, not something the visitor wrote.
       tryItAs: usedTryItAs ? { persona: p.id, label: p.label, role: p.role, segment: p.segment, sampleText: p.text } : null,
       pickedRole: usedRole ? state.role : null,
@@ -806,6 +893,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   // Sample offer when n8n is not configured or does not answer.
   const sampleResult = () => {
     if (state.mode === 'voice') return { roleId: 'champion', who: 'In-house legal team · from your voice note' };
+    if (state.mode === 'text') return { roleId: 'champion', who: 'From your call' };
     if (state.mode === 'email' && !typedEmail()) {
       const p = personas.find((x) => x.id === state.persona) ?? personas[0];
       return { roleId: p.role, who: p.who };
@@ -814,7 +902,43 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     return { roleId: r.id, who: state.mode === 'email' ? typedEmail() : r.label };
   };
 
+  // Tile ids → words: the landing shows which concerns the offer answers.
+  const TILE_WORDS: Record<string, string> = {
+    'role:champion': 'Team champion', 'role:board': 'Board', 'segment:law-firm': 'Law firm', 'segment:in-house': 'In-house legal',
+    'segment:public-sector': 'Public administration', 'product:saas': 'Gaius-Lex SaaS', 'product:vault': 'Gaius Vault', 'product:on-prem': 'On-premise',
+    // pain labels as in Offer Studio (seed/tiles.js)
+    'pain:confidentiality': 'Confidentiality', 'pain:shadow-ai': 'Shadow AI', 'pain:repetitive-documents': 'Repetitive documents',
+    'pain:board-pressure': 'Board pressure', 'pain:chatgpt-only-informs': 'ChatGPT only informs', 'pain:hallucinated-citations': 'Hallucinated citations',
+    'pain:unsearchable-archive': 'Unsearchable archive', 'pain:copy-to-word': 'Copying into Word', 'pain:group-scale': 'Scale across a group',
+    'pain:templates-at-scale': 'Templates at scale', 'pain:weak-case-law-search': 'Weak case-law search',
+  };
+  const tileWord = (t: string) => TILE_WORDS[t] || t.replace(/^pain:/, '').replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  const painLines = (tiles: string[] = []) => tiles.filter((t) => t.startsWith('pain:')).map((t) => pains[t.slice(5)]).filter(Boolean);
+
+  // The deck itself, shown full screen (the browser's PDF viewer) so the room sees what the client gets.
+  const deck = $<HTMLDialogElement>('[data-deck]')!;
+  const openDeck = (r: LeadResult) => {
+    if (!r.pdfUrl) return;
+    $<HTMLIFrameElement>('[data-deck-frame]')!.src = `${r.pdfUrl}#view=FitH`;
+    $('[data-deck-title]')!.textContent = `Offer for ${r.who}`;
+    const dl = $<HTMLAnchorElement>('[data-deck-download]')!;
+    dl.href = r.pdfUrl;
+    dl.download = r.fileName || 'Gaius-offer.pdf';
+    deck.showModal();
+  };
+  $('[data-deck-close]')?.addEventListener('click', () => deck.close());
+  deck.addEventListener('click', (e) => { if (e.target === deck) deck.close(); });
+  let lastOffer: LeadResult | null = null;
+  $('[data-offer-view]')?.addEventListener('click', () => lastOffer && openDeck(lastOffer));
+
+  // "Your run just now" under the measured results
+  const showLiveRun = (r: LeadResult) => {
+    $('[data-live-run]')!.hidden = false;
+    $('[data-live-run-text]')!.textContent = `Your run just now: ${Math.max(1, Math.round(r.ms / 1000))} s from click to finished PDF, on the same production workflow.`;
+  };
+
   const fillOffer = (live: LeadResult | null) => {
+    lastOffer = live;
     const fallback = sampleResult();
     const roleId = live ? live.role : fallback.roleId;
     const r = roles.find((x) => x.id === roleId) ?? roles[0];
@@ -823,8 +947,9 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
 
     const concernsBox = $('[data-offer-concerns]');
     const tpl = $<HTMLTemplateElement>('[data-concern-tpl]');
-    if (live?.concerns?.length && concernsBox && tpl) {
-      const lines = live.concerns.map((c, i) => {
+    const concerns = live?.concerns?.length ? live.concerns : painLines(live?.tiles);
+    if (concerns.length && concernsBox && tpl) {
+      const lines = concerns.map((c, i) => {
         const line = tpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
         line.style.animationDelay = `${0.15 + i * 0.1}s`;
         line.querySelector('span')!.textContent = c;
@@ -832,6 +957,14 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       });
       concernsBox.replaceChildren(...lines);
     }
+
+    const tilesBox = $('[data-offer-tiles]')!;
+    tilesBox.hidden = !live?.tiles?.length;
+    tilesBox.replaceChildren(...(live?.tiles || []).map((t) => Object.assign(document.createElement('span'), { className: 'offer__tile', textContent: tileWord(t) })));
+
+    const note = $('[data-offer-note]')!;
+    note.hidden = !live?.note;
+    $('[data-offer-note-text]')!.textContent = live?.note || '';
 
     const pdf = $<HTMLAnchorElement>('[data-offer-pdf]');
     if (pdf) {
@@ -843,12 +976,14 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       else pdf.removeAttribute('download');
       pdf.setAttribute('aria-disabled', String(!live));
     }
+    $('[data-offer-view]')!.hidden = !live?.pdfUrl;
     $('[data-offer-meta]')!.textContent = live
       ? `Generated in ${Math.max(1, Math.round(live.ms / 1000))} s · Offer Studio via n8n${live.known ? '' : ' · default offer, nothing known yet'}`
       : 'Generated in 2 min 41 s · sample data';
     $('[data-offer-saved]')!.textContent = live
       ? `Saved in Offer Studio as ${live.offerId} · CRM and #sales alert (mock)`
       : 'Saved to CRM · alert posted to #sales on Discord (mock)';
+    if (live) showLiveRun(live);
   };
 
   const setBuildStep = (step: number) => {
@@ -858,33 +993,44 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     });
   };
 
-  const requestOffer = async (): Promise<LeadResult | null> => {
+  // One deck per answer is kept as a blob: URL; older ones are released.
+  const deckUrls: string[] = [];
+  const keepDeck = (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    deckUrls.push(url);
+    while (deckUrls.length > 2) URL.revokeObjectURL(deckUrls.shift()!);
+    return url;
+  };
+  const header = (res: Response, name: string) => {
+    const v = res.headers.get(name) || '';
+    try { return decodeURIComponent(v); } catch { return v; }
+  };
+
+  // Posts one enquiry to the production workflow. It answers with the final deck (the PDF it also posts to Discord).
+  const callWorkflow = async (body: object, fallbackWho: string, fallbackRole: string): Promise<LeadResult | null> => {
     const t0 = performance.now();
     try {
       const res = await fetch(OFFER_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(leadPayload()),
-        // n8n answers once the deck is rendered, which can take a few minutes
+        body: JSON.stringify(body),
+        // n8n answers once the deck is rendered
         signal: AbortSignal.timeout(480_000),
       });
       if (!res.ok) throw new Error(`n8n ${res.status}`);
-      // The production workflow answers with the final deck itself (the PDF it also posts to Discord).
       if ((res.headers.get('content-type') || '').includes('application/pdf')) {
         const blob = await res.blob();
-        if (deckUrl) URL.revokeObjectURL(deckUrl);
-        deckUrl = URL.createObjectURL(blob);
         const offerId = res.headers.get('x-offer-id') || '';
         const tiles = (res.headers.get('x-offer-tiles') || '').split(',').filter(Boolean);
-        const name = decodeURIComponent(res.headers.get('x-offer-name') || '');
         const fileName = /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') || '')?.[1];
-        const fallback = sampleResult();
         return {
           offerId,
-          role: tiles.includes('role:board') ? 'board' : tiles.includes('role:champion') ? 'champion' : (fallback.roleId as LeadResult['role']),
-          who: name || fallback.who,
+          role: tiles.includes('role:board') ? 'board' : tiles.includes('role:champion') ? 'champion' : (fallbackRole as LeadResult['role']),
+          who: header(res, 'x-offer-name') || fallbackWho,
           concerns: [],
-          pdfUrl: deckUrl,
+          tiles,
+          note: header(res, 'x-offer-note'),
+          pdfUrl: keepDeck(blob),
           fileName: fileName || `Gaius-offer-${offerId || 'deck'}.pdf`,
           known: true,
           ms: performance.now() - t0,
@@ -892,14 +1038,24 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       }
       // Otherwise JSON: an acknowledgement, or a full offer from the local workflow.
       const data = (await res.json().catch(() => null)) as LeadResult | null;
-      return data?.offerId ? data : null;
+      return data?.offerId ? { ...data, ms: data.ms ?? performance.now() - t0 } : null;
     } catch (e) {
       console.warn('Offer Studio via n8n unavailable, showing the sample offer.', e);
       return null;
     }
   };
+  const requestOffer = () => {
+    const f = sampleResult();
+    return callWorkflow(leadPayload(), f.who, f.roleId);
+  };
 
   $('[data-generate]')?.addEventListener('click', async () => {
+    // "Paste a call" with nothing pasted: ask for the text instead of sending an empty enquiry.
+    if (state.mode === 'text' && !callText()) {
+      callBox.focus();
+      callBox.placeholder = 'Paste an email or a transcript first, or click "Use a sample call".';
+      return;
+    }
     resetGen();
     const run = genRun;
     setBuildStep(0);
@@ -918,14 +1074,16 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     showPhase('done');
   });
 
-  /* ---------- Workflow n8n ---------- */
+  /* ---------- Workflow n8n: a live run on the selected source's sample ---------- */
   let flowTimers: number[] = [];
+  let flowRun = 0;
+  let flowOffer: LeadResult | null = null;
   let currentSrc = sources.find((s) => s.id === $('[data-src][aria-pressed="true"]')?.dataset.src) ?? sources[0];
   const nodeCount = flowNodes.length + 1;
   const runBtn = $<HTMLButtonElement>('[data-run-flow]');
   const status = $('[data-flow-status]');
 
-  const setFlow = (step: number) => {
+  const setFlow = (step: number, doneText = 'Finished · 1 offer') => {
     const done = step >= nodeCount;
     const running = step >= 0 && !done;
     $$('[data-node]').forEach((el) => {
@@ -934,20 +1092,35 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     });
     if (status) {
       status.dataset.state = done ? 'done' : running ? 'running' : 'waiting';
-      $('[data-flow-status-text]')!.textContent = done ? 'Finished · 1 offer' : running ? 'Running…' : 'Waiting for a trigger';
+      $('[data-flow-status-text]')!.textContent = done ? doneText : running ? 'Running…' : 'Waiting for a trigger';
     }
     if (runBtn) {
       runBtn.classList.toggle('pulse', step < 0);
-      $('[data-run-flow-label]')!.textContent = done ? 'Run again' : 'Run the workflow';
+      runBtn.disabled = running;
+      $('[data-run-flow-label]')!.textContent = done ? 'Run again' : running ? 'Running…' : 'Run the workflow';
     }
     $('[data-flow-empty]')!.hidden = done;
     $('[data-flow-out]')!.hidden = !done;
   };
 
   const stopFlow = () => {
+    flowRun++;
     flowTimers.forEach(clearTimeout);
     flowTimers = [];
   };
+
+  const showFlowResult = (r: LeadResult | null) => {
+    flowOffer = r;
+    $$('[data-flow-who]').forEach((el) => (el.textContent = r?.who || currentSrc.who));
+    const tiles = $('[data-flow-tiles]')!;
+    tiles.hidden = !r?.tiles?.length;
+    tiles.textContent = r?.tiles?.length ? `Built from: ${r.tiles.map(tileWord).join(' · ')}` : '';
+    const note = $('[data-flow-note]')!;
+    note.hidden = !r?.note;
+    note.textContent = r?.note || '';
+    $('[data-flow-view]')!.hidden = !r?.pdfUrl;
+  };
+  $('[data-flow-view]')?.addEventListener('click', () => flowOffer && openDeck(flowOffer));
 
   const sourceButtons = $$<HTMLButtonElement>('[data-src]');
   sourceButtons.forEach((b) =>
@@ -958,15 +1131,34 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       $('[data-node-app]')!.textContent = currentSrc.label.toUpperCase();
       $('[data-node-label]')!.textContent = currentSrc.trigger;
       $('[data-node-icon] path')?.setAttribute('d', icons[currentSrc.icon]);
-      $$('[data-flow-who]').forEach((el) => (el.textContent = currentSrc.who));
       $('[data-flow-source]')!.textContent = currentSrc.short;
+      $('[data-flow-sample]')!.textContent = currentSrc.sample;
+      showFlowResult(null);
       setFlow(-1);
     }),
   );
 
-  runBtn?.addEventListener('click', () => {
+  runBtn?.addEventListener('click', async () => {
     stopFlow();
+    const run = flowRun;
+    const src = currentSrc;
+    $('[data-flow-sample]')!.textContent = src.sample;
     setFlow(0);
-    for (let n = 1; n <= nodeCount; n++) flowTimers.push(window.setTimeout(() => setFlow(n), n * 700));
+    // The nodes light up while n8n works; the last two (CRM, Discord) wait for the real answer.
+    for (let n = 1; n <= nodeCount - 2; n++) flowTimers.push(window.setTimeout(() => run === flowRun && setFlow(n), n * 1600));
+    const live = await callWorkflow(
+      { source: `demo-${src.id}`, mode: 'flow', touched: ['text'], text: src.sample, page: location.href, language: 'en', sentAt: new Date().toISOString() },
+      src.who,
+      'board',
+    );
+    if (run !== flowRun) return;
+    flowTimers.forEach(clearTimeout);
+    showFlowResult(live);
+    setFlow(nodeCount - 1);
+    flowTimers.push(window.setTimeout(() => {
+      if (run !== flowRun) return;
+      setFlow(nodeCount, live ? `Finished · 1 offer in ${Math.max(1, Math.round(live.ms / 1000))} s` : 'Finished · sample result (n8n did not answer)');
+      if (live) showLiveRun(live);
+    }, 600));
   });
 </script>

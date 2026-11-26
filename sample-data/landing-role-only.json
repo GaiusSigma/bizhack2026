@@ -1,0 +1,8 @@
+{
+  "source": "landing-role",
+  "mode": "role",
+  "touched": [
+    "pickedRole"
+  ],
+  "pickedRole": "champion"
+}

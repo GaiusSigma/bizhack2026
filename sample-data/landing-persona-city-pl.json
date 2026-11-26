@@ -1,0 +1,17 @@
+{
+  "source": "landing-email",
+  "mode": "email",
+  "touched": [
+    "tryItAs"
+  ],
+  "email": null,
+  "tryItAs": {
+    "persona": "city-pl",
+    "label": "City hall legal office",
+    "role": "board",
+    "segment": "public-sector",
+    "sampleText": "Urząd miasta, wydział prawny i zamówienia publiczne. Kierownictwo chce sprawdzić, czy AI przyspieszy analizę nowych przepisów i odpowiedzi na wnioski. Warunek: dane nie mogą opuścić naszej infrastruktury, a każda odpowiedź musi mieć podstawę prawną."
+  },
+  "pickedRole": null,
+  "voice": null
+}

@@ -1,0 +1,24 @@
+{
+  "measuredAt": "2026-11-26T04:52:20.475Z",
+  "workflow": "offerStudioDeck",
+  "model": "z-ai/glm-5.3-flash",
+  "from": "2026-11-26T00:13:54.730Z",
+  "to": "2026-11-26T04:45:26.309Z",
+  "runs": 33,
+  "failed": 0,
+  "decks": 33,
+  "bySource": {
+    "landing": 31,
+    "fireflies": 2
+  },
+  "seconds": {
+    "median": 12.2,
+    "p90": 19.8,
+    "max": 32.9
+  },
+  "tokensPerDeck": 14077,
+  "costPerDeckUsd": 0.0021,
+  "slidesWrittenMedian": 9,
+  "decksWithoutWarnings": 28,
+  "firstTryValid": 8
+}

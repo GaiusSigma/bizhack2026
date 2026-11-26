@@ -1,4 +1,36 @@
-# BizHack 2026: Docker Compose stack
+# Gaius-Lex Offer Studio: a tailored sales offer in under a minute
+
+BizHack AI 2026, Challenge 07. A lead writes, talks or has a call with us; n8n turns it into a client-specific
+Gaius-Lex deck (PDF) with copy written from what the client said, and the sales team gets it with a short note.
+
+- **Live:** landing https://bizhack.trygaius.com · n8n https://n8n.bizhack.trygaius.com · Offer Studio https://studio.bizhack.trygaius.com
+- **Measured** on the production workflow (`node scripts/measure.mjs`): median 12 s per deck instead of ~3 hours by hand,
+  about $0.002 of AI per deck, 0 failed runs. Numbers on the landing come from `landing/src/lib/measured.json`.
+- **What is mocked:** the CRM write and the Discord alert. The offer, the AI copy and the PDF are real.
+
+## Run it yourself in 5 minutes
+
+You need Docker (with Compose), Node 18+ for the helper script, and an [OpenRouter](https://openrouter.ai) API key. Linux / macOS:
+
+```bash
+git clone https://github.com/GaiusSigma/bizhack2026.git && cd bizhack2026
+cp .env.example .env          # then put your key in OPENROUTER_API_KEY
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build   # ~2 min the first time
+node scripts/try-it.mjs       # sends every file in sample-data/ and saves the decks to out/
+```
+
+Windows (PowerShell): `Copy-Item .env.example .env` instead of `cp`.
+
+- The offer workflow imports and publishes itself when n8n starts (no clicks, no owner account needed for the
+  webhooks). Give n8n about a minute after `up`: `docker compose logs n8n | grep offer-workflows` says when it is published.
+- Landing http://localhost:8080 ("Generate my offer" posts to your local n8n via `OFFER_WEBHOOK_URL`), n8n http://localhost:5678,
+  Offer Studio http://localhost:8082 (password `studio`), FigCraft http://localhost:8081.
+- Your own case: `node scripts/try-it.mjs --text-file my-call.txt` (an email, notes or a transcript; Polish or English),
+  or the "Paste a call" tab on the landing.
+- Without Node: `curl -X POST -H 'content-type: application/json' --data @sample-data/landing-persona-firm-pl.json http://localhost:5678/webhook/dd7c4b67-f5f6-40f4-9325-1ca924d5ff78 -o offer.pdf`
+- Port already taken? Change the left side of `ports:` in `docker-compose.local.yml`.
+
+## The stack
 
 One `docker-compose.yml` with four apps, ready to deploy with **Coolify**:
 
@@ -20,31 +52,17 @@ One `docker-compose.yml` with four apps, ready to deploy with **Coolify**:
 ├── landing/                    # Astro project + Dockerfile (node -> nginx) + nginx.conf
 ├── n8n/                        # n8n image + Offer Studio nodes (n8n-nodes-offer-studio)
 ├── offer-studio/               # offer dashboard: Node + SQLite + rendering via figcraft-cli
+├── sample-data/                # sample enquiries (landing, voice note, pasted call, Fireflies), no real clients
+├── scripts/                    # try-it.mjs (send enquiries, save decks), measure.mjs (numbers for the landing)
+├── docs/DEMO.md                # the live demo script
 └── figcraft/
     ├── web/                    # Dockerfile: official figcraft-web-<version>.zip + nginx
     └── server/                 # Dockerfile: official figcraft-server binary + entrypoint
 ```
 
-## Running locally
+## Working on the landing alone
 
-```powershell
-Copy-Item .env.example .env
-```
-
-```powershell
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
-```
-
-- landing: http://localhost:8080
-- FigCraft: http://localhost:8081
-- n8n: http://localhost:5678 (on first visit you create the owner account)
-- Offer Studio: http://localhost:8082 (password from `SERVICE_PASSWORD_STUDIO` in `.env`)
-
-Working on the landing page alone, with hot reload:
-
-```powershell
-cd landing; npm install; npm run dev
-```
+With hot reload: `cd landing && npm install && npm run dev`.
 
 ## Deploying with Coolify
 

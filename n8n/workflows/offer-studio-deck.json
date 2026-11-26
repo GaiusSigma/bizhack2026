@@ -545,8 +545,12 @@
                 "value": "={{ ($json.tiles || []).join(',') }}"
               },
               {
+                "name": "X-Offer-Note",
+                "value": "={{ encodeURIComponent(String($('Przygotowanie scenariusza').first().json.summary || '').slice(0, 700)) }}"
+              },
+              {
                 "name": "Access-Control-Expose-Headers",
-                "value": "Content-Disposition, X-Offer-Id, X-Offer-Name, X-Offer-Tiles"
+                "value": "Content-Disposition, X-Offer-Id, X-Offer-Name, X-Offer-Tiles, X-Offer-Note"
               }
             ]
           }

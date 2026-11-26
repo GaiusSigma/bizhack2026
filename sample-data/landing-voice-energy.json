@@ -1,0 +1,15 @@
+{
+  "source": "landing-voice",
+  "mode": "voice",
+  "touched": [
+    "voice"
+  ],
+  "voice": {
+    "audioBase64": null,
+    "mimeType": null,
+    "seconds": 24.3,
+    "transcript": "Cześć, jestem radcą prawnym w dziale prawnym dużej spółki energetycznej. Jest nas dwunastu. Używamy trochę ChatGPT, ale zarząd zakazał wrzucania umów. Chciałabym narzędzie, które działa u nas i pomaga przy przeglądzie umów z dostawcami.",
+    "transcriptEdited": false,
+    "transcriptionError": null
+  }
+}

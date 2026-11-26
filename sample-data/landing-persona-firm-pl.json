@@ -1,0 +1,17 @@
+{
+  "source": "landing-email",
+  "mode": "email",
+  "touched": [
+    "tryItAs"
+  ],
+  "email": null,
+  "tryItAs": {
+    "persona": "firm-pl",
+    "label": "Managing partner, law firm",
+    "role": "board",
+    "segment": "law-firm",
+    "sampleText": "Dzień dobry, jestem partnerem zarządzającym w kancelarii w Warszawie (40 prawników). Rozważamy AI do researchu i analizy umów, ale boimy się halucynacji w cytatach i tego, że dokumenty klientów wyjdą poza kancelarię. Decyzję podejmujemy na zarządzie w grudniu."
+  },
+  "pickedRole": null,
+  "voice": null
+}
