@@ -386,6 +386,7 @@ export const DOCS = {
       tiles: tilesList,
       name: { type: 'string', description: 'Offer name (default: client · role)' },
       price: { type: 'string', description: 'Price (default: the product tile price)' },
+      intake: { type: 'object', description: 'How the request was read, shown in the offer view: {source, text (what came in), transcribed_by, summary, analysis: [steps], reasons: {role, segment, product, pains}, evidence: {<tile id>: "the client\'s words behind it"}}. Only these keys, capped sizes' },
     }, ['client', 'tiles']),
     responses: { 201: json(one('Offer'), 'Created') },
   },

@@ -194,3 +194,24 @@ export function productName(tiles = []) {
   if (product === 'product:saas') return tiles.includes('segment:law-firm') ? 'Gaius-Lex' : 'Gaius';
   return 'Gaius';
 }
+
+// What a request said and how it was read (from n8n), stored on the offer so a person can check the tiles:
+// the text that came in, the source, and per tile the client's words that led to it. Only known keys, plain
+// strings, capped sizes; evidence only for the offer's own tiles.
+const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+export function cleanIntake(raw, tiles = []) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const own = new Set(tiles);
+  const strings = (obj, keep, max) => Object.fromEntries(Object.entries(obj && typeof obj === 'object' ? obj : {})
+    .filter(([k, v]) => keep(k) && typeof v === 'string' && v.trim()).map(([k, v]) => [k, v.trim().slice(0, max)]));
+  const out = {
+    source: str(raw.source, 120),
+    text: str(raw.text, 6000),
+    transcribed_by: str(raw.transcribed_by, 80),
+    summary: str(raw.summary, 1200),
+    analysis: (Array.isArray(raw.analysis) ? raw.analysis : []).filter((x) => typeof x === 'string' && x.trim()).slice(0, 8).map((x) => x.trim().slice(0, 400)),
+    reasons: strings(raw.reasons, (k) => ['role', 'segment', 'product', 'pains'].includes(k), 400),
+    evidence: Object.fromEntries(Object.entries(strings(raw.evidence, (k) => own.has(k), 300)).map(([k, v]) => [k, v.replace(/^[«»"„”“'\s]+|[«»"„”“'\s]+$/g, '')]).filter(([, v]) => v)),
+  };
+  return Object.fromEntries(Object.entries(out).filter(([, v]) => (Array.isArray(v) ? v.length : typeof v === 'object' ? Object.keys(v).length : v)));
+}

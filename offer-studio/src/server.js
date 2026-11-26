@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyzeLead, pickComponents } from './ai.js';
-import { applyContent, contentContext, evidencePack, productName } from './content.js';
+import { applyContent, cleanIntake, contentContext, evidencePack, productName } from './content.js';
 import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import {
@@ -699,11 +699,12 @@ api.post('/offers/generate', async (c) => {
   const price = b.price ?? all.find((t) => t.id === sel.product)?.data?.price ?? '';
   const slides = buildSlides(scenario, sel, generationData());
   const tiles = [sel.role, sel.segment, sel.product, ...sel.pains];
+  const intake = cleanIntake(b.intake, tiles);
   const created = store.tx(() => {
     const o = store.insert('offers', {
       name: b.name || `${b.client} · ${label(sel.role)}`,
       template_id: store.list('templates')[0]?.id ?? null,
-      data: { client: b.client, price: String(price), tiles, scenario_id: scenario.id },
+      data: { client: b.client, price: String(price), tiles, scenario_id: scenario.id, ...(intake ? { intake } : {}) },
     }, b.client);
     slides.forEach((s, i) => store.insert('slides', { ...s, offer_id: o.id, position: i }, 'slide'));
     return o;
