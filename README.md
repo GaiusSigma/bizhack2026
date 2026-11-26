@@ -5,7 +5,7 @@ Gaius-Lex deck (PDF) with copy written from what the client said, and the sales 
 
 - **Live:** landing https://bizhack.trygaius.com · n8n https://n8n.bizhack.trygaius.com · Offer Studio https://studio.bizhack.trygaius.com
 - **Measured** on the production workflow (`node scripts/measure.mjs`): median 12 s per deck instead of ~3 hours by hand,
-  about $0.003 of AI per deck, 0 failed runs of 49. Numbers on the landing come from `landing/src/lib/measured.json`.
+  about $0.003 of AI per deck, 0 failed runs of 59. Numbers on the landing come from `landing/src/lib/measured.json`.
 - **Determinism, measured** (`node scripts/determinism.mjs`, [docs/DETERMINISM.md](docs/DETERMINISM.md)): the same
   tiles always give the identical deck (14 of 14); the model picks the same tiles in 84% of repeated runs and the same
   main pain in 96%. Where it cannot decide (is this head of legal a champion or the budget owner?), the sales team
