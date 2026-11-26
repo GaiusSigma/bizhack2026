@@ -31,8 +31,8 @@ pojawia się tylko, gdy klient wymienił narzędzie. Prompt injection nie przech
 
 **Do naprawy (od najważniejszych):**
 1. **Klucz ElevenLabs na produkcji jest nieważny.** Notatki głosowe z Safari, Firefoxa i iPhone'a dają ofertę domyślną. Naprawa: nowy `ELEVENLABS_API_KEY` w Coolify i restart n8n.
-2. **Nazwa klienta.** Gdy firma nie ma nazwy, model wpisuje polski opis („… – nazwa niepodana”, „Piekarnia rzemieślnicza w Krakowie”) i ląduje on na tytule angielskiego decku. Naprawa w węźle „Przygotowanie scenariusza”: nazwę od AI brać tylko, gdy występuje dosłownie w zgłoszeniu; inaczej „your law firm / your legal team / your office”.
-3. **„From our call” bez rozmowy.** Gdy zgłoszenie jest puste, slajd Team support pokazuje domyślne obawy z etykietą „From our call”. Naprawa: domyślne karty w scenariuszu z etykietą „Common questions” albo ukryte, gdy model ich nie napisał.
+2. ✅ *Naprawione 26.11 (branch `feat/live-demo`, sprawdzone lokalnie, czeka na wdrożenie).* **Nazwa klienta.** Gdy firma nie ma nazwy, model wpisuje polski opis („… – nazwa niepodana”, „Piekarnia rzemieślnicza w Krakowie”) i ląduje on na tytule angielskiego decku. Naprawa w węźle „Przygotowanie scenariusza”: nazwę od AI brać tylko, gdy występuje dosłownie w zgłoszeniu; inaczej „your law firm / your legal team / your office”.
+3. ✅ *Naprawione 26.11 (jw.): karty domyślne mają etykietę „Common question”, karty napisane z rozmowy „From our call”; etykietę dokleja Offer Studio, model jej nie pisze.* **„From our call” bez rozmowy.** Gdy zgłoszenie jest puste, slajd Team support pokazuje domyślne obawy z etykietą „From our call”. Naprawa: domyślne karty w scenariuszu z etykietą „Common questions” albo ukryte, gdy model ich nie napisał.
 4. **Zgłoszenie spoza profilu** (piekarnia): zamiast oferty sama notatka dla handlowca „nie pasuje”, albo krótka odpowiedź bez decku.
 5. **Solo / mała kancelaria:** slajdy stałe (wdrożenie zespołowe, godziny developerskie) nie pasują do jednej osoby.
 6. Drobne: żargon „My drive” w tekstach o bezpieczeństwie; zdanie o Copilocie i trenowaniu modeli (z arkusza) może sugerować, że Microsoft trenuje na danych klienta, a tego nie robi.

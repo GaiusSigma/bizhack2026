@@ -205,7 +205,8 @@ teamCards.forEach(([card, bg, , label, title, body, extra], i) => {
   set([label, title, body], fill);
   if (i < 2) {
     set(card, { name: '#item:concerns' });
-    copy(label, 'From our call', fill);
+    // "From our call" on cards written from the call, "Common question" on the defaults (third column of `concerns`)
+    field(label, '{{value2}}', 'From our call', fill);
     field(title, '{{title}}', i ? 'Will people actually use it?' : 'Is the AI’s output reliable?');
     field(body, '{{value}}', i ? 'Each lawyer gets a short onboarding on their own matters, and we check usage with you after two weeks.' : 'Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.');
   } else {

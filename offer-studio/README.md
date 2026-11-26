@@ -32,7 +32,7 @@ by a model from the call transcript or the enquiry; n8n does that (workflow `n8n
 | `title` | title, one-sentence lead | client name, date |
 | `starting-point` | who the organisation is, 3–4 areas of work in the client's words | |
 | `use-areas` | for each area, the product feature that handles it | |
-| `team-support` | lead, 1–2 concerns from the call with our answers | the "from similar rollouts" card |
+| `team-support` | lead, 1–2 concerns from the call with our answers (labelled "From our call"; the default cards say "Common question") | the "from similar rollouts" card |
 | `tool-comparison` | the tool the client mentioned, 4–6 comparison rows | **optional**: hidden until written |
 | `security` | lead answering the client's security concern | the six features (per product) |
 | `preparation` | title, lead, 3–5 steps before the pilot or the contract | |
@@ -44,6 +44,7 @@ What a model may write, and how long, lives in the scenario: each step's `write`
 character limit, and list fields (a slide's repeated cards) with an item count and columns. Change the hints in
 `seed/scenarios.js` (or the Scenarios tab), not in n8n: n8n reads them from the API.
 
+- A list column with `fixed` (e.g. `value2: { fixed: 'From our call' }`) is not shown to the model and always gets that text on save.
 - `GET /api/offers/:id/content`: per slide, the fields to write with hint, limit and current value.
 - `PUT /api/offers/:id/content` with `{"slides": {"starting-point": {"lead": "…", "areas": [{"title": "…", "value": "…"}]}, "tool-comparison": {"hide": true}}}`.
   Unknown fields, texts over their limit and wrong item counts are refused with one 400 that lists every problem.

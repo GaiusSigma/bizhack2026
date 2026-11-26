@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,9 +91,18 @@ if (env.STUDIO_SEED !== 'false') {
 // (2025 template) is kept as the `base-2025` scenario, and offers made from it keep their slides.
 if (env.STUDIO_SEED !== 'false') {
   const deck = seedModule.DECK_TEMPLATE;
+  const deckFile = readFileSync(join(ROOT, 'seed', deck.file));
   if (!store.get('templates', deck.id)) {
-    store.putTemplate({ id: deck.id, name: deck.name, file: readFileSync(join(ROOT, 'seed', deck.file)) });
+    store.putTemplate({ id: deck.id, name: deck.name, file: deckFile });
     console.log(`offer-studio: added the ${deck.name} template`);
+  } else {
+    // A newer seed template replaces a stored one that is still an earlier seed version (nobody edited it in FigCraft).
+    const stored = store.templateFile(deck.id).file;
+    const sha = stored && createHash('sha256').update(stored).digest('hex');
+    if (sha && (deck.previous || []).includes(sha)) {
+      store.putTemplate({ id: deck.id, name: deck.name, file: deckFile });
+      console.log(`offer-studio: updated the ${deck.name} template to the current seed`);
+    }
   }
   const base = store.get('scenarios', 'base');
   const fresh = seedModule.default.scenarios.find((s) => s.id === 'base');

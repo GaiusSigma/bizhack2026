@@ -26,8 +26,18 @@ const CHAMPION = 'role:champion';
 
 // "label | value" lines, the format of list fields (#item:<field> cards).
 const lines = (rows) => rows.map((r) => r.join(' | ')).join('\n');
+// Team support cards: the label above a default card (one the client did not raise).
+const COMMON = 'Common question';
+const CHAMPION_CONCERNS = lines([
+  ['Is the AI’s output reliable?', 'Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.', COMMON],
+  ['Will people actually use it?', 'Each lawyer gets a short onboarding on their own matters, and we review usage together after two weeks.', COMMON],
+]);
 
-export const DECK_TEMPLATE = { id: 'gaius-deck', name: 'Gaius deck 2026', file: 'gaius-deck.figcraft' };
+// `previous`: SHA-256 of earlier seed versions of the file; a database still holding one of them gets the current file.
+export const DECK_TEMPLATE = {
+  id: 'gaius-deck', name: 'Gaius deck 2026', file: 'gaius-deck.figcraft',
+  previous: ['d4b0c9be916eebc5b1fc2ece085cfde7984ac1a1daf223f3aa6395bd800459b5'],
+};
 
 const steps = [
   {
@@ -121,17 +131,18 @@ const steps = [
     key: 'team-support', label: 'Team support', frame: 'team-support', answers: ['pain', 'role'],
     data: {
       lead: 'We roll Gaius out together with your team: short sessions on real matters and a person to call.',
-      concerns: lines([
-        ['Is the AI’s output reliable?', 'Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.'],
-        ['Will people actually use it?', 'Each lawyer gets a short onboarding on their own matters, and we review usage together after two weeks.'],
-      ]),
+      // Default cards are questions we often hear, not something this client said: labelled "Common question".
+      // Cards the model writes from the call get "From our call" (the fixed `value2` column below).
+      concerns: CHAMPION_CONCERNS,
     },
     data_by_role: {
+      // per role, so existing databases get the labelled defaults too (data_by_role follows the seed, data does not)
+      [CHAMPION]: { concerns: CHAMPION_CONCERNS },
       [BOARD]: {
         lead: 'We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.',
         concerns: lines([
-          ['Is it worth the cost?', 'During the pilot we measure time saved on real matters and review the result with you before any wider rollout.'],
-          ['Is the AI’s output reliable?', 'Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.'],
+          ['Is it worth the cost?', 'During the pilot we measure time saved on real matters and review the result with you before any wider rollout.', COMMON],
+          ['Is the AI’s output reliable?', 'Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.', COMMON],
         ]),
       },
     },
@@ -152,6 +163,7 @@ const steps = [
         columns: {
           title: { hint: 'The concern, named neutrally, 3–8 words.', max: 50 },
           value: { hint: 'How we answer it: a concrete action or feature.', max: 150 },
+          value2: { fixed: 'From our call' },
         },
       },
     },
