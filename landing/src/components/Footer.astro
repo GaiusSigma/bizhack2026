@@ -2,6 +2,20 @@
 import Icon from './Icon.astro';
 ---
 <footer class="footer">
+  <!-- Full-screen QR to the live page: scrolled to from "Scan to try" in the header, easy to scan from across a room -->
+  <section class="qr-band" id="qr" aria-labelledby="qr-title">
+    <div class="wrap qr-band__inner">
+      <div class="qr-band__code">
+        <img src="/qr-bizhack.svg" alt="QR code that opens bizhack.trygaius.com" width="370" height="370" />
+      </div>
+      <div class="qr-band__text">
+        <span class="eyebrow eyebrow--light">Try it on your phone</span>
+        <h2 class="qr-band__title" id="qr-title">Scan to get your own offer</h2>
+        <p class="qr-band__lead">Point your camera at the code, record a voice note or pick your role, and the offer arrives in about 15 seconds.</p>
+        <a class="qr-band__url" href="https://bizhack.trygaius.com">bizhack.trygaius.com</a>
+      </div>
+    </div>
+  </section>
   <div class="wrap footer__inner">
     <div class="footer__brand">
       <span class="wordmark wordmark--light">GAIUS-LEX</span>

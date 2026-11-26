@@ -435,3 +435,17 @@ button.discord__link:hover { text-decoration: underline; }
 .understood__list li { display: grid; gap: 2px; }
 .understood__why { color: var(--muted); font-size: 13px; }
 @media (max-width: 720px) { .understood__grid { grid-template-columns: 1fr; } }
+
+/* QR to the live page: a full-screen band at the very bottom, reached from "Scan to try" in the header */
+.nav__link--qr { display: inline-flex; align-items: center; gap: 6px; }
+.qr-band { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, .12); }
+.qr-band__inner { display: flex; align-items: center; justify-content: center; gap: clamp(32px, 6vw, 96px); padding-block: 48px; flex-wrap: wrap; }
+.qr-band__code { background: #fff; padding: clamp(12px, 2vw, 24px); line-height: 0; }
+.qr-band__code img { display: block; width: min(70vh, 78vw, 640px); height: auto; aspect-ratio: 1; image-rendering: pixelated; }
+.qr-band__text { max-width: 420px; display: flex; flex-direction: column; gap: 14px; color: #fff; }
+.qr-band__title { margin: 0; font-size: clamp(32px, 4.5vw, 56px); line-height: 1.05; color: #fff; }
+.qr-band__lead { margin: 0; font-size: 17px; line-height: 1.5; color: var(--line); }
+.qr-band__url { font-size: clamp(18px, 2vw, 24px); font-weight: 600; color: var(--rose-soft-on-ink); text-decoration: none; }
+.qr-band__url:hover { color: #fff; }
+.eyebrow--light { color: var(--rose-soft-on-ink); }
+@media (max-width: 720px) { .qr-band__text { text-align: center; align-items: center; } .nav__link--qr { display: none; } }
