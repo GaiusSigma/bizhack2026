@@ -145,6 +145,13 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                   <span class="voice__hint">Say who you are, what your team does and what worries you about AI. Up to 30 seconds.</span>
                 </div>
               </div>
+              <div class="rec-lang rise" role="group" aria-label="Language you will speak">
+                <span class="field__label">I will speak</span>
+                <div class="chips">
+                  <button class="chip chip--sm" type="button" data-rec-lang="pl-PL" aria-pressed="true">Polski</button>
+                  <button class="chip chip--sm" type="button" data-rec-lang="en-GB" aria-pressed="false">English</button>
+                </div>
+              </div>
               <div class="transcript" data-transcript data-state="empty" hidden>
                 <div class="transcript__body">
                   <span class="transcript__label" data-transcript-label>Live transcript</span>
@@ -626,7 +633,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     }
   };
   const showFinalTranscript = () => {
-    tLabel.textContent = 'Transcript';
+    // A preview: n8n transcribes the recording itself; only a text corrected with the pencil is used as it is.
+    tLabel.textContent = voice.edited ? 'Your corrected note' : 'Transcript preview · tap the pencil to correct it';
     renderTranscript(voice.transcript);
     if (!voice.transcript) {
       tText.textContent = voice.recognitionError
@@ -683,6 +691,19 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     stopping: boolean;
     done: () => void;
   };
+  // Language of the voice note: Polish by default (our clients speak Polish), English on request.
+  // Remembered per visitor; storage can be unavailable (private mode), so every access is guarded.
+  let recLang = 'pl-PL';
+  try { const saved = localStorage.getItem('gaius-rec-lang'); if (saved === 'pl-PL' || saved === 'en-GB') recLang = saved; } catch { /* no storage */ }
+  const langBtns = $$<HTMLButtonElement>('[data-rec-lang]');
+  const showLang = () => langBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.recLang === recLang)));
+  langBtns.forEach((b) => b.addEventListener('click', () => {
+    recLang = b.dataset.recLang || 'pl-PL';
+    try { localStorage.setItem('gaius-rec-lang', recLang); } catch { /* no storage */ }
+    showLang();
+  }));
+  showLang();
+
   let session: Session | null = null;
   let starting = false;
   let sessionSeq = 0;
@@ -694,7 +715,9 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       return;
     }
     const r = new SpeechRec();
-    r.lang = navigator.language || 'pl-PL';
+    // The language the visitor chose (Polish by default): the browser's own language is often English
+    // while the visitor speaks Polish, and then the live transcript comes back as English gibberish.
+    r.lang = recLang;
     r.continuous = true;
     r.interimResults = true;
     r.onresult = (e) => {
@@ -784,7 +807,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       tBtn.hidden = true;
       tEdit.hidden = true;
       tText.hidden = false;
-      tLabel.textContent = 'Live transcript';
+      tLabel.textContent = recLang === 'pl-PL' ? 'Live transcript (Polish)' : 'Live transcript (English)';
       tText.textContent = 'Listening…';
       startRecognition(s);
       s.timer = window.setInterval(() => {
@@ -856,6 +879,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
             transcriptEdited: voice.edited,
             // Set when the browser could not transcribe (unsupported, network…): transcribe the audio in n8n
             transcriptionError: voice.recognitionError,
+            // The language the visitor said they would speak (for n8n and ElevenLabs)
+            language: recLang,
           }
         : null,
       // Microphone problem (e.g. permission denied), even when nothing was recorded
