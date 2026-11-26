@@ -7,3 +7,4 @@ offer-studio/data/
 offer-studio/vendor/
 
 n8n/n8n-nodes-offer-studio/dist/
+out/

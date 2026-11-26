@@ -1,28 +1,38 @@
-# Overlay for running locally (Coolify does not use it):
+# Overlay for running locally (Coolify does not use it). Easiest: ./scripts/start.sh (Windows: scripts\start.ps1).
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 #
-#   landing   http://localhost:8080
-#   FigCraft  http://localhost:8081
-#   n8n       http://localhost:5678
-#   Offer Studio http://localhost:8082
+#   landing      http://localhost:8080
+#   FigCraft     http://localhost:8081
+#   n8n          http://localhost:5678   (login demo@example.com / gaius-jury-2026)
+#   Offer Studio http://localhost:8082   (password from SERVICE_PASSWORD_STUDIO, "studio" by default)
+#
+# A port already taken? Set LANDING_PORT, FIGCRAFT_PORT, N8N_PORT or STUDIO_PORT in .env.
+# (N8N_PORT also changes the webhook URL: update OFFER_WEBHOOK_URL in .env to match.)
 services:
   offer-studio:
     ports:
-      - "127.0.0.1:8082:3000"
+      - "127.0.0.1:${STUDIO_PORT:-8082}:3000"
 
   landing:
     ports:
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:${LANDING_PORT:-8080}:80"
 
   figcraft:
     ports:
-      - "127.0.0.1:8081:80"
+      - "127.0.0.1:${FIGCRAFT_PORT:-8081}:80"
 
   n8n:
     ports:
-      - "127.0.0.1:5678:5678"
+      - "127.0.0.1:${N8N_PORT:-5678}:5678"
     environment:
       - N8N_HOST=localhost
       - N8N_PROTOCOL=http
       - N8N_SECURE_COOKIE=false
       - N8N_PROXY_HOPS=0
+      # A ready owner account, so the editor opens without a sign-up (local only; production has its own owner).
+      # Password: gaius-jury-2026 (bcrypt hash; "$$" is a literal "$" in Compose).
+      - N8N_INSTANCE_OWNER_MANAGED_BY_ENV=true
+      - N8N_INSTANCE_OWNER_EMAIL=demo@example.com
+      - N8N_INSTANCE_OWNER_FIRST_NAME=Demo
+      - N8N_INSTANCE_OWNER_LAST_NAME=Jury
+      - N8N_INSTANCE_OWNER_PASSWORD_HASH=$$2a$$10$$kDdRovzL84nL1WZqA/0G0O7.LwWLKiaGlxfnlGkD36AVVgcBFxpqC

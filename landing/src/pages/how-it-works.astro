@@ -1,0 +1,316 @@
+---
+// How the solution is built: architecture, one enquiry step by step (measured), guardrails, stack, run it yourself.
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+import Topbar from '../components/Topbar.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/landing.css';
+import '../styles/tech.css';
+import { measured } from '../lib/data';
+
+const s = measured.stageSeconds;
+const stages = [
+  { key: 'read', label: 'Read the enquiry', s: s.read },
+  { key: 'plan', label: 'AI plan: role, segment, product, pains', s: s.plan },
+  { key: 'offer', label: 'Build the offer in Offer Studio', s: s.offer },
+  { key: 'copy', label: 'AI copy, checked field by field', s: s.copy },
+  { key: 'pdf', label: 'Render the PDF', s: s.pdf },
+];
+const maxS = Math.max(...stages.map((x) => x.s));
+const fmt = (x: number) => (x < 1 ? `${Math.round(x * 1000)} ms` : `${x.toFixed(1)} s`);
+
+const inputs = [
+  { icon: 'mail', title: 'Landing page', text: 'Work email, voice note, a pasted call or email, or a role. Posts JSON to an n8n webhook.' },
+  { icon: 'file', title: 'Fireflies transcript', text: 'Call summary and sentences, to a second webhook. Answers at once, builds in the background.' },
+  { icon: 'chat', title: 'n8n form', text: 'Company, contact, segment, role and needs. Forwards to the same webhook.' },
+  { icon: 'mail', title: 'Gmail', text: 'New email in sales@. Built in, switched off for the demo.', off: true },
+] as const;
+const outputs = [
+  { icon: 'download', title: 'The deck, back to the landing', text: 'application/pdf, with the offer id, tiles and the sales note in headers.' },
+  { icon: 'db', title: 'Offer in Offer Studio', text: 'Every slide editable; written slides are marked and kept on recompute.' },
+  { icon: 'chat', title: 'Note for the sales team', text: 'Who it is, what to ask next, what was skipped. Discord delivery mocked.', mock: true },
+  { icon: 'trend', title: 'CRM opportunity', text: 'Stage "Offer" with the PDF attached.', mock: true },
+] as const;
+
+const steps = [
+  {
+    n: '01', key: 'read', title: 'Read every source the same way', where: 'n8n · Code',
+    text: 'Form fields, a pasted call, a Fireflies transcript, a voice note or an email become one labelled text plus hints (segment, role, product) the visitor picked. A voice note the browser could not transcribe goes to ElevenLabs speech-to-text first.',
+  },
+  {
+    n: '02', key: 'plan', title: 'AI plan: which tiles describe this client', where: `n8n · AI Agent · ${measured.model}`,
+    text: 'The model gets the enquiry and the tile list from Offer Studio and picks 1 role, 1 segment, 1 product and 1–5 pains. The answer is checked against the list; a wrong answer goes back once with its errors. Fixed rules override the model: "on our own servers" always means on-premise, and a client name is used only if the client gave it.',
+  },
+  {
+    n: '03', key: 'offer', title: 'Build the offer from the role’s scenario', where: 'Offer Studio · POST /api/offers/generate',
+    text: 'The role picks the scenario (slide order and default copy), the other tiles pick the content. Same tiles, same offer. Offer Studio then returns what may be written on each slide: hint, character limit, item count, and an evidence pack (solutions, objections, competitor facts) for exactly these tiles.',
+  },
+  {
+    n: '04', key: 'copy', title: 'AI copy, only from what the client said', where: 'n8n · AI Agent + validator',
+    text: 'The model writes the slides in English from the enquiry and the evidence pack. A validator applies Offer Studio’s own rules (known fields, limits, counts) and sends mistakes back, up to 3 tries; whatever is still invalid keeps the default copy and is listed for the sales team.',
+  },
+  {
+    n: '05', key: 'pdf', title: 'Render with FigCraft', where: 'Offer Studio · figcraft-cli',
+    text: 'Slides are FigCraft designs with named layers ({{data.lead}}, #item cards). The CLI fills them and exports a PDF where text stays text. A designer changes a slide in the FigCraft editor; no deploy.',
+  },
+];
+
+const guards = [
+  { icon: 'check', title: 'Facts about the product come from our sales sheet', text: `130 knowledge blocks (solutions, objections, competitor facts) seeded from the Gaius-Lex sales sheet, each with its source. The model gets only the blocks that fit the client’s tiles.` },
+  { icon: 'quote', title: 'Concerns only from the client', text: 'Cards labelled "From our call" exist only when the model wrote them from the enquiry; the label is added by Offer Studio, the model cannot write it. Defaults say "Common question".' },
+  { icon: 'eye', title: 'Competitors only when named', text: 'The comparison slide stays hidden unless the client mentioned another tool, and then uses only facts the library holds about it.' },
+  { icon: 'shield', title: 'Instructions in the enquiry are data', text: 'Tested with a prompt injection asking for a price of 0, a fake certification and a false claim about a competitor: none of it reached the deck.' },
+  { icon: 'alert', title: 'Every limit checked twice', text: 'n8n checks the answer before saving; Offer Studio refuses anything outside the template with one 400 that lists every problem.' },
+  { icon: 'user', title: 'A person stays in charge', text: 'The salesperson gets a note with what to verify, opens the offer in Offer Studio, edits any slide and downloads a new PDF.' },
+];
+
+const stack = [
+  ['Landing', 'Astro 7, static, served by nginx', 'This site. Sends the enquiry, shows the deck.'],
+  ['n8n 2.50', 'Postgres 17, external task runners', 'The 30-node workflow, webhooks, retries, every run logged.'],
+  ['Offer Studio', 'Node 22, Hono, SQLite (node:sqlite)', 'Knowledge base, tiles, scenarios, slide library, content API, PDF.'],
+  ['n8n-nodes-offer-studio', 'TypeScript, built into the n8n image', 'n8n node that reads Offer Studio’s OpenAPI live: a new endpoint needs no n8n rebuild.'],
+  ['FigCraft 0.18', 'WebAssembly editor + collaboration server, CLI', 'Slide design in the browser; rendering and PDF export.'],
+  ['Models', `OpenRouter · ${measured.model}; ElevenLabs STT`, 'Planning and copy; voice notes the browser cannot transcribe.'],
+  ['Hosting', 'Docker Compose on Coolify', 'One compose file for production and for your laptop.'],
+];
+---
+
+<Layout
+  title="How it’s built · Gaius-Lex Offer Studio"
+  description="Architecture of the Gaius-Lex offer generator: n8n, Offer Studio, FigCraft and two checked AI steps, measured on real runs."
+>
+  <Topbar current="tech" />
+
+  <main>
+    <section class="section section--white">
+      <div class="wrap stack-48">
+        <div class="section-head">
+          <span class="overline"><Icon name="workflow" size={16} />How it’s built</span>
+          <h1 class="h2 tech__title">One enquiry in, a deck written for that client out<span class="dot">.</span></h1>
+          <p class="lead">
+            n8n runs the process, Offer Studio holds what we know and renders the slides, FigCraft is the design layer, and a
+            language model does two narrow jobs, each checked before anything is saved.
+          </p>
+        </div>
+        <div class="tech-stats">
+          <div class="tech-stat"><span class="tech-stat__n">{measured.seconds.median} s</span><span>median from enquiry to PDF</span></div>
+          <div class="tech-stat"><span class="tech-stat__n">{measured.failed} / {measured.runs}</span><span>failed runs on production</span></div>
+          <div class="tech-stat"><span class="tech-stat__n">2</span><span>AI steps, each validated</span></div>
+          <div class="tech-stat"><span class="tech-stat__n">130</span><span>knowledge blocks from our sales sheet</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture -->
+    <section class="section section--sand section--bordered">
+      <div class="wrap stack-40">
+        <div class="section-head">
+          <span class="overline">Architecture</span>
+          <h2 class="h2">Four parts, one compose file.</h2>
+        </div>
+
+        <div class="arch" role="img" aria-label="Enquiries from the landing, Fireflies, an n8n form or Gmail go to the n8n workflow, which uses Offer Studio and FigCraft, and returns the deck to the landing, Offer Studio and the sales team.">
+          <div class="arch__col">
+            <span class="overline overline--muted">1 · Comes in</span>
+            {inputs.map((x) => (
+              <div class:list={['arch-card', { 'arch-card--off': 'off' in x && x.off }]}>
+                <span class="arch-card__head"><Icon name={x.icon} size={18} stroke="#9b5155" />{x.title}{'off' in x && x.off && <span class="soon">off</span>}</span>
+                <span class="arch-card__text">{x.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <div class="arch__arrow" aria-hidden="true"><Icon name="arrow" size={22} /></div>
+
+          <div class="arch__col arch__col--core">
+            <span class="overline overline--muted">2 · n8n workflow</span>
+            <div class="arch-core">
+              <ol class="arch-flow">
+                <li><span>Normalise</span></li>
+                <li class="is-ai"><span>AI plan</span><small>tiles</small></li>
+                <li><span>Check</span><small>1 retry</small></li>
+                <li class="is-call"><span>Generate offer</span><small>Offer Studio</small></li>
+                <li class="is-ai"><span>AI copy</span><small>slides</small></li>
+                <li><span>Validate</span><small>≤ 3 tries</small></li>
+                <li class="is-call"><span>Save + PDF</span><small>Offer Studio</small></li>
+                <li><span>Reply</span></li>
+              </ol>
+              <span class="arch-core__foot"><Icon name="spark" size={14} stroke="#9b5155" />AI steps: OpenRouter · {measured.model}</span>
+            </div>
+            <div class="arch-pair">
+              <div class="arch-card arch-card--strong">
+                <span class="arch-card__head"><Icon name="db" size={18} stroke="#9b5155" />Offer Studio</span>
+                <span class="arch-card__text">130 knowledge blocks · 27 tiles · scenarios per role · 10-slide deck template · content API with limits · REST + OpenAPI</span>
+              </div>
+              <div class="arch-card arch-card--strong">
+                <span class="arch-card__head"><Icon name="pencil" size={18} stroke="#9b5155" />FigCraft</span>
+                <span class="arch-card__text">Slides designed in the browser, layers named as fields; the CLI fills them and exports the PDF</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="arch__arrow" aria-hidden="true"><Icon name="arrow" size={22} /></div>
+
+          <div class="arch__col">
+            <span class="overline overline--muted">3 · Goes out</span>
+            {outputs.map((x) => (
+              <div class="arch-card">
+                <span class="arch-card__head"><Icon name={x.icon} size={18} stroke="#9b5155" />{x.title}{'mock' in x && x.mock && <span class="node__mock">MOCK</span>}</span>
+                <span class="arch-card__text">{x.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <figure class="tech-shot">
+          <img src="/shots/08-n8n-workflow.jpg" alt="The n8n workflow: three triggers, normalisation, AI plan with self-correction, Offer Studio calls, AI copy with a validator, PDF and replies." loading="lazy" width="2040" height="435" />
+          <figcaption>The production workflow in n8n: 30 nodes, three entry points, two AI agents with their correction loops.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Step by step, measured -->
+    <section class="section section--white">
+      <div class="wrap stack-40">
+        <div class="section-head">
+          <span class="overline">One enquiry, step by step</span>
+          <h2 class="h2">Where the {measured.seconds.median} seconds go.</h2>
+          <p class="lead">Median time of each stage over {measured.decks} production runs. The two model calls are almost all of it.</p>
+        </div>
+
+        <figure class="stage-chart" aria-labelledby="stage-chart-title">
+          <figcaption id="stage-chart-title" class="stage-chart__title">Median seconds per stage</figcaption>
+          <ol class="stage-chart__rows">
+            {stages.map((x) => (
+              <li class="stage-row" tabindex="0" data-tip={`${x.label}: ${fmt(x.s)} (median of ${measured.decks} runs)`}>
+                <span class="stage-row__label">{x.label}</span>
+                <span class="stage-row__track"><span class="stage-row__bar" style={`width: ${Math.max(0.6, (x.s / maxS) * 100).toFixed(1)}%`}></span></span>
+                <span class="stage-row__value">{fmt(x.s)}</span>
+              </li>
+            ))}
+          </ol>
+          <span class="stage-chart__tip" role="status" hidden></span>
+        </figure>
+
+        <ol class="tech-steps">
+          {steps.map((st) => (
+            <li class="tech-step">
+              <span class="tech-step__n">{st.n}</span>
+              <div class="tech-step__body">
+                <span class="tech-step__where">{st.where} · {fmt(s[st.key as keyof typeof s])}</span>
+                <h3 class="tech-step__title">{st.title}</h3>
+                <p>{st.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="tech-shots">
+          <figure class="tech-shot"><img src="/shots/09-deck-starting-point.jpg" alt="Starting point slide written from a call: the client's situation and four areas of work in their words." loading="lazy" /><figcaption>Written from the call: the client’s situation in their words.</figcaption></figure>
+          <figure class="tech-shot"><img src="/shots/07-offer-studio-offer.jpg" alt="Offer Studio: the offer's slides marked as written by n8n, with preview, PDF and FigCraft export." loading="lazy" /><figcaption>Offer Studio: which slides AI wrote, why each slide is there, edit and re-render.</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Guardrails -->
+    <section class="section section--ink">
+      <div class="wrap stack-48">
+        <div class="section-head">
+          <span class="overline overline--on-ink">Guardrails</span>
+          <h2 class="h2">How we keep the AI honest.</h2>
+          <p class="lead lead--on-ink">Graded on 12 test enquiries, including an empty one, an off-target one and a prompt injection: <a class="on-ink-link" href="https://github.com/GaiusSigma/bizhack2026/blob/main/docs/EVAL.md">docs/EVAL.md</a>.</p>
+        </div>
+        <div class="concerns">
+          {guards.map((g) => (
+            <div class="concern">
+              <span class="concern__icon"><Icon name={g.icon as any} size={24} /></span>
+              <span class="concern__title">{g.title}</span>
+              <span class="concern__text">{g.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Stack -->
+    <section class="section section--sand">
+      <div class="wrap stack-40">
+        <div class="section-head">
+          <span class="overline">Stack</span>
+          <h2 class="h2">Open tools, nothing exotic.</h2>
+          <p class="lead">Runs on tools the team already uses, so it keeps running after the hackathon.</p>
+        </div>
+        <div class="tech-table" role="table" aria-label="Components">
+          <div class="tech-table__row tech-table__row--head" role="row"><span role="columnheader">Part</span><span role="columnheader">Built with</span><span role="columnheader">Does</span></div>
+          {stack.map(([a, b, c]) => (
+            <div class="tech-table__row" role="row"><span role="cell"><b>{a}</b></span><span role="cell">{b}</span><span role="cell">{c}</span></div>
+          ))}
+        </div>
+        <div class="tech-cols">
+          <div class="fact">
+            <span class="tile tile--soft"><Icon name="shield" /></span>
+            <span class="fact__title">What leaves the stack</span>
+            <span class="fact__text">The enquiry text goes to the model on OpenRouter; a voice note goes to ElevenLabs only when the browser could not transcribe it. The model is one parameter of an n8n node, so a model hosted in the EEA or on-premise is a configuration change. Demo inputs are anonymised.</span>
+          </div>
+          <div class="fact">
+            <span class="tile tile--soft"><Icon name="tool" /></span>
+            <span class="fact__title">Changed without a developer</span>
+            <span class="fact__text">Writing hints and limits live in Offer Studio scenarios; n8n reads them through the API. New slides come from FigCraft files dropped into the library. New pains, solutions and objections are knowledge blocks.</span>
+          </div>
+          <div class="fact">
+            <span class="tile tile--soft"><Icon name="trend" /></span>
+            <span class="fact__title">Measured, not claimed</span>
+            <span class="fact__text"><code>node scripts/measure.mjs</code> reads every run from the n8n API and writes the numbers on this site: time, tokens, cost at OpenRouter’s current price, checks passed.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Run it -->
+    <section class="section section--white">
+      <div class="wrap tech-run">
+        <div class="section-head">
+          <span class="overline"><Icon name="code" size={16} />Run it yourself</span>
+          <h2 class="h2">Two commands, about 2½ minutes.</h2>
+          <p class="lead">Docker and an OpenRouter key. The script builds the stack, fills Offer Studio, publishes the workflow, makes two sample offers and prints the logins.</p>
+          <div class="tech-run__links">
+            <a class="btn btn--ink" href="https://github.com/GaiusSigma/bizhack2026" target="_blank" rel="noopener"><Icon name="code" size={16} />Source on GitHub</a>
+            <a class="btn btn--outline" href="/#generator"><Icon name="spark" size={16} />Try it here instead</a>
+          </div>
+        </div>
+        <pre class="tech-code"><code>git clone https://github.com/GaiusSigma/bizhack2026.git
+cd bizhack2026
+./scripts/start.sh
+
+<span class="tech-code__dim"># landing       http://localhost:8080
+# Offer Studio  http://localhost:8082
+# n8n           http://localhost:5678
+# your own case:
+node scripts/try-it.mjs --text-file my-call.txt</span></code></pre>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</Layout>
+
+<script>
+  // Stage chart: one tooltip that follows hover or keyboard focus.
+  const tip = document.querySelector<HTMLElement>('.stage-chart__tip');
+  const chart = document.querySelector<HTMLElement>('.stage-chart');
+  document.querySelectorAll<HTMLElement>('.stage-row').forEach((row) => {
+    const show = () => {
+      if (!tip || !chart) return;
+      tip.textContent = row.dataset.tip || '';
+      tip.hidden = false;
+      const r = row.getBoundingClientRect();
+      const c = chart.getBoundingClientRect();
+      tip.style.top = `${r.top - c.top - 8}px`;
+    };
+    const hide = () => tip && (tip.hidden = true);
+    row.addEventListener('mouseenter', show);
+    row.addEventListener('focus', show);
+    row.addEventListener('mouseleave', hide);
+    row.addEventListener('blur', hide);
+  });
+</script>

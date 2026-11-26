@@ -18,10 +18,10 @@ const paths = (wf) => (wf.nodes || []).filter((n) => /webhook/i.test(n.type || '
 // With ELEVENLABS_API_KEY it is set from the env on every start. Without it, it is only created (empty) when missing:
 // n8n refuses to publish a workflow whose node points at a credential that does not exist, and a key entered in
 // the editor stays. With an empty key the transcription step fails softly and the offer is built without the text.
-const credentialExists = () => {
-  try { n8n('export:credentials', '--id=elevenLabsKey', '--output=/tmp/offer-elevenlabs-check.json'); return true; } catch { return false; } finally { rmSync('/tmp/offer-elevenlabs-check.json', { force: true }); }
+const credentialExists = (id) => {
+  try { n8n('export:credentials', `--id=${id}`, '--output=/tmp/offer-credential-check.json'); return true; } catch { return false; } finally { rmSync('/tmp/offer-credential-check.json', { force: true }); }
 };
-if (process.env.ELEVENLABS_API_KEY || !credentialExists()) {
+if (process.env.ELEVENLABS_API_KEY || !credentialExists('elevenLabsKey')) {
   const file = '/tmp/offer-elevenlabs-credential.json';
   try {
     writeFileSync(file, JSON.stringify([{ id: 'elevenLabsKey', name: 'ElevenLabs', type: 'httpHeaderAuth', data: { name: 'xi-api-key', value: process.env.ELEVENLABS_API_KEY || '' } }]), { mode: 0o600 });
@@ -38,6 +38,31 @@ try {
   const files = readdirSync(DIR).filter((f) => f.endsWith('.json'));
   const wanted = files.map((f) => ({ file: join(DIR, f), wf: JSON.parse(readFileSync(join(DIR, f), 'utf8')) })).filter((x) => x.wf.id);
   if (!wanted.length) process.exit(0);
+
+  // n8n refuses to publish a workflow whose node points at a credential id that does not exist, so on a fresh
+  // database the deck workflow would stay unpublished (webhook 404). Create every missing credential the files
+  // name by id, with empty data: CREDENTIALS_OVERWRITE_DATA (entrypoint.sh) fills in the Offer Studio URL and token
+  // and the OpenRouter key at run time. Existing credentials are never touched.
+  const missing = new Map();
+  for (const { wf } of wanted) {
+    for (const node of wf.nodes || []) {
+      for (const [type, ref] of Object.entries(node.credentials || {})) {
+        if (ref?.id && !missing.has(ref.id) && !credentialExists(ref.id)) missing.set(ref.id, { id: ref.id, name: ref.name || type, type, data: {} });
+      }
+    }
+  }
+  if (missing.size) {
+    const file = '/tmp/offer-missing-credentials.json';
+    try {
+      writeFileSync(file, JSON.stringify([...missing.values()]), { mode: 0o600 });
+      n8n('import:credentials', `--input=${file}`);
+      log(`created credentials the workflows use: ${[...missing.values()].map((c) => `"${c.name}" (${c.type})`).join(', ')}`);
+    } catch (e) {
+      log(`could not create credentials: ${String(e.stderr || e.message).trim().split('\n').pop()}`);
+    } finally {
+      rmSync(file, { force: true });
+    }
+  }
 
   let existing = [];
   try {

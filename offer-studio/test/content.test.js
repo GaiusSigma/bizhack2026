@@ -50,6 +50,21 @@ test('applying content: lists become card lines, writing an optional slide shows
   assert.equal(patches[cmp.id].hidden, false);
 });
 
+test('team support: the model never sees the card label; its cards say "From our call", the defaults "Common question"', () => {
+  const offer = fresh();
+  const ts = offer.slides.find((s) => s.origin.step === 'team-support');
+  assert.match(ts.data.concerns, /\| Common question$/m);
+  const ctx = contentContext(offer, base);
+  const field = ctx.slides.find((s) => s.step === 'team-support').fields.concerns;
+  assert.deepEqual(Object.keys(field.columns), ['title', 'value']);
+  assert.deepEqual(Object.keys(field.current[0]), ['title', 'value']);
+  assert.ok(!JSON.stringify(ctx).includes('From our call'));
+  const { patches } = applyContent(ctx, { slides: { 'team-support': { concerns: [{ title: 'Made-up citations', value: 'Every answer cites its source.' }] } } });
+  assert.equal(patches[ts.id].data.concerns, 'Made-up citations | Every answer cites its source. | From our call');
+  // the label is not a column the model may send
+  assert.throws(() => applyContent(ctx, { slides: { 'team-support': { concerns: [{ title: 'x', value: 'y', value2: 'From our call' }] } } }), /unknown column/);
+});
+
 test('applying content: hide works on optional slides only', () => {
   const offer = fresh();
   const ctx = contentContext(offer, base);

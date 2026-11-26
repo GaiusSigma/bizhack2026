@@ -1,0 +1,322 @@
+---
+// Pitch mode: the live demo as slides. Arrow keys move; F full screen; P opens the presenter view (notes, timer,
+// next slide) in a second window, kept in sync. Speaker notes are in Polish and never shown on the audience screen.
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+import '../styles/landing.css';
+import '../styles/pitch.css';
+import { measured } from '../lib/data';
+
+const usd = (x: number | null) => (x == null ? '' : x < 0.01 ? `$${x.toFixed(3)}` : `$${x.toFixed(2)}`);
+const st = measured.stageSeconds;
+const fmt = (x: number) => (x < 1 ? `${Math.round(x * 1000)} ms` : `${x.toFixed(1)} s`);
+const REPO = 'github.com/GaiusSigma/bizhack2026';
+---
+
+<Layout title="Pitch · Gaius-Lex Offer Studio" description="Gaius-Lex at BizHack AI 2026: the live demo, slide by slide.">
+  <div class="pitch" data-pitch>
+    <!-- 1 -->
+    <section class="slide slide--ink" data-slide data-title="Title" data-at="0:00">
+      <div class="slide__inner">
+        <span class="overline overline--on-ink"><Icon name="spark" size={14} />BizHack AI 2026 · Challenge 07 · Gaius-Lex</span>
+        <h1 class="slide__h1">From a sales call to a tailored offer in {Math.round(measured.seconds.median ?? 12)} seconds<span class="dot">.</span></h1>
+        <p class="slide__lead slide__lead--on-ink">Live, on a real Gaius-Lex sales conversation.</p>
+      </div>
+      <aside class="notes" hidden>
+        Przedstaw się jednym zdaniem. Bez pitchu: „Pokażemy to na żywo, na prawdziwej rozmowie sprzedażowej”.
+        Kierowca ma otwarte karty: landing, n8n (Executions), Offer Studio, GitHub.
+      </aside>
+    </section>
+
+    <!-- 2 -->
+    <section class="slide" data-slide data-title="Problem" data-at="0:00–0:30">
+      <div class="slide__inner">
+        <span class="overline">The problem</span>
+        <h2 class="slide__h2">Today a tailored offer takes <em>about 3 hours</em> and reaches the client <em>up to 2 days</em> later.</h2>
+        <div class="slide__grid2">
+          <div class="pcard"><Icon name="alert" size={28} stroke="#ce5e64" /><b>Choosing the wrong tool</b><span>No checklist for AI yet: a poor pick wastes budget and the team stops trying.</span></div>
+          <div class="pcard"><Icon name="lock" size={28} stroke="#ce5e64" /><b>A data leak no one owns</b><span>Lawyers ask first: can we put client documents here?</span></div>
+        </div>
+        <p class="slide__lead">A generic deck answers neither. Each buyer needs the offer that leads with their fear.</p>
+      </div>
+      <aside class="notes" hidden>
+        „Gaius-Lex sprzedaje prywatne AI kancelariom i działom prawnym. Dopasowana oferta po rozmowie to dziś ok. 3 godzin
+        pracy handlowca, klient czeka do 2 dni. Kupujący boją się dwóch rzeczy… Ogólny deck nie odpowiada na żadną.”
+        Baseline: zespół sprzedaży Gaius-Lex, listopad 2026.
+      </aside>
+    </section>
+
+    <!-- 3 -->
+    <section class="slide" data-slide data-title="Live: a real call" data-at="0:30–2:00">
+      <div class="slide__inner">
+        <span class="overline"><Icon name="play" size={14} />Live</span>
+        <h2 class="slide__h2">A real Gaius-Lex call, anonymised.</h2>
+        <ol class="psteps">
+          <li><span>1</span><b>Paste the transcript</b><small>“Paste a call” on our landing page</small></li>
+          <li><span>2</span><b>Generate</b><small>n8n reads it, picks tiles, writes the slides, checks every field</small></li>
+          <li><span>3</span><b>The deck</b><small>written from what this client said, plus a note for our salesperson</small></li>
+        </ol>
+        <div class="slide__actions">
+          <a class="btn btn--ink btn--lg" href="/#generator" target="_blank" rel="noopener"><Icon name="spark" size={18} />Open the generator</a>
+        </div>
+      </div>
+      <aside class="notes" hidden>
+        Kierowca: zakładka Paste a call → Load a file → real-call.txt → Generate. W trakcie (ok. 12 s) przełącz na n8n:
+        nowe wykonanie na liście. Potem View the deck: slajd 2 (słowa klienta), 4 (obawy „From our call”), 6 (kroki).
+        Rozwiń „What our sales team gets with it”. PLAN B: PDF z próby (out/) — powiedz wprost, że to wynik sprzed 20 minut.
+      </aside>
+    </section>
+
+    <!-- 4 -->
+    <section class="slide" data-slide data-title="What just happened" data-at="(w trakcie kroku 2)">
+      <div class="slide__inner">
+        <span class="overline"><Icon name="workflow" size={14} />Under the hood</span>
+        <h2 class="slide__h2">Two narrow AI jobs, each checked before anything is saved.</h2>
+        <ol class="ppipe">
+          <li><b>Read</b><small>every source → one text</small><em>{fmt(st.read)}</em></li>
+          <li class="is-ai"><b>AI plan</b><small>role, segment, product, pains from our tiles</small><em>{fmt(st.plan)}</em></li>
+          <li><b>Offer Studio</b><small>scenario for the role, evidence for the tiles</small><em>{fmt(st.offer)}</em></li>
+          <li class="is-ai"><b>AI copy</b><small>only from the call; validator, ≤ 3 tries</small><em>{fmt(st.copy)}</em></li>
+          <li><b>FigCraft PDF</b><small>text stays text</small><em>{fmt(st.pdf)}</em></li>
+        </ol>
+        <p class="slide__lead">Product facts come from our sales sheet (130 blocks). “From our call” only when the client said it. Competitors only when named.</p>
+        <div class="slide__actions"><a class="btn btn--outline btn--lg" href="/how-it-works" target="_blank" rel="noopener"><Icon name="eye" size={18} />How it’s built</a></div>
+      </div>
+      <aside class="notes" hidden>
+        Opcjonalny — pokaż, gdy jury pyta „jak to działa” albo gdy deck się jeszcze generuje.
+        Mediany etapów z produkcji. Szczegóły i zabezpieczenia: /how-it-works, test 12 zgłoszeń w docs/EVAL.md
+        (pusty, piekarnia, prompt injection).
+      </aside>
+    </section>
+
+    <!-- 5 -->
+    <section class="slide" data-slide data-title="The salesperson takes over" data-at="2:00–2:45">
+      <div class="slide__inner slide__inner--split">
+        <div class="slide__col">
+          <span class="overline">Offer Studio</span>
+          <h2 class="slide__h2">The offer does not vanish into a PDF.</h2>
+          <p class="slide__lead">Every slide says why it is there and whether AI wrote it. The salesperson edits a line, re-renders, sends. Writing hints live here too, so changing the tone needs no developer.</p>
+          <div class="slide__actions"><a class="btn btn--ink btn--lg" href="https://studio.bizhack.trygaius.com/" target="_blank" rel="noopener"><Icon name="db" size={18} />Open Offer Studio</a></div>
+        </div>
+        <img class="slide__shot" src="/shots/07-offer-studio-offer.jpg" alt="Offer Studio with the offer's slides marked as written by AI and a live preview." />
+      </div>
+      <aside class="notes" hidden>
+        Kierowca: najnowsza oferta → oznaczenie „written by n8n (AI)” → zmień jedno słowo → podgląd się odświeża → Download PDF.
+        15 pkt: „firma realnie może dalej używać”.
+      </aside>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide" data-slide data-title="No form needed" data-at="2:45–3:30">
+      <div class="slide__inner">
+        <span class="overline"><Icon name="workflow" size={14} />In daily work</span>
+        <h2 class="slide__h2">Nobody pastes anything. The call ends, the deck is waiting.</h2>
+        <div class="pflow">
+          <div class="pflow__col"><span class="pchip"><Icon name="file" size={18} />Fireflies transcript</span><span class="pchip"><Icon name="mail" size={18} />Email to sales@</span><span class="pchip"><Icon name="chat" size={18} />Web form</span></div>
+          <Icon name="arrow" size={28} stroke="#ce5e64" />
+          <div class="pflow__col"><span class="pchip pchip--ink"><Icon name="workflow" size={18} />n8n · the same workflow</span></div>
+          <Icon name="arrow" size={28} stroke="#ce5e64" />
+          <div class="pflow__col"><span class="pchip"><Icon name="file" size={18} />Deck in Offer Studio</span><span class="pchip pchip--mock"><Icon name="chat" size={18} />#sales alert <small>mock</small></span><span class="pchip pchip--mock"><Icon name="db" size={18} />CRM card <small>mock</small></span></div>
+        </div>
+        <div class="slide__actions"><a class="btn btn--ink btn--lg" href="/#flow" target="_blank" rel="noopener"><Icon name="play" size={18} />Run the workflow</a></div>
+      </div>
+      <aside class="notes" hidden>
+        Landing → How it runs → Fireflies transcript → Run the workflow. „Leci prawdziwy produkcyjny workflow na przykładowej
+        rozmowie. Uczciwie: CRM i Discord są zamockowane, oferta i PDF są prawdziwe.” Nie mów, że Fireflies jest podpięty
+        na żywo (prawdziwy webhook Fireflies wysyła tylko id spotkania).
+      </aside>
+    </section>
+
+    <!-- 7 -->
+    <section class="slide slide--sand" data-slide data-title="Measured" data-at="3:30–4:15">
+      <div class="slide__inner">
+        <span class="overline">Measured on {measured.decks} production runs</span>
+        <h2 class="slide__h2">Not slideware: every number comes from the workflow’s own log.</h2>
+        <div class="pstats">
+          <div class="pstat"><s>about 3 hours</s><b>{Math.round(measured.seconds.median ?? 0)} s</b><span>per tailored offer (median; 9 in 10 under {Math.ceil(measured.seconds.p90 ?? 0)} s)</span></div>
+          <div class="pstat"><s>3 h of a salesperson</s><b>{usd(measured.costPerDeckUsd)}</b><span>AI cost per offer</span></div>
+          <div class="pstat"><s>generic deck</s><b>{measured.slidesWrittenMedian} of 10</b><span>deck sections written for this client</span></div>
+          <div class="pstat"><s>&nbsp;</s><b>{measured.failed} / {measured.runs}</b><span>failed runs</span></div>
+        </div>
+        <p class="slide__fine">Before: the Gaius-Lex sales team, November 2026. After: <code>node scripts/measure.mjs</code> on the n8n API, {measured.from?.slice(0, 10)}.</p>
+      </div>
+      <aside class="notes" hidden>
+        „Te liczby są z wykonań produkcyjnego workflow, skrypt measure.mjs w repo liczy je od nowa.” Pokaż też zieloną linię
+        „Your run just now” na landingu (sekcja Results), jeśli został czas. 25 pkt: zmierzona poprawa czasu/kosztu/jakości.
+      </aside>
+    </section>
+
+    <!-- 8 -->
+    <section class="slide" data-slide data-title="Run it yourself" data-at="4:15–4:40">
+      <div class="slide__inner slide__inner--split">
+        <div class="slide__col">
+          <span class="overline"><Icon name="code" size={14} />Open source · MIT</span>
+          <h2 class="slide__h2">Two commands. First deck in about 2½ minutes.</h2>
+          <p class="slide__lead">The script asks for one API key, builds the stack, fills Offer Studio, publishes the n8n workflow, makes two sample offers and prints the logins. Tested on a clean clone.</p>
+          <p class="slide__url">{REPO}</p>
+        </div>
+        <pre class="pcode"><code>git clone https://{REPO}
+cd bizhack2026
+./scripts/start.sh</code></pre>
+      </div>
+      <aside class="notes" hidden>
+        20 pkt: „ktoś spoza zespołu uruchomi z repo”. W README: loginy, zrzuty ekranu, 10 przypadków testowych
+        (sample-data/eval). Jeśli jury nie ma klucza OpenRouter — produkcja działa bez instalacji.
+      </aside>
+    </section>
+
+    <!-- 9 -->
+    <section class="slide" data-slide data-title="It keeps running" data-at="4:40–5:00">
+      <div class="slide__inner">
+        <span class="overline">After the hackathon</span>
+        <h2 class="slide__h2">This is how we make offers from Monday.</h2>
+        <div class="slide__grid3">
+          <div class="pcard"><Icon name="server" size={26} stroke="#9b5155" /><b>Runs on our server</b><span>One Docker Compose file on Coolify, already in production.</span></div>
+          <div class="pcard"><Icon name="tool" size={26} stroke="#9b5155" /><b>Tools we already use</b><span>n8n, Fireflies, Gmail, our CRM and Discord. Nothing new to adopt.</span></div>
+          <div class="pcard"><Icon name="pencil" size={26} stroke="#9b5155" /><b>Changed without code</b><span>Hints, slides and knowledge live in Offer Studio and FigCraft.</span></div>
+        </div>
+        <p class="slide__fine">Next: the real CRM write and #sales alert, and transcripts fetched straight from Fireflies.</p>
+      </div>
+      <aside class="notes" hidden>
+        15 pkt: „firma realnie może dalej używać”. Krótko, jedno zdanie na kartę.
+      </aside>
+    </section>
+
+    <!-- 10 -->
+    <section class="slide slide--ink" data-slide data-title="Close" data-at="5:00">
+      <div class="slide__inner">
+        <h2 class="slide__h1 slide__h1--sm">From the call to an offer that answers this client’s concerns, in seconds instead of hours<span class="dot">.</span></h2>
+        <div class="pclose">
+          <span><Icon name="spark" size={18} />bizhack.trygaius.com</span>
+          <span><Icon name="code" size={18} />{REPO}</span>
+        </div>
+        <p class="slide__lead slide__lead--on-ink">Questions?</p>
+      </div>
+      <aside class="notes" hidden>
+        Pytania (ściąga w docs/DEMO.md): halucynacje → walidator i fakty z arkusza; dane → anonimizacja, model to jeden
+        parametr (EOG / lokalny); skąd 3 godziny; puste zgłoszenie; koszt ~$0,003 za ofertę; co jest mockiem (CRM, Discord).
+      </aside>
+    </section>
+
+    <div class="pbar" aria-hidden="true"><span class="pbar__fill" data-progress></span></div>
+    <div class="pnav">
+      <button type="button" class="pnav__btn" data-prev aria-label="Previous slide"><Icon name="arrow" size={18} class="flip" /></button>
+      <span class="pnav__count" data-count>1 / 10</span>
+      <button type="button" class="pnav__btn" data-next aria-label="Next slide"><Icon name="arrow" size={18} /></button>
+      <span class="pnav__hint">← → move · F full screen · P presenter view</span>
+    </div>
+  </div>
+
+  <!-- Presenter view (/pitch?presenter): notes, timer, next slide -->
+  <div class="presenter" data-presenter hidden>
+    <header class="presenter__top">
+      <span class="presenter__clock"><b data-elapsed>0:00</b> / 5:00</span>
+      <span class="presenter__slot">slajd <b data-p-count>1 / 10</b> · cel: <b data-p-at></b></span>
+      <span class="presenter__btns">
+        <button type="button" class="btn btn--outline btn--sm" data-p-prev>← Wstecz</button>
+        <button type="button" class="btn btn--ink btn--sm" data-p-next>Dalej →</button>
+        <button type="button" class="btn btn--outline btn--sm" data-p-reset>Zeruj zegar</button>
+      </span>
+    </header>
+    <div class="presenter__body">
+      <div class="presenter__now">
+        <span class="overline">Teraz</span>
+        <h1 data-p-title></h1>
+        <div class="presenter__notes" data-p-notes></div>
+      </div>
+      <div class="presenter__next">
+        <span class="overline overline--muted">Następny</span>
+        <h2 data-p-next-title></h2>
+        <span class="presenter__next-at" data-p-next-at></span>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-slide]'));
+  const presenter = new URLSearchParams(location.search).has('presenter');
+  const N = slides.length;
+  let i = 0;
+  let started: number | null = null;
+
+  // Audience and presenter windows stay on the same slide (same origin, BroadcastChannel; storage as a fallback).
+  let channel: BroadcastChannel | null = null;
+  try { channel = new BroadcastChannel('gaius-pitch'); } catch { /* old browser */ }
+  const send = (msg: object) => {
+    try { channel?.postMessage(msg); } catch { /* closed */ }
+    try { localStorage.setItem('gaius-pitch', JSON.stringify({ ...msg, t: Date.now() })); } catch { /* storage off */ }
+  };
+
+  const fmt = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+  const render = () => {
+    slides.forEach((s, k) => s.classList.toggle('is-active', k === i));
+    const count = `${i + 1} / ${N}`;
+    const c = document.querySelector('[data-count]'); if (c) c.textContent = count;
+    const p = document.querySelector<HTMLElement>('[data-progress]'); if (p) p.style.width = `${((i + 1) / N) * 100}%`;
+    if (!presenter && location.hash !== `#${i + 1}`) history.replaceState(null, '', `#${i + 1}`);
+    if (presenter) {
+      const cur = slides[i]; const next = slides[i + 1];
+      (document.querySelector('[data-p-count]') as HTMLElement).textContent = count;
+      (document.querySelector('[data-p-at]') as HTMLElement).textContent = cur.dataset.at || '';
+      (document.querySelector('[data-p-title]') as HTMLElement).textContent = cur.dataset.title || '';
+      (document.querySelector('[data-p-notes]') as HTMLElement).textContent = cur.querySelector('.notes')?.textContent?.trim().replace(/\s+/g, ' ') || '';
+      (document.querySelector('[data-p-next-title]') as HTMLElement).textContent = next ? next.dataset.title || '' : 'Koniec';
+      (document.querySelector('[data-p-next-at]') as HTMLElement).textContent = next?.dataset.at || '';
+    }
+  };
+  const go = (k: number, broadcast = true) => {
+    i = Math.max(0, Math.min(N - 1, k));
+    if (started === null && i > 0) started = Date.now();
+    render();
+    if (broadcast) send({ type: 'slide', i, started });
+  };
+  const onMsg = (m: any) => {
+    if (!m) return;
+    if (m.type === 'slide') { if (m.started && !started) started = m.started; go(m.i, false); }
+    if (m.type === 'reset') { started = m.started; }
+  };
+  if (channel) channel.onmessage = (e) => onMsg(e.data);
+  window.addEventListener('storage', (e) => { if (e.key === 'gaius-pitch' && e.newValue) { try { onMsg(JSON.parse(e.newValue)); } catch { /* bad value */ } } });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    // Enter and Space on a link or button keep their normal meaning
+    if ((e.key === 'Enter' || e.key === ' ') && (e.target as HTMLElement).closest?.('a, button')) return;
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); go(i + 1); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); go(i - 1); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(N - 1);
+    else if (e.key === 'f' || e.key === 'F') { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); }
+    else if ((e.key === 'p' || e.key === 'P') && !presenter) window.open('/pitch?presenter', 'gaius-presenter', 'width=1100,height=720');
+  });
+  document.querySelector('[data-next]')?.addEventListener('click', () => go(i + 1));
+  document.querySelector('[data-prev]')?.addEventListener('click', () => go(i - 1));
+  let touchX = 0;
+  document.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', (e) => { const d = e.changedTouches[0].clientX - touchX; if (Math.abs(d) > 60) go(i + (d < 0 ? 1 : -1)); });
+
+  if (presenter) {
+    document.title = 'Prowadzący · Gaius-Lex pitch';
+    (document.querySelector('[data-pitch]') as HTMLElement).hidden = true;
+    (document.querySelector('[data-presenter]') as HTMLElement).hidden = false;
+    document.querySelector('[data-p-next]')?.addEventListener('click', () => go(i + 1));
+    document.querySelector('[data-p-prev]')?.addEventListener('click', () => go(i - 1));
+    document.querySelector('[data-p-reset]')?.addEventListener('click', () => { started = Date.now(); send({ type: 'reset', started }); });
+    setInterval(() => {
+      const el = document.querySelector('[data-elapsed]') as HTMLElement;
+      const ms = started ? Date.now() - started : 0;
+      el.textContent = fmt(ms);
+      el.classList.toggle('is-over', ms > 5 * 60_000);
+    }, 500);
+    // start on the slide the audience window shows
+    try { const last = JSON.parse(localStorage.getItem('gaius-pitch') || 'null'); if (last?.type === 'slide') { started = last.started || null; i = last.i; } } catch { /* none */ }
+  } else {
+    const fromHash = Number(location.hash.slice(1));
+    if (fromHash >= 1 && fromHash <= N) i = fromHash - 1;
+  }
+  render();
+  // the audience window tells an open presenter view where it is
+  if (!presenter) send({ type: 'slide', i, started });
+</script>

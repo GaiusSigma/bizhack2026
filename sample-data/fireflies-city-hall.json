@@ -1,0 +1,26 @@
+{
+  "meetingId": "sample-1",
+  "eventType": "Transcription completed",
+  "data": {
+    "transcript": {
+      "title": "Gaius x city hall legal office - discovery (sample)",
+      "summary": {
+        "overview": "Call with the head of a city hall legal office. 15 legal advisers, a lot of public procurement and freedom-of-information requests. Conditions: data must stay on the city's infrastructure and every answer needs its legal basis. They compare Gaius with Legalis and Microsoft Copilot."
+      },
+      "sentences": [
+        {
+          "speaker_name": "Head of legal office",
+          "text": "We have fifteen legal advisers and a flood of freedom-of-information requests."
+        },
+        {
+          "speaker_name": "Gaius",
+          "text": "What is your condition for a rollout?"
+        },
+        {
+          "speaker_name": "Head of legal office",
+          "text": "Data cannot leave our servers. We tested Copilot, but IT said no."
+        }
+      ]
+    }
+  }
+}

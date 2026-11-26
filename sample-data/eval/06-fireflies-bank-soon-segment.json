@@ -1,0 +1,42 @@
+{
+  "meetingId": "eval-6",
+  "eventType": "Transcription completed",
+  "data": {
+    "transcript": {
+      "title": "Discovery call - legal department of a bank",
+      "summary": {
+        "overview": "Rozmowa z kierowniczką zespołu prawnego banku spółdzielczego (6 prawników). Dużo opinii do produktów, reklamacji klientów i analiz klauzul abuzywnych. Regulator (KNF) wymaga outsourcingu zgodnego z rekomendacjami. Obawy: bezpieczeństwo danych klientów banku, audytowalność odpowiedzi."
+      },
+      "sentences": [
+        {
+          "speaker_name": "Ewa (bank)",
+          "text": "Jest nas sześcioro w zespole prawnym, a reklamacji i zapytań z departamentów jest coraz więcej."
+        },
+        {
+          "speaker_name": "Janusz (Gaius)",
+          "text": "Jakie dokumenty są dla Was najbardziej czasochłonne?"
+        },
+        {
+          "speaker_name": "Ewa (bank)",
+          "text": "Analiza wzorców umów pod kątem klauzul abuzywnych i odpowiedzi na reklamacje, to są setki pism miesięcznie."
+        },
+        {
+          "speaker_name": "Ewa (bank)",
+          "text": "Każde narzędzie musi przejść przez dział bezpieczeństwa i compliance, a KNF patrzy na outsourcing chmurowy."
+        },
+        {
+          "speaker_name": "Janusz (Gaius)",
+          "text": "Czy korzystacie dziś z jakiegoś AI?"
+        },
+        {
+          "speaker_name": "Ewa (bank)",
+          "text": "Oficjalnie nie. Nieoficjalnie wiem, że ktoś używa ChatGPT na prywatnym telefonie."
+        },
+        {
+          "speaker_name": "Ewa (bank)",
+          "text": "Ja bym chciała to przetestować z zespołem, ale decyzję podejmie zarząd banku."
+        }
+      ]
+    }
+  }
+}

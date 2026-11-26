@@ -368,3 +368,57 @@
 .transcript__icon-save { display: none; }
 .transcript[data-state='editing'] .transcript__icon-edit { display: none; }
 .transcript[data-state='editing'] .transcript__icon-save { display: block; }
+
+/* ---------- Live demo additions ---------- */
+/* "Paste a call" */
+.paste {
+  width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; line-height: 22px; color: var(--ink);
+  border: 1px solid var(--parchment); padding: 12px 14px; resize: vertical; background: #fff; min-height: 150px;
+}
+.paste:focus { outline: none; border-color: var(--rose); }
+.paste::placeholder { color: var(--muted); }
+.paste__tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.paste__file { cursor: pointer; }
+.paste__count { font-size: 13px; color: var(--muted); margin-left: auto; }
+
+/* What the offer was built from, and the note our sales team gets */
+.offer__tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.offer__tile { font-size: 12px; font-weight: 600; padding: 3px 8px; background: var(--rose-soft); color: var(--ink); border: 1px solid var(--rose-deep); }
+.offer__note { padding: 16px 24px 20px; border-top: 1px solid var(--line); font-size: 14px; line-height: 21px; }
+.offer__note summary { cursor: pointer; font-weight: 700; color: var(--ink); display: flex; gap: 8px; align-items: center; list-style: none; }
+.offer__note summary::-webkit-details-marker { display: none; }
+.offer__note summary::after { content: '+'; margin-left: auto; color: var(--muted); font-weight: 400; font-size: 18px; }
+.offer__note[open] summary::after { content: '–'; }
+.offer__note p { margin: 12px 0 8px; color: var(--ink); white-space: pre-wrap; }
+
+/* The deck, full screen */
+.deck { width: min(1200px, calc(100vw - 32px)); height: calc(100vh - 48px); max-width: none; max-height: none; padding: 0; border: 0; background: var(--ink); }
+.deck[open] { display: flex; flex-direction: column; }
+.deck::backdrop { background: rgba(29, 31, 33, .72); }
+.deck__bar { display: flex; gap: 8px; align-items: center; padding: 10px 12px; background: var(--ink); }
+.deck__title { flex: 1 1 auto; min-width: 0; color: #fff; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deck__frame { flex: 1 1 auto; width: 100%; border: 0; background: #525659; }
+
+/* Live run of the workflow */
+.flow__live { margin: 0; font-size: 14px; line-height: 20px; color: var(--ink); display: flex; gap: 8px; align-items: flex-start; }
+.flow__live .icon { flex: 0 0 16px; margin-top: 2px; }
+.flow__sample { border: 1px solid var(--line); background: #fff; padding: 12px 14px; font-size: 13px; line-height: 19px; }
+.flow__sample summary { cursor: pointer; font-weight: 700; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.flow__sample p { margin: 8px 0 0; white-space: pre-wrap; color: var(--ink); max-height: 160px; overflow: auto; }
+.discord__tiles { color: #fff; font-weight: 600; }
+.discord__note { white-space: pre-wrap; color: #dbdee1; border-left: 4px solid #4e5058; padding-left: 10px; font-size: 13px; line-height: 19px; }
+.discord__actions { display: flex; flex-wrap: wrap; gap: 16px; }
+button.discord__link { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+button.discord__link:hover { text-decoration: underline; }
+[data-run-flow]:disabled { opacity: .7; cursor: progress; }
+
+/* Measured results */
+.stat__note { font-size: 13px; line-height: 18px; color: var(--muted); }
+.live-run { margin: 0; display: flex; gap: 8px; align-items: center; font-size: 15px; font-weight: 600; color: var(--check); }
+.fineprint code { font-size: 12px; background: var(--sand); padding: 1px 4px; }
+
+@media (max-width: 640px) {
+  .gen__tab .icon { display: none; }
+  .deck { width: 100vw; height: 100vh; }
+}
+.nav__link--current { color: var(--ink); box-shadow: inset 0 -2px 0 var(--rose); }

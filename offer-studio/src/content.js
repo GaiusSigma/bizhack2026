@@ -17,8 +17,12 @@ function parseLines(text, columns) {
 }
 
 // [{title, value}] -> "a | b" lines. A "|" or a line break inside a value would break the format.
+// A column with `fixed` (e.g. a card's "From our call" label) always gets that text: the model never writes it.
 const clean = (v) => String(v ?? '').replace(/\s*\|\s*/g, ' / ').replace(/\s*\n\s*/g, ' ').trim();
-export const toLines = (items, columns) => items.map((it) => Object.keys(columns).map((k) => clean(it[k])).join(' | ')).join('\n');
+export const toLines = (items, columns) => items.map((it) => Object.entries(columns).map(([k, col]) => clean(col?.fixed ?? it[k])).join(' | ')).join('\n');
+
+// The columns a model writes: every column except the fixed ones.
+const writable = (columns) => Object.fromEntries(Object.entries(columns).filter(([, col]) => col?.fixed == null));
 
 // Everything a model needs to write an offer's copy: per slide (in offer order) the fields it may write.
 // `tiles` (id -> tile) names the reader (role tile) and the product: label, description and writing brief.
@@ -41,9 +45,15 @@ export function contentContext(offer, scenario, { tiles = {} } = {}) {
     if (!step?.write) continue;
     const fields = {};
     for (const [key, w] of Object.entries(step.write)) {
-      fields[key] = w.columns
-        ? { kind: 'list', hint: hintFor(w), min: w.min ?? 0, max: w.max ?? 6, columns: w.columns, current: parseLines(slide.data?.[key], w.columns) }
-        : { kind: 'text', hint: hintFor(w), max: w.max ?? 200, current: String(slide.data?.[key] ?? '') };
+      if (w.columns) {
+        const cols = writable(w.columns);
+        const current = parseLines(slide.data?.[key], w.columns).map((it) => Object.fromEntries(Object.keys(cols).map((k) => [k, it[k]])));
+        fields[key] = { kind: 'list', hint: hintFor(w), min: w.min ?? 0, max: w.max ?? 6, columns: cols, current };
+        // all columns, fixed ones included, for saving (not part of the JSON the model sees)
+        Object.defineProperty(fields[key], 'allColumns', { value: w.columns, enumerable: false });
+      } else {
+        fields[key] = { kind: 'text', hint: hintFor(w), max: w.max ?? 200, current: String(slide.data?.[key] ?? '') };
+      }
     }
     slides.push({
       step: step.key, slide_id: slide.id, label: step.label || step.key, hidden: !!slide.hidden,
@@ -97,7 +107,7 @@ export function applyContent(ctx, answer, { strict = true } = {}) {
           if (col.max && v.length > col.max) problems.push(`"${at}[${i}].${k}": ${v.length} characters, at most ${col.max}`);
         }
       });
-      data[key] = toLines(value.slice(0, f.max).filter((it) => it && typeof it === 'object'), f.columns);
+      data[key] = toLines(value.slice(0, f.max).filter((it) => it && typeof it === 'object'), f.allColumns || f.columns);
     }
     const patch = { data };
     // An optional slide is shown once something is written on it, unless the model hides it.

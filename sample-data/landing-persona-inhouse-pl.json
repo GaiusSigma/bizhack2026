@@ -1,0 +1,17 @@
+{
+  "source": "landing-email",
+  "mode": "email",
+  "touched": [
+    "tryItAs"
+  ],
+  "email": null,
+  "tryItAs": {
+    "persona": "inhouse-pl",
+    "label": "In-house lawyer, manufacturing group",
+    "role": "champion",
+    "segment": "in-house",
+    "sampleText": "Pracuję w 6-osobowym dziale prawnym grupy produkcyjnej. Chcę wprowadzić narzędzie AI w zespole, ale muszę przekonać zarząd, a koledzy porzucili poprzednie narzędzie po miesiącu. IT wymaga, żeby wszystko działało na naszych serwerach."
+  },
+  "pickedRole": null,
+  "voice": null
+}

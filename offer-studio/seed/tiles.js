@@ -1368,7 +1368,7 @@ export const tileTags = {
 // Content revision. A database seeded with an older revision is updated on startup (src/db.js ensureTiles):
 // new solutions are added, solution pins follow this file, missing guidance is filled in, and a tile
 // description is replaced only if it still has the previous revision's text (edits made by hand stay).
-export const tileUpgrade = { rev: 15, previousGuidance: {"product:saas": {"pick_when": "A small firm or a single lawyer, no requirement for data to stay on site, quick start with a trial.", "avoid_when": "Documents must not leave the organisation, or the client needs company-wide access without per-user limits."}, "product:vault": {"pick_when": "Mid-size or large firms and in-house teams that work on confidential documents and want the whole team on it.", "avoid_when": "A single lawyer who just wants to try the tool (pick SaaS)."}}, previousDescriptions: {
+export const tileUpgrade = { rev: 16, previousGuidance: {"product:saas": {"pick_when": "A small firm or a single lawyer, no requirement for data to stay on site, quick start with a trial.", "avoid_when": "Documents must not leave the organisation, or the client needs company-wide access without per-user limits."}, "product:vault": {"pick_when": "Mid-size or large firms and in-house teams that work on confidential documents and want the whole team on it.", "avoid_when": "A single lawyer who just wants to try the tool (pick SaaS)."}}, previousDescriptions: {
   "role:champion": "The enthusiast on the team who brings Gaius in and has to win over colleagues.",
   "role:board": "The board, managing partner or director who signs off the decision and the budget.",
   "role:cto": "Technical sign-off: architecture, security, deployment.",

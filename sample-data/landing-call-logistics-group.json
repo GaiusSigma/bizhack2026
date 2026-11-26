@@ -1,0 +1,8 @@
+{
+  "source": "landing-text",
+  "mode": "text",
+  "touched": [
+    "text"
+  ],
+  "text": "Gaius-Lex x in-house legal team, discovery call (sample, no real client)\n\nAgnieszka (Head of Legal): We are eight lawyers in the legal department of a logistics group, twelve companies in Poland and Czechia. Most of our week goes on supplier contracts, NDAs and data processing agreements, every company has its own templates.\nAgnieszka: People already paste contracts into ChatGPT on their phones. I know it, the board knows it. I would rather give them something approved than pretend it does not happen.\nJanusz (Gaius): What would the board need to see to say yes?\nAgnieszka: Two things. Documents cannot leave our infrastructure, our IT is strict about that. And I need to show that the team will actually use it, the last tool we bought was dead after a month.\nAgnieszka: We looked at Microsoft Copilot, we already have the licences, but it does not know Polish law and it cannot check rulings.\nJanusz: Who signs off on the budget?\nAgnieszka: The management board, in January. I would like a pilot before that."
+}
