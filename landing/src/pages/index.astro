@@ -1,6 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
+import Topbar from '../components/Topbar.astro';
+import Footer from '../components/Footer.astro';
 import '../styles/landing.css';
 import {
   apps,
@@ -33,21 +35,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
   title="Offer Studio · Gaius-Lex · Your tailored offer in under a minute"
   description="Private AI for law firms, in-house legal teams and public administration. Tell Gaius who you are and get the offer our sales team would write for you, matched to your role and concerns."
 >
-  <header class="topbar">
-    <div class="wrap topbar__inner">
-      <div class="brand">
-        <a class="wordmark" href="#generator">GAIUS-LEX</a>
-        <span class="badge"><Icon name="spark" size={14} />BizHack AI · Challenge 07</span>
-      </div>
-      <nav class="nav" aria-label="Main">
-        <a class="nav__link" href="#flow">How it runs</a>
-        <a class="nav__link" href="#fears">Why it matters</a>
-        <a class="nav__link" href="#roles">For your team</a>
-        <a class="nav__link" href="#results">Results</a>
-        <a class="btn btn--ink nudge" href="#generator">Get your offer<Icon name="arrow" size={16} /></a>
-      </nav>
-    </div>
-  </header>
+  <Topbar home />
 
   <main>
     <!-- 1 · Generator -->
@@ -488,19 +476,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     <iframe class="deck__frame" data-deck-frame title="Offer deck (PDF)"></iframe>
   </dialog>
 
-  <footer class="footer">
-    <div class="wrap footer__inner">
-      <div class="footer__brand">
-        <span class="wordmark wordmark--light">GAIUS-LEX</span>
-        <span>Built at BizHack AI Hackathon · Budapest · 24–26 November 2026</span>
-      </div>
-      <div class="footer__links">
-        <a href="https://github.com/GaiusSigma/bizhack2026" target="_blank" rel="noopener"><Icon name="code" size={16} />Source code on GitHub</a>
-        <span>MIT licence</span>
-        <span class="footer__note"><Icon name="shield" size={16} />Sample data only. No real client records.</span>
-      </div>
-    </div>
-  </footer>
+  <Footer />
 </Layout>
 
 <script>

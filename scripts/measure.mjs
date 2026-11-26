@@ -64,6 +64,8 @@ const rows = runs.map((e) => {
     }
   }
   const summary = rd['Podsumowanie']?.[0]?.data?.main?.[0]?.[0]?.json || null;
+  // time per stage (ms): every run of the stage's nodes, retries included
+  const ms = (...names) => names.reduce((t, n) => t + (rd[n] || []).reduce((a, r) => a + (r.executionTime || 0), 0), 0);
   return {
     status: e.status,
     source: TRIGGERS[trigger] || 'other',
@@ -75,6 +77,13 @@ const rows = runs.map((e) => {
     warnings: summary?.warnings?.length ?? null,
     // 1 = the AI's answers passed every check the first time (tile plan and slide copy)
     firstTry: summary ? (rd['AI Agent']?.length || 0) === 1 && (rd['Sprawdź treść']?.length || 0) === 1 : null,
+    stages: {
+      read: ms('Nagranie do przepisania?', 'Nagranie → plik', 'ElevenLabs: mowa na tekst', 'Dołącz transkrypcję', 'Normalizuj zgłoszenie', 'Kafelki', 'Kontekst dla AI'),
+      plan: ms('AI Agent', 'Przygotowanie scenariusza', 'Odpowiedź AI poprawna?', 'Samopoprawka AI'),
+      offer: ms('Utwórz ofertę', 'Pola slajdów', 'Kontekst treści'),
+      copy: ms('AI: treść slajdów', 'Sprawdź treść', 'Treść poprawna?', 'Samopoprawka treści', 'Zapisz treść'),
+      pdf: ms('Pobierz PDF'),
+    },
   };
 });
 
@@ -103,6 +112,8 @@ const measured = {
   slidesWrittenMedian: median(decks.map((r) => r.written).filter((x) => x != null)),
   decksWithoutWarnings: decks.filter((r) => r.warnings === 0).length,
   firstTryValid: decks.filter((r) => r.firstTry).length,
+  // median seconds per stage: read the enquiry, AI plan (tiles), offer in Offer Studio, AI copy (checked), PDF
+  stageSeconds: Object.fromEntries(['read', 'plan', 'offer', 'copy', 'pdf'].map((k) => [k, round(median(decks.map((r) => r.stages[k] / 1000)), 2)])),
 };
 
 writeFileSync(OUT, `${JSON.stringify(measured, null, 2)}\n`);

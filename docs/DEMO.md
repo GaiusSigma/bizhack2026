@@ -14,6 +14,18 @@ Każdy krok jest przypisany do kryterium oceny; tak mówimy o nim jury.
 Role: **kierowca** (laptop, klika, nic nie mówi) i **narrator** (mówi, pokazuje palcem). Narrator zna skrót każdego
 kroku na pamięć; kierowca ma otwarte karty w kolejności z listy niżej.
 
+## Tryb prezentacji: /pitch
+
+https://bizhack.trygaius.com/pitch (lokalnie: http://localhost:8080/pitch) prowadzi przez ten scenariusz slajd po slajdzie:
+na każdym slajdzie są przyciski, które otwierają na żywo generator, Offer Studio i sekcję workflow.
+
+- Strzałki / spacja: dalej, wstecz. **F**: pełny ekran. **P**: widok prowadzącego w drugim oknie (notatki po polsku, zegar
+  do 5:00, cel czasowy slajdu, następny slajd). Okna są zsynchronizowane: można klikać w którymkolwiek.
+- Slajd 4 („Under the hood”) jest opcjonalny: na pytanie „jak to działa” albo gdy deck się jeszcze generuje.
+  Pełny opis techniczny: https://bizhack.trygaius.com/how-it-works.
+- Układ ekranu: na projektorze okno /pitch (F), na laptopie widok prowadzącego; karty z landingiem, n8n i Offer Studio
+  w tym samym oknie co /pitch, żeby przełączać się Ctrl+Tab.
+
 ## Przed wejściem (T−30 min)
 
 1. Internet: Wi-Fi sali + hotspot z telefonu w zapasie. Test: https://bizhack.trygaius.com/ się ładuje.

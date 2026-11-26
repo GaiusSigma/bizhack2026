@@ -42,6 +42,9 @@ and creates its credentials by itself.
 - By hand instead of the script: `cp .env.example .env`, set `OPENROUTER_API_KEY`, then
   `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build`.
 
+How it is built, with the measured time of each stage: https://bizhack.trygaius.com/how-it-works ·
+the live demo as slides with a presenter view: https://bizhack.trygaius.com/pitch ([script](docs/DEMO.md)).
+
 ## What you will see
 
 | | |
