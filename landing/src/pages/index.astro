@@ -235,6 +235,25 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                   <span class="offer__meta"><Icon name="clock" size={14} /><span data-offer-meta>Generated in 2 min 41 s · sample data</span></span>
                   <span class="offer__saved slidein" style="animation-delay: .4s"><Icon name="check" size={14} strokeWidth={2.5} /><span data-offer-saved>Saved to CRM · alert posted to #sales on Discord (mock)</span></span>
                 </div>
+                <details class="understood" data-understood open hidden>
+                  <summary>How Gaius read your note <span class="understood__hint">check it here</span></summary>
+                  <div class="understood__grid">
+                    <div>
+                      <span class="understood__label">What it heard</span>
+                      <p class="understood__heard" data-u-heard></p>
+                    </div>
+                    <div>
+                      <span class="understood__label">Who it thinks you are</span>
+                      <ul class="understood__list" data-u-who></ul>
+                      <span class="understood__label">Concerns it found</span>
+                      <ul class="understood__list" data-u-pains></ul>
+                    </div>
+                  </div>
+                  <div data-u-reasoning-box hidden>
+                    <span class="understood__label">Its reasoning, step by step</span>
+                    <ol class="understood__steps" data-u-reasoning></ol>
+                  </div>
+                </details>
                 <div class="offer__block">
                   <span class="offer__label">What you told us worries you</span>
                   <div data-offer-concerns>
@@ -626,7 +645,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     }
   };
   const showFinalTranscript = () => {
-    tLabel.textContent = 'Transcript';
+    // A preview: n8n transcribes the recording itself; only a text corrected with the pencil is used as it is.
+    tLabel.textContent = voice.edited ? 'Your corrected note' : 'Transcript preview · tap the pencil to correct it';
     renderTranscript(voice.transcript);
     if (!voice.transcript) {
       tText.textContent = voice.recognitionError
@@ -694,7 +714,9 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       return;
     }
     const r = new SpeechRec();
-    r.lang = navigator.language || 'pl-PL';
+    // Live preview in Polish (our clients speak Polish; an English browser would turn Polish speech into gibberish).
+    // The final text is transcribed from the recording in n8n, which detects the language itself.
+    r.lang = 'pl-PL';
     r.continuous = true;
     r.interimResults = true;
     r.onresult = (e) => {
@@ -784,7 +806,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
       tBtn.hidden = true;
       tEdit.hidden = true;
       tText.hidden = false;
-      tLabel.textContent = 'Live transcript';
+      tLabel.textContent = 'Live transcript (preview)';
       tText.textContent = 'Listening…';
       startRecognition(s);
       s.timer = window.setInterval(() => {
@@ -819,6 +841,32 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     // From the deck's response headers: the tiles Offer Studio built it from, and the note for our sales team
     tiles?: string[];
     note?: string;
+    // What the workflow understood from the enquiry (X-Offer-Understood): shown so a voice note is easy to check
+    understood?: Understood;
+  };
+  type Pick = { id: string | null; label: string; why?: string };
+  type Understood = { heard?: string; source?: string; role?: Pick; segment?: Pick; product?: Pick; pains?: Pick[]; analysis?: string[]; summary?: string };
+
+  // "How Gaius read your note": what the workflow heard and which role, segment, product and concerns it picked, with why.
+  const showUnderstood = (u?: Understood) => {
+    const box = $<HTMLDetailsElement>('[data-understood]')!;
+    box.hidden = !u || !(u.heard || u.pains?.length);
+    if (box.hidden || !u) return;
+    $('[data-u-heard]')!.textContent = (u.heard || '(nothing)').replace(/^##[^\n]*\n/gm, '').trim();
+    const item = (label: string, why?: string) => {
+      const li = document.createElement('li');
+      li.append(Object.assign(document.createElement('strong'), { textContent: label }));
+      if (why) li.append(Object.assign(document.createElement('span'), { className: 'understood__why', textContent: why }));
+      return li;
+    };
+    const who = ([['Role', u.role], ['Organisation', u.segment], ['Product', u.product]] as const)
+      .filter(([, p]) => p?.id).map(([k, p]) => item(`${k}: ${TILE_WORDS[p!.id!] || p!.label}`, p!.why));
+    $('[data-u-who]')!.replaceChildren(...who);
+    const pains = (u.pains || []).map((p) => item((p.id && TILE_WORDS[p.id]) || p.label, p.why ? `“${p.why.replace(/^[\s«»“”„"']+|[\s«»“”„"']+$/g, '')}”` : undefined));
+    $('[data-u-pains]')!.replaceChildren(...(pains.length ? pains : [item('None found')]));
+    const steps = (u.analysis || []).map((t) => Object.assign(document.createElement('li'), { textContent: t.replace(/^\d+\.\s*/, '') }));
+    $('[data-u-reasoning-box]')!.hidden = !steps.length;
+    $('[data-u-reasoning]')!.replaceChildren(...steps);
   };
 
   const typedEmail = () => $<HTMLInputElement>('#email')?.value.trim() || '';
@@ -938,6 +986,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     tilesBox.hidden = !live?.tiles?.length;
     tilesBox.replaceChildren(...(live?.tiles || []).map((t) => Object.assign(document.createElement('span'), { className: 'offer__tile', textContent: tileWord(t) })));
 
+    showUnderstood(live?.understood);
+
     const note = $('[data-offer-note]')!;
     note.hidden = !live?.note;
     $('[data-offer-note-text]')!.textContent = live?.note || '';
@@ -1006,6 +1056,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
           concerns: [],
           tiles,
           note: header(res, 'x-offer-note'),
+          understood: (() => { try { return JSON.parse(header(res, 'x-offer-understood') || 'null') || undefined; } catch { return undefined; } })(),
           pdfUrl: keepDeck(blob),
           fileName: fileName || `Gaius-offer-${offerId || 'deck'}.pdf`,
           known: true,

@@ -150,6 +150,27 @@ export async function viewOffer(offerId, slideId) {
   const saveOffer = debounce(async (patch) => {
     try { await api('PATCH', `/offers/${encodeURIComponent(offer.id)}`, patch); refreshPreviewSoon(); } catch (e) { toast(e.message, true); }
   }, 450);
+  // How the request was read (n8n sends it with the offer): source, what came in, and per tile the client's words
+  // behind it, so a person can check at a glance whether the tiles fit what was said.
+  const intakePanel = () => {
+    const it = offer.data?.intake;
+    if (!it) return null;
+    const ids = offer.data?.tiles || [];
+    const ev = it.evidence || {};
+    const row = (id) => h('li', {}, chip(id),
+      ev[id] ? h('div', { class: 'intake-quote' }, `“${ev[id]}”`) : h('div', { class: 'hint' }, 'No quote: inferred from the rest of the request'));
+    const pains = ids.filter((id) => id.startsWith('pain:'));
+    return h('details', { class: 'intake', open: true },
+      h('summary', {}, `How the request was read · ${pains.length} pain${pains.length === 1 ? '' : 's'}`),
+      h('div', { class: 'hint' }, [it.source, it.transcribed_by && `voice note transcribed by ${it.transcribed_by}`].filter(Boolean).join(' · ')),
+      h('div', { class: 'intake-k' }, 'Pains found'),
+      h('ul', { class: 'intake-list' }, pains.map(row)),
+      h('div', { class: 'intake-k' }, 'Who and what'),
+      h('ul', { class: 'intake-list' }, ids.filter((id) => !id.startsWith('pain:')).map(row)),
+      it.reasons?.product ? h('div', { class: 'hint' }, `Product: ${it.reasons.product}`) : null,
+      it.summary ? h('p', { class: 'intake-summary' }, it.summary) : null,
+      it.text ? h('details', { class: 'intake-text' }, h('summary', {}, 'What came in'), h('pre', {}, it.text)) : null);
+  };
   const renderClient = () => {
     const ids = offer.data?.tiles || [];
     const sel = selectionOf(ids);
@@ -165,6 +186,7 @@ export async function viewOffer(offerId, slideId) {
         h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Contact'), sel.role ? chip(sel.role) : '–'),
         h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Segment'), sel.segment ? chip(sel.segment) : '–'),
         h('div', { class: 'cc-row' }, h('span', { class: 'cc-k' }, 'Product'), sel.product ? chip(sel.product) : '–')),
+      intakePanel(),
       !offer.coverage ? '' : h('div', { class: `coverage ${cov.missing.length ? 'partial' : 'full'}` },
         h('div', { class: 'cov-head' }, `${cov.covered.length} of ${total} pains solved`),
         h('ul', {},

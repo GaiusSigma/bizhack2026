@@ -305,3 +305,25 @@ test('evidence pack: facts about other tools, with our side worded for the offer
   assert.match(data('product:saas').us, /EEA/);
   assert.equal(ev('product:saas').tools.find((t) => t.id === 'tool-lex-legalis').facts.find((f) => f.area === 'Commentaries').their_strength, true);
 });
+
+import { cleanIntake } from '../src/content.js';
+
+test('intake: what the request said and why each tile was picked, trimmed to safe sizes', () => {
+  const tiles = ['role:board', 'segment:law-firm', 'product:on-prem', 'pain:confidentiality'];
+  const intake = cleanIntake({
+    source: 'formularz WWW', text: 'x'.repeat(9000), transcribed_by: 'ElevenLabs Scribe', summary: 'Partner, 20 lawyers.',
+    analysis: ['1. partner', 2, '3. on-prem'],
+    reasons: { role: 'decides the budget', product: 'own servers', extra: { nested: true } },
+    evidence: { 'pain:confidentiality': 'dane klientów muszą zostać u nas', 'pain:other': 'not chosen', 'role:board': '«jestem partnerem»' },
+    secret: 'dropped',
+  }, tiles);
+  assert.equal(intake.text.length, 6000);
+  assert.equal(intake.source, 'formularz WWW');
+  assert.equal(intake.transcribed_by, 'ElevenLabs Scribe');
+  assert.deepEqual(intake.analysis, ['1. partner', '3. on-prem']);
+  assert.deepEqual(intake.reasons, { role: 'decides the budget', product: 'own servers' });
+  assert.deepEqual(intake.evidence, { 'pain:confidentiality': 'dane klientów muszą zostać u nas', 'role:board': 'jestem partnerem' });
+  assert.equal(intake.secret, undefined);
+  assert.equal(cleanIntake(null, tiles), null);
+  assert.equal(cleanIntake('text', tiles), null);
+});
