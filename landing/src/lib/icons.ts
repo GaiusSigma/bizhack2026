@@ -3,6 +3,7 @@ export const icons = {
   mail: 'M3 5h18v14H3z M3 7l9 6 9-6',
   mic: 'M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z M5 10a7 7 0 0 0 14 0 M12 17v5',
   user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 1 0 8a4 4 0 1 1 0-8z',
+  linkedin: 'M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z M2 9h4v12H2z M4 2a2 2 0 1 1 0 4a2 2 0 1 1 0-4z',
   building: 'M4 21V4h10v17 M14 9h6v12 M8 8h2 M8 12h2 M8 16h2 M2 21h20',
   scale: 'M12 3v18 M7 21h10 M5 7h14 M5 7l-3 7a3 3 0 0 0 6 0z M19 7l-3 7a3 3 0 0 0 6 0z',
   briefcase: 'M3 7h18v13H3z M8 7V4h8v3 M3 13h18',
