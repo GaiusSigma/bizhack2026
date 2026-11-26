@@ -6,8 +6,8 @@
 #   n8n          http://localhost:5678   (login demo@example.com / gaius-jury-2026)
 #   Offer Studio http://localhost:8082   (password from SERVICE_PASSWORD_STUDIO, "studio" by default)
 #
-# A port already taken? Set LANDING_PORT, FIGCRAFT_PORT, N8N_PORT or STUDIO_PORT in .env.
-# (N8N_PORT also changes the webhook URL: update OFFER_WEBHOOK_URL in .env to match.)
+# A port already taken? Set LANDING_PORT, FIGCRAFT_PORT, N8N_PORT or STUDIO_PORT in .env and change the
+# addresses that contain it (SERVICE_URL_*, and OFFER_WEBHOOK_URL for n8n). See "Other ports" in README.md.
 services:
   offer-studio:
     ports:
