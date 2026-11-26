@@ -4,6 +4,7 @@
 import {
   $, CATEGORY_LABELS, UPLOAD_ACCEPT, api, autosize, debounce, download, editorUrl, go, h, kvEditor, loadAll, modal, plural, saver, slugify, state, tileLabel, toast, ui,
 } from './lib.js';
+import { LIBRARY_EDITORS, LIBRARY_TYPE_LABELS } from './views/library-fields.js';
 import { viewNewOffer } from './views/new-offer.js';
 import { viewOffer, viewOfferList } from './views/offer.js';
 import { viewScenarios } from './views/scenarios.js';
@@ -12,6 +13,7 @@ import { plainTags, solutionLinker, tileTagEditor, viewTiles } from './views/til
 const BLOCK_TYPE_LABELS = {
   solution: 'Solutions', use_case: 'Use cases', problem: 'Problems', pillar: 'Pillars', signal: 'Readiness signals', step: 'Rollout steps',
   comparison: 'Comparison', package: 'Package items', person: 'People', differentiator: 'Differentiators',
+  ...LIBRARY_TYPE_LABELS,
 };
 
 // Upload slide files (every top-level frame = one slide in the library).
@@ -137,6 +139,10 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
     const b = await api('PATCH', `/blocks/${encodeURIComponent(block.id)}`, patch);
     Object.assign(block, b);
   });
+  // Structured blocks (objections, other tools, testimonials) send every field they touched in one patch.
+  const pending = {};
+  const put = (p) => { Object.assign(pending, p); save({ ...pending }); };
+  const structured = LIBRARY_EDITORS[block.type];
   const tagList = state.meta.tags.map((t) => t.tag).filter((t) => !t.includes(':')).join(', ');
   return h('div', {},
     h('div', { class: 'bar' },
@@ -163,7 +169,7 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
     h('input', { value: block.type, list: 'types-dl', oninput: (e) => e.target.value.trim() && save({ type: e.target.value.trim() }) }),
     h('label', { class: 'f' }, 'Title'),
     h('input', { value: block.title, oninput: (e) => save({ title: e.target.value }) }),
-    block.type === 'solution' ? [
+    structured ? structured(block, put) : block.type === 'solution' ? [
       block.data?.source ? h('div', { class: 'hint source' }, `Source: ${block.data.source}`) : null,
       h('label', { class: 'f' }, 'Client problem'),
       autosize(h('textarea', { rows: 2, oninput: (e) => save({ data: { problem: e.target.value } }) }, block.data?.problem || '')),
@@ -184,7 +190,7 @@ function blockEditor(block, { onDeleted, inModal = false } = {}) {
       block.tags = next;
       save({ tags: next });
     }),
-    block.type !== 'solution' ? [
+    block.type !== 'solution' && !structured ? [
       h('label', { class: 'f' }, 'Linked solutions (what this element delivers; their tiles count for highlighting)'),
       solutionLinker(block.data?.solutions, (ids) => save({ data: { solutions: ids } })),
     ] : null,

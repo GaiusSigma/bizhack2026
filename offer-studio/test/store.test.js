@@ -562,3 +562,18 @@ test('tile content update: a description from any older seed version is replaced
     assert.equal(s.get('tiles', 'product:saas').description, seed.tiles.find((t) => t.id === 'product:saas').description, old);
   }
 });
+
+test('tile content update: untouched objections follow the seed, an objection edited in the app stays as it is', () => {
+  const s = openDb(join(mkdtempSync(join(tmpdir(), 'studio-')), 'follow.db'));
+  s.importAll(seed, 'merge');
+  s.ensureTiles(seed);
+  s.setSetting('tile_content_rev', 1);
+  // an older seed text, never edited (updated_at still the seed's), and a block a salesperson corrected
+  const seeded = seed.solutionBlocks.find((b) => b.id === 'obj-formal-security');
+  s.upsert('blocks', { ...seeded, body: 'An older answer.' });
+  s.update('blocks', 'obj-cost', { body: 'Corrected by sales.' });
+  s.ensureTiles(seed);
+  assert.equal(s.get('blocks', 'obj-formal-security').body, seeded.body);
+  assert.equal(s.get('blocks', 'obj-formal-security').updated_at, s.get('blocks', 'obj-formal-security').created_at);
+  assert.equal(s.get('blocks', 'obj-cost').body, 'Corrected by sales.');
+});

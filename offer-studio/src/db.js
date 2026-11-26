@@ -167,6 +167,7 @@ export const TABLES = {
 };
 
 export const TILE_CATEGORIES = ['role', 'segment', 'pain', 'product'];
+const SEED_FOLLOWS = ['objection', 'competitor', 'testimonial'];
 export const TILE_ID_RE = /^(role|segment|pain|product):[a-z0-9][a-z0-9-]{0,59}$/;
 // `base` is the one base deck; a role tile id is a role-specific scenario (earlier versions).
 const SCENARIO_ID_RE = /^(base(-[a-z0-9-]{1,40})?|role:[a-z0-9][a-z0-9-]{0,59})$/;
@@ -635,6 +636,7 @@ export class Store {
   }
 
   // Brings tile content from an older seed revision up to date (see seed/tiles.js tileUpgrade).
+  // (SEED_FOLLOWS: block types whose untouched seed copies are replaced by the current seed.)
   upgradeTileContent(seed, counts) {
     const prev = seed.tileUpgrade?.previousDescriptions || {};
     // The base deck replaces the per-role scenarios of earlier versions.
@@ -661,6 +663,14 @@ export class Store {
     for (const b of seed.solutionBlocks || []) {
       const cur = this.get('blocks', b.id);
       if (!cur) { this.upsert('blocks', b); counts.blocks++; continue; }
+      // Objections, facts about other tools and testimonials that nobody has edited in the app (updated_at is still the
+      // seed's) follow the seed whole, so a corrected answer reaches existing databases; an edited block stays as it is.
+      if (SEED_FOLLOWS.includes(b.type) && cur.updated_at === cur.created_at
+        && (cur.title !== b.title || cur.body !== b.body || JSON.stringify(cur.data) !== JSON.stringify(b.data) || JSON.stringify(cur.tags) !== JSON.stringify(b.tags))) {
+        this.upsert('blocks', { ...b, created_at: cur.created_at, updated_at: cur.created_at });
+        counts.tagged++;
+        continue;
+      }
       const tiles = b.tags.filter((t) => t.includes(':'));
       const tags = [...cur.tags.filter((t) => !t.includes(':')), ...tiles];
       // Sources written by this seed start with "Sales sheet"; those follow the seed, anything else was written by hand.
