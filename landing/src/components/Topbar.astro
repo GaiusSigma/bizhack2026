@@ -14,6 +14,7 @@ const to = (hash: string) => (home ? hash : `/${hash}`);
     <nav class="nav" aria-label="Main">
       <a class="nav__link" href={to('#flow')}>How it runs</a>
       <a class="nav__link" href={to('#results')}>Results</a>
+      <a class="nav__link nav__link--qr" href="#qr" title="Show a QR code to this page"><Icon name="qr" size={16} />Scan to try</a>
       <a class:list={['nav__link', { 'nav__link--current': current === 'tech' }]} href="/how-it-works" aria-current={current === 'tech' ? 'page' : undefined}>How it’s built</a>
       <a class="btn btn--ink nudge" href={to('#generator')}>Get your offer<Icon name="arrow" size={16} /></a>
     </nav>

@@ -41,7 +41,8 @@ and creates its credentials by itself.
 - Your own case: `node scripts/try-it.mjs --text-file my-call.txt` (an email, notes or a transcript; Polish or English).
   All samples: `node scripts/try-it.mjs`; the 10 graded test cases: `node scripts/try-it.mjs sample-data/eval/*.json`
   (results in [docs/EVAL.md](docs/EVAL.md)).
-- A port already taken? Set `LANDING_PORT`, `STUDIO_PORT`, `N8N_PORT` or `FIGCRAFT_PORT` in `.env` and run `start.sh` again.
+- A port already taken? See [Other ports](#other-ports) below: a port alone is not enough, the addresses that use it
+  change with it.
 - Stop: `./scripts/stop.sh` (`--wipe` deletes the data too). The demo login and ports apply to local runs only
   (`docker-compose.local.yml`); production has its own accounts.
 - By hand instead of the script: `cp .env.example .env`, set `OPENROUTER_API_KEY`, then
@@ -49,6 +50,35 @@ and creates its credentials by itself.
 
 How it is built, with the measured time of each stage: https://bizhack.trygaius.com/how-it-works ·
 the live demo as slides with a presenter view: https://bizhack.trygaius.com/pitch ([script](docs/DEMO.md)).
+
+### Other ports
+
+The defaults are 8080 (landing), 8081 (FigCraft), 8082 (Offer Studio) and 5678 (n8n). If one is taken, change the
+port **and every address in `.env` that contains it**, then run `./scripts/start.sh` again (it rebuilds what needs it):
+
+| Port variable | Also change in `.env` | What breaks if you don't |
+|---|---|---|
+| `N8N_PORT` | `SERVICE_URL_N8N` and `OFFER_WEBHOOK_URL` | "Generate my offer" on the landing still posts to `localhost:5678` (the address is built into the page); n8n shows wrong webhook URLs |
+| `FIGCRAFT_PORT` | `SERVICE_URL_FIGCRAFT` | FigCraft cannot reach its collaboration server (sharing, Online); "Open FigCraft" in Offer Studio points to the old port |
+| `LANDING_PORT` | `SERVICE_URL_LANDING` | links and previews of the landing point to the old port |
+| `STUDIO_PORT` | `SERVICE_URL_OFFER_STUDIO` (for consistency, nothing reads it locally) | – |
+
+For example, with every port moved up by 10000:
+
+```bash
+LANDING_PORT=18080
+FIGCRAFT_PORT=18081
+STUDIO_PORT=18082
+N8N_PORT=15678
+SERVICE_URL_LANDING=http://localhost:18080
+SERVICE_URL_FIGCRAFT=http://localhost:18081
+SERVICE_URL_OFFER_STUDIO=http://localhost:18082
+SERVICE_URL_N8N=http://localhost:15678
+OFFER_WEBHOOK_URL=http://localhost:15678/webhook/dd7c4b67-f5f6-40f4-9325-1ca924d5ff78
+```
+
+`start.sh` reads the ports from `.env`. When you run `try-it.mjs` yourself, tell it where n8n is:
+`N8N=http://localhost:15678 node scripts/try-it.mjs`.
 
 ## What you will see
 

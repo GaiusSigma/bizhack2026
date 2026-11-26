@@ -13,6 +13,7 @@ export const icons = {
   file: 'M14 2H6v20h12V6z M14 2v4h4 M8 13h8 M8 17h8 M8 9h2',
   video: 'M2 6h14v12H2z M16 10l6-4v12l-6-4',
   check: 'M5 12l5 5 9-10',
+  qr: 'M3 3h6v6H3z M15 3h6v6h-6z M3 15h6v6H3z M15 15h2v2h-2z M19 19h2v2h-2z M15 19h2 M19 15h2',
   pencil: 'M16 3l5 5L8 21H3v-5z M13 6l5 5',
   download: 'M12 3v12 M7 10l5 5 5-5 M4 21h16',
   calendar: 'M3 5h18v16H3z M3 10h18 M8 3v4 M16 3v4',

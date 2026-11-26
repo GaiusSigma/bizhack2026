@@ -6,7 +6,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { applyContent, contentContext, evidencePack, productName } from './content.js';
+import { applyContent, cleanIntake, contentContext, evidencePack, productName } from './content.js';
 import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
 import { correctionsFor, draftFromCorrection, lessonInput, lessonsFor, lessonUse, LESSON_KINDS } from './lessons.js';
@@ -709,11 +709,13 @@ api.post('/offers/generate', async (c) => {
     ...(b.summary ? { summary: String(b.summary).slice(0, 2000) } : {}),
     ...(Array.isArray(b.lessons) && b.lessons.length ? { lessons_used: b.lessons.map(String).slice(0, 100) } : {}),
   } : {};
+  // How the request was read (n8n sends intake): shown in the offer view.
+  const intake = cleanIntake(b.intake, tiles);
   const created = store.tx(() => {
     const o = store.insert('offers', {
       name: b.name || `${b.client} · ${label(sel.role)}`,
       template_id: store.list('templates')[0]?.id ?? null,
-      data: { client: b.client, price: String(price), tiles, scenario_id: scenario.id, ...made },
+      data: { client: b.client, price: String(price), tiles, scenario_id: scenario.id, ...made, ...(intake ? { intake } : {}) },
     }, b.client);
     slides.forEach((s, i) => store.insert('slides', { ...s, offer_id: o.id, position: i }, 'slide'));
     return o;
