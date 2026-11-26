@@ -144,7 +144,7 @@ const steps = [
         },
       },
       concerns: {
-        hint: 'Concerns the client raised on the call, each with how we answer it. 1 or 2.', min: 1, max: 2,
+        hint: 'Only concerns the client raised in their own words, each with our answer from the library. One is enough: add a second only if the client raised a second one. If they raised none, leave this field out.', min: 1, max: 2,
         hint_by_role: {
           [BOARD]: 'concerns about cost, return, risk and the decision; answers say how the pilot will show it.',
           [CHAMPION]: 'concerns about daily use and the team’s trust in the answers.',
@@ -173,11 +173,11 @@ const steps = [
       tool: { hint: 'The name of the tool the client mentioned (e.g. ChatGPT, Copilot, Lex). Write this slide ONLY if the client mentioned another tool on the call or in the email; otherwise hide it.', max: 30 },
       lead: { hint: 'One sentence: in what context the client mentioned the tool.', max: 150 },
       rows: {
-        hint: 'A comparison of the tool and our product, area by area. 4–6 rows, only differences that matter to this client.', min: 4, max: 6,
+        hint: 'A comparison of the tool and our product, area by area: 3–6 rows, only differences that matter to this client. For a tool in the library’s list of other tools, use only its facts (one row per fact, the tool side copied as it is); a fact marked as the tool’s strength only when the client raised it. For any other tool, only what the client said about it.', min: 3, max: 6,
         columns: {
-          title: { hint: 'The area, 1–3 words.', max: 25 },
-          value: { hint: 'How the mentioned tool handles it.', max: 60 },
-          value2: { hint: 'How our product handles it.', max: 60 },
+          title: { hint: 'The area, 1–3 words (the fact’s area, or the client’s words).', max: 25 },
+          value: { hint: 'The tool side: a fact from the library, copied as it is, or what the client said about the tool.', max: 60 },
+          value2: { hint: 'Our side: the fact’s answer for this product, or a solution from the library.', max: 60 },
         },
       },
     },

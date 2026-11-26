@@ -33,7 +33,7 @@ test('tiles: valid ids and categories, statuses as agreed', () => {
 test('solutions: 27 PRKW rows plus 5 from product sentences, each pinned to >= 1 pain and with a source', () => {
   const solutions = solutionBlocks.filter((b) => b.type === 'solution');
   assert.equal(solutions.length, 32);
-  assert.deepEqual([...new Set(solutionBlocks.map((b) => b.type))].sort(), ['objection', 'solution', 'testimonial']);
+  assert.deepEqual([...new Set(solutionBlocks.map((b) => b.type))].sort(), ['competitor', 'objection', 'solution', 'testimonial']);
   for (const b of solutions) {
     assert.equal(b.type, 'solution');
     assert.match(b.id, /^sol-[a-z0-9-]+$/);
@@ -238,5 +238,19 @@ test('objections: every objection from the sales sheet, each with a sourced answ
   for (const b of testimonials) {
     assert.ok(!b.body.includes(b.data.author.split(',')[0]), 'a testimonial in the deck does not name the person');
     assert.ok(b.tags.some((t) => t.startsWith('pain:')), b.id);
+  }
+});
+
+test('other tools: facts only from the sales sheet, each fitting the comparison slide (60 characters a side)', () => {
+  const tools = solutionBlocks.filter((b) => b.type === 'competitor');
+  assert.deepEqual(tools.map((b) => b.id), ['tool-copilot', 'tool-chatgpt', 'tool-lex-legalis']);
+  for (const b of tools) {
+    assert.ok(b.data.aliases.length && b.data.facts.length >= 3, b.id);
+    for (const f of b.data.facts) {
+      assert.ok(f.area.length <= 25 && f.them.length <= 60 && f.source, `${b.id}: ${f.area}`);
+      const us = f.us ? [f.us] : Object.values(f.us_by_product);
+      assert.ok(us.length && us.every((x) => x.length <= 60), `${b.id}: ${f.area} (our side)`);
+      if (f.us_by_product) assert.deepEqual(Object.keys(f.us_by_product).sort(), ['product:on-prem', 'product:saas', 'product:vault']);
+    }
   }
 });
