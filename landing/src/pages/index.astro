@@ -249,13 +249,9 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                       <ul class="understood__list" data-u-pains></ul>
                     </div>
                   </div>
-                  <div data-u-reasoning-box hidden>
-                    <span class="understood__label">Its reasoning, step by step</span>
-                    <ol class="understood__steps" data-u-reasoning></ol>
-                  </div>
                 </details>
                 <div class="offer__block">
-                  <span class="offer__label">What you told us worries you</span>
+                  <span class="offer__label" data-concerns-label>What you told us worries you</span>
                   <div data-offer-concerns>
                     <div class="offer__line slidein" style="animation-delay: .15s"><Icon name="alert" size={18} stroke="#ce5e64" />Picking a tool that does not fit and leaves the team frustrated.</div>
                     <div class="offer__line slidein" style="animation-delay: .25s"><Icon name="lock" size={18} stroke="#ce5e64" />Client documents leaking, with no one accountable.</div>
@@ -267,7 +263,7 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
                 <div class="offer__block">
                   <span class="offer__label">How Gaius answers</span>
                   <div class="offer__line slidein" style="animation-delay: .35s"><Icon name="check" size={18} stroke="#2e7d46" strokeWidth={2.5} />Every answer leads to its basis: the provision, the judgment, the quote, the case number.</div>
-                  <div class="offer__line slidein" style="animation-delay: .45s"><Icon name="check" size={18} stroke="#2e7d46" strokeWidth={2.5} />Gaius Vault runs on your own servers, with post-quantum file encryption.</div>
+                  <div class="offer__line slidein" style="animation-delay: .45s"><Icon name="check" size={18} stroke="#2e7d46" strokeWidth={2.5} /><span data-offer="product-line"></span></div>
                   <div class="offer__line slidein" style="animation-delay: .55s"><Icon name="check" size={18} stroke="#2e7d46" strokeWidth={2.5} /><span data-offer="answer"></span></div>
                 </div>
                 <div class="offer__foot">
@@ -845,14 +841,19 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     understood?: Understood;
   };
   type Pick = { id: string | null; label: string; why?: string };
-  type Understood = { heard?: string; source?: string; role?: Pick; segment?: Pick; product?: Pick; pains?: Pick[]; analysis?: string[]; summary?: string };
+  type Understood = { heard?: string; source?: string; role?: Pick; segment?: Pick; product?: Pick; pains?: Pick[]; summary?: string };
+
+  // The text the workflow worked from, without its section headings ("## Transkrypcja…").
+  const heardText = (u?: Understood) => String(u?.heard || '').replace(/^##[^\n]*(\n|$)/gm, '').trim();
+  // The client's own words behind a concern, without the quote marks the model adds; empty when it had none.
+  const saidWords = (p: Pick) => String(p.why || '').replace(/^[\s«»“”„"']+|[\s«»“”„"']+$/g, '').trim();
 
   // "How Gaius read your note": what the workflow heard and which role, segment, product and concerns it picked, with why.
   const showUnderstood = (u?: Understood) => {
     const box = $<HTMLDetailsElement>('[data-understood]')!;
     box.hidden = !u || !(u.heard || u.pains?.length);
     if (box.hidden || !u) return;
-    $('[data-u-heard]')!.textContent = (u.heard || '(nothing)').replace(/^##[^\n]*\n/gm, '').trim();
+    $('[data-u-heard]')!.textContent = heardText(u) || '(nothing came through: the note was empty or silent)';
     const item = (label: string, why?: string) => {
       const li = document.createElement('li');
       li.append(Object.assign(document.createElement('strong'), { textContent: label }));
@@ -862,11 +863,8 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     const who = ([['Role', u.role], ['Organisation', u.segment], ['Product', u.product]] as const)
       .filter(([, p]) => p?.id).map(([k, p]) => item(`${k}: ${TILE_WORDS[p!.id!] || p!.label}`, p!.why));
     $('[data-u-who]')!.replaceChildren(...who);
-    const pains = (u.pains || []).map((p) => item((p.id && TILE_WORDS[p.id]) || p.label, p.why ? `“${p.why.replace(/^[\s«»“”„"']+|[\s«»“”„"']+$/g, '')}”` : undefined));
+    const pains = (u.pains || []).map((p) => item((p.id && TILE_WORDS[p.id]) || p.label, saidWords(p) ? `“${saidWords(p)}”` : 'Not from your words: a default when the note gives nothing to go on.'));
     $('[data-u-pains]')!.replaceChildren(...(pains.length ? pains : [item('None found')]));
-    const steps = (u.analysis || []).map((t) => Object.assign(document.createElement('li'), { textContent: t.replace(/^\d+\.\s*/, '') }));
-    $('[data-u-reasoning-box]')!.hidden = !steps.length;
-    $('[data-u-reasoning]')!.replaceChildren(...steps);
   };
 
   const typedEmail = () => $<HTMLInputElement>('#email')?.value.trim() || '';
@@ -966,12 +964,38 @@ const delay = (i: number, step: number, base = 0) => `${(base + i * step).toFixe
     const fallback = sampleResult();
     const roleId = live ? live.role : fallback.roleId;
     const r = roles.find((x) => x.id === roleId) ?? roles[0];
-    const values: Record<string, string> = { who: live?.who || fallback.who, headline: r.headline, answer: r.answer, attach: r.attach };
+    // What we promise depends on the product in the offer: SaaS runs in our cloud, Vault in a private environment,
+    // on-premise on the client's own servers. The sample offer (no live result) shows the on-premise promise.
+    const product = live?.tiles?.find((t) => t.startsWith('product:')) || 'product:on-prem';
+    const PRODUCT_LINE: Record<string, string> = {
+      'product:saas': 'Gaius runs in the European Economic Area: your files are encrypted, you hold the keys, and documents are never used to train models.',
+      'product:vault': 'Gaius Vault is a private environment: documents are never used to train models, with access set per team and matter.',
+      'product:on-prem': 'Gaius Vault runs on your own servers, on local models, with post-quantum file encryption.',
+    };
+    const values: Record<string, string> = { who: live?.who || fallback.who, headline: r.headline, answer: r.answer, attach: r.attach, 'product-line': PRODUCT_LINE[product] || PRODUCT_LINE['product:on-prem'] };
     $$('[data-offer]').forEach((el) => (el.textContent = values[el.dataset.offer!] ?? ''));
 
     const concernsBox = $('[data-offer-concerns]');
     const tpl = $<HTMLTemplateElement>('[data-concern-tpl]');
-    const concerns = live?.concerns?.length ? live.concerns : painLines(live?.tiles);
+    // Only concerns backed by the client's words are shown as "what you told us"; a default concern (n8n picks one when
+    // the enquiry gives nothing) gets an honest heading, and an empty voice note says so instead.
+    const u = live?.understood;
+    const painsOf = (ids: string[]) => ids.map((id) => painLines([id])[0] || TILE_WORDS[id] || id);
+    let concernsLabel = 'What you told us worries you';
+    let concerns: string[] = live?.concerns?.length ? live.concerns : painLines(live?.tiles);
+    if (live && u) {
+      const said = (u.pains || []).filter((p) => p.id && saidWords(p)).map((p) => p.id!);
+      if (state.mode === 'voice' && !heardText(u)) {
+        concernsLabel = 'We did not hear your note';
+        concerns = ['Nothing came through in the recording. Record it again a little closer to the microphone, or type your note with the pencil.'];
+      } else if (said.length) {
+        concerns = painsOf(said);
+      } else {
+        concernsLabel = 'Concerns teams like yours often raise';
+        concerns = painsOf((live.tiles || []).filter((t) => t.startsWith('pain:')));
+      }
+    }
+    $('[data-concerns-label]')!.textContent = concernsLabel;
     if (concerns.length && concernsBox && tpl) {
       const lines = concerns.map((c, i) => {
         const line = tpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
