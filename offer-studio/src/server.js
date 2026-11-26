@@ -6,7 +6,6 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { analyzeLead, pickComponents } from './ai.js';
 import { applyContent, contentContext, evidencePack, productName } from './content.js';
 import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
@@ -353,7 +352,8 @@ async function preview(offerId) {
 }
 
 // Card-picking context for a slide: sets with #pick slots, set rules and card descriptions from the database.
-// Claude (POST /slides/:id/pick) and any external agent (GET …/pick-context) get the same JSON.
+// For an AI agent in n8n (GET …/pick-context); the choice goes back with PATCH /slides/:id {picks}.
+// Offer Studio itself calls no model: all AI runs in n8n.
 function pickContext(slideId) {
   const slide = store.mustGet('slides', slideId);
   const offer = store.mustGet('offers', slide.offer_id);
@@ -901,20 +901,8 @@ api.patch('/component-sets/:id', async (c) => {
   return c.json(row);
 });
 
-// card picking for a slide: context for any agent, or Claude directly
+// card picking for a slide: the context for an agent in n8n
 api.get('/slides/:id/pick-context', (c) => c.json(pickContext(c.req.param('id'))));
-api.post('/slides/:id/pick', async (c) => {
-  const b = c.req.header('content-type')?.includes('json') ? await body(c) : {};
-  const ctx = pickContext(c.req.param('id'));
-  const result = await pickComponents({ offer: ctx.offer, slide: ctx.slide, brief: b.brief, sets: ctx.sets });
-  let slide = store.mustGet('slides', ctx.slide.id);
-  if (b.apply !== false) {
-    slide = store.update('slides', slide.id, { picks: { ...(slide.picks || {}), ...result.picks }, locked: true });
-    store.touch('offers', slide.offer_id);
-    changed('slides', slide.id, { offer_id: slide.offer_id });
-  }
-  return c.json({ applied: b.apply !== false, ...result, slide });
-});
 
 // tiles
 api.get('/tiles', (c) => c.json(store.list('tiles')));
@@ -998,18 +986,6 @@ api.get('/offers/:id/corrections', (c) => {
     fields: found.fields.map((f) => ({ ...f, draft: draftFromCorrection(offer, f, { tileLabel: label }) })),
     lessons_used: offer.data?.lessons_used || [],
   });
-});
-
-// lead analysis: n8n sends text (email, transcript) and gets back the segment, decision-maker role and concerns
-api.post('/leads/analyze', async (c) => {
-  const b = await body(c);
-  const text = String(b.text || '').trim();
-  if (!text) throw new HttpError(400, 'Missing "text": nothing to analyze');
-  if (text.length > 60000) throw new HttpError(413, 'Text is too long (max 60,000 characters)');
-  const active = store.list('tiles').filter((t) => t.status !== 'soon');
-  const pick = (category) => active.filter((t) => t.category === category).map(({ id, label, description }) => ({ id, label, description }));
-  const catalog = { pains: pick('pain'), products: pick('product') };
-  return c.json(await analyzeLead({ text, hints: b.hints && typeof b.hints === 'object' ? b.hints : {}, catalog }));
 });
 
 // export / import of the whole database

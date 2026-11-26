@@ -42,9 +42,8 @@ const TAGS = [
   { name: 'Slides', description: 'Offer slides' },
   { name: 'Knowledge blocks', description: 'Use cases, problems, arguments and other blocks' },
   { name: 'Templates', description: 'Slide library: FigCraft files, every top-level frame = a slide' },
-  { name: 'Components', description: 'Swappable cards from @… sets (#pick:… slots), their descriptions for the AI and card picking by Claude' },
+  { name: 'Components', description: 'Swappable cards from @… sets (#pick:… slots) and their descriptions for an AI agent in n8n' },
   { name: 'Lessons', description: 'Rules the sales team teaches the model (choosing tiles, writing slides), and the corrections they come from' },
-  { name: 'Leads', description: 'AI lead analysis for the n8n offer workflow' },
   { name: 'Database', description: 'Export and import of the whole database' },
   { name: 'System', description: 'API description, metadata, events' },
 ];
@@ -511,22 +510,9 @@ export const DOCS = {
   },
   'GET /api/slides/:id/pick-context': {
     tag: 'Components', operationId: 'getPickContext', summary: 'Card-picking context',
-    description: 'Offer, slide, slot count, set rules and card descriptions: everything an agent needs to pick cards',
+    description: 'Offer, slide, slot count, set rules and card descriptions: everything an agent (e.g. in n8n) needs to pick cards. Send the choice with PATCH /api/slides/:id {"picks": {"<set>": [{"component": "…"}]}}',
     parameters: [idParam('slide')],
     responses: { 200: json(anyObject) },
-  },
-  'POST /api/slides/:id/pick': {
-    tag: 'Components', operationId: 'pickComponents', summary: 'Pick cards with AI',
-    description: 'Claude picks cards for the #pick slots from the card descriptions in the database, the set rules, the offer variables and the brief. Requires ANTHROPIC_API_KEY (otherwise 503)',
-    parameters: [idParam('slide')],
-    requestBody: {
-      required: false,
-      content: { 'application/json': { schema: { type: 'object', properties: {
-        brief: { type: 'string', description: 'Context from the salesperson, e.g. "bank, afraid of the cloud"' },
-        apply: { type: 'boolean', description: 'false = suggestion only, not saved to the slide', default: true },
-      } } } },
-    },
-    responses: { 200: json(anyObject, '{applied, picks, note, warnings, slide}') },
   },
 
   // ---------------------------------------------------------------- lessons
@@ -569,16 +555,6 @@ export const DOCS = {
     parameters: [idParam('offer', '/api/offers')],
     responses: { 200: json(anyObject) },
   },
-  'POST /api/leads/analyze': {
-    tag: 'Leads', operationId: 'analyzeLead', summary: 'Analyze a lead (AI)',
-    description: 'Claude reads an email, call transcript or meeting note and returns the segment (law-firm, in-house, public-sector, other), the decision-maker role (champion, board), the client, their concerns, and the pain and product tiles that fit (ready for POST /api/offers/generate). Fields it cannot establish are null. Needs ANTHROPIC_API_KEY (503 otherwise)',
-    requestBody: body({
-      text: { type: 'string', description: 'Text from the client: email, call transcript, meeting note' },
-      hints: { type: 'object', description: 'What we already know, e.g. {"segment": "law-firm"} picked on the website' },
-    }, ['text']),
-    responses: { 200: json(anyObject, '{segment, role, product, pains, client, person, country, concerns, summary, model}') },
-  },
-
   // ---------------------------------------------------------------- database
   'GET /api/export': {
     tag: 'Database', operationId: 'exportAll', summary: 'Export the whole database',

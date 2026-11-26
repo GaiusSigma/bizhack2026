@@ -209,10 +209,9 @@ regular and a green (highlighted) version, plus a "3 mo." stat card.
    There you describe what the card shows, **when to pick it**, when not to, its topic (variants of the same
    argument share a topic) and its variant. Rules for the whole set (e.g. "6 cards, exactly one highlighted")
    live in `component_sets`. Replacing the file refreshes the cards' text and fields but leaves descriptions alone.
-5. In the slide editor you pick cards by hand (thumbnails + "when") or click **Pick cards (AI)**
-   with a short brief. Claude (`STUDIO_AI_MODEL`, default `claude-opus-5-5`) reads the descriptions from the
-   database, the set rules and the offer variables, picks the cards, orders them and explains each choice.
-   The same context for another agent: `GET /api/slides/:id/pick-context`.
+5. In the slide editor you pick cards by hand (thumbnails + "when"). To let a model pick them, do it in n8n:
+   `GET /api/slides/:id/pick-context` gives the descriptions, the set rules and the offer variables, and the
+   choice goes back with `PATCH /api/slides/:id` (`picks`). Offer Studio itself calls no model: all AI runs in n8n.
 
 `seed/build-components.mjs` shows how the starter set was made (from the cards on the "why" slide).
 On start, a database without components gets the new Gaius file, the descriptions of the 19 cards and
@@ -253,8 +252,6 @@ and the Figtree font (`fonts/`, OFL licence). In Coolify, set a domain for `offe
 | `FIGCRAFT_CLI` | `/usr/local/bin/figcraft-cli` | Path to figcraft-cli |
 | `STUDIO_DB` | `/data/studio.db` | Database file (`offer-studio-data` volume) |
 | `STUDIO_SEED` | – | `false` disables starter data on an empty database |
-| `ANTHROPIC_API_KEY` | set by hand | AI card picking; everything else works without a key |
-| `STUDIO_AI_MODEL` | `claude-opus-5-5` | Model used for card picking |
 
 Without `STUDIO_PASSWORD` and `STUDIO_API_TOKEN` the app is open. That is only meant for local use.
 

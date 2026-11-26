@@ -161,62 +161,6 @@ test('migration from v2: slides get picks, component tables are added', () => {
   assert.equal(openDb(path).migratedFrom, 0);
 });
 
-test('AI: schema with card ids and fields, response clean-up (mock client)', async () => {
-  const s = fresh();
-  s.syncComponents(describeComponents(parseTemplate(TEMPLATE_FILE)).map((c) => ({ ...c, source: TEMPLATE.id })));
-  const components = s.listComponents({ set: 'why' });
-  let request;
-  const api = { beta: { messages: { parse: async (params) => {
-    request = params;
-    return {
-      stop_reason: 'end_turn', model: params.model, usage: {},
-      parsed_output: { note: 'bank', sets: [{ set: 'why', picks: [
-        { component: 'why/on-premise-highlight', reason: 'regulated', title: 'On-premise at the bank', body: null, stat: null },
-        { component: 'why/on-premise-highlight', reason: 'duplicate', title: null, body: null, stat: null },
-        ...['private-legal-ai', 'sourced-answers', 'rollout-routine', 'safe-start', 'one-service', 'no-lock-in']
-          .map((k) => ({ component: `why/${k}`, reason: 'x', title: null, body: '', stat: null })),
-      ] }] },
-    };
-  } } } };
-  const { pickComponents } = await import('../src/ai.js');
-  const r = await pickComponents({ api, offer: { name: 'O', data: { client: 'Bank' } }, slide: { frame: 'why', data: {} }, brief: 'bank', sets: [{ set: 'why', slots: 6, rules: 'r', components }] });
-  const schema = request.output_config.format.schema;
-  assert.ok(JSON.stringify(schema).includes('why/pilot-3-months'), 'card ids in the schema');
-  assert.ok(JSON.stringify(schema).includes('"stat"'), 'card fields in the schema');
-  assert.match(request.messages[0].content, /Bank/);
-  assert.equal(r.picks.why.length, 6);
-  assert.deepEqual(r.picks.why[0], { component: 'why/on-premise-highlight', reason: 'regulated', data: { title: 'On-premise at the bank' } });
-  assert.equal(r.picks.why.filter((p) => p.component === 'why/on-premise-highlight').length, 1);
-  assert.ok(r.warnings.some((w) => /extras dropped/.test(w)));
-});
-
-test('AI: lead analysis passes text and hints, trims concerns to 3 (mock client)', async () => {
-  let request;
-  const api = { beta: { messages: { parse: async (params) => {
-    request = params;
-    return {
-      stop_reason: 'end_turn', model: params.model, usage: {},
-      parsed_output: { segment: 'law-firm', role: null, product: null, pains: ['pain:a', 'pain:a', 'pain:b'], client: 'Firm X', person: null, country: 'PL', concerns: ['a', 'b', 'c', 'd'], summary: 's' },
-    };
-  } } } };
-  const { analyzeLead } = await import('../src/ai.js');
-  const catalog = { pains: [{ id: 'pain:a', label: 'A' }, { id: 'pain:b', label: 'B' }], products: [{ id: 'product:vault', label: 'Vault' }] };
-  const r = await analyzeLead({ api, text: 'Partner at Firm X', hints: { segment: 'law-firm' }, catalog });
-  const schema = JSON.stringify(request.output_config.format.schema);
-  for (const v of ['law-firm', 'in-house', 'public-sector', 'champion', 'board', 'pain:a', 'product:vault']) assert.ok(schema.includes(v), v);
-  assert.match(request.messages[0].content, /Partner at Firm X/);
-  assert.match(request.messages[0].content, /"segment":"law-firm"/);
-  assert.equal(r.role, null);
-  assert.deepEqual(r.concerns, ['a', 'b', 'c']);
-  assert.deepEqual(r.pains, ['pain:a', 'pain:b']);
-});
-
-test('AI: lead analysis turns a refusal into a 502', async () => {
-  const api = { beta: { messages: { parse: async () => ({ stop_reason: 'refusal', parsed_output: null }) } } };
-  const { analyzeLead } = await import('../src/ai.js');
-  await assert.rejects(analyzeLead({ api, text: 'x' }), (e) => e.status === 502);
-});
-
 // Render with the real figcraft-cli if available (locally from the FigCraft install, in Docker from the image).
 const cli = process.env.FIGCRAFT_CLI || (process.platform === 'win32' ? 'C:\\Program Files\\ArtCraft\\FigCraft\\figcraft-cli.exe' : 'figcraft-cli');
 let hasCli = true;

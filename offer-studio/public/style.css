@@ -147,8 +147,6 @@ button.comp-card:disabled { opacity: .45; cursor: default; box-shadow: none; bor
 .pick-row .acts { grid-column: 2 / -1; display: flex; gap: 2px; justify-content: flex-end; }
 .pick-row .n { color: var(--muted); text-align: right; }
 .pick-row .why { color: var(--muted); font-size: 12px; }
-.ai-box { margin-top: 10px; padding: 10px; border: 1px dashed var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
-.ai-note { font-size: 12px; background: #f4f8f3; border-radius: 6px; padding: 6px 8px; }
 #modal .dlg:has(.comp-grid) { width: min(1150px, calc(100vw - 32px)); }
 
 /* ---------------------------------------------------------------- tiles and offers from tiles */

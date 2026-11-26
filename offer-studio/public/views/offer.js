@@ -272,7 +272,7 @@ export async function viewOffer(offerId, slideId) {
           h('button', { class: 'btn sm', onclick: () => blockSwap(slide, i, type) }, 'Swap'),
           h('button', { class: 'icon', title: 'Remove from the slide', onclick: () => patchSlide(slide.id, { block_ids: slide.block_ids.filter((x) => x !== id) }) }, '×'))),
         h('button', { class: 'btn sm', onclick: () => blockSwap(slide, null, type) }, '+ add a block')) : null,
-      Object.keys(slide.picks || {}).length ? h('div', { class: 'hint' }, 'Change the cards on this slide in the advanced editor (manual picks or "Pick cards (AI)").') : null,
+      Object.keys(slide.picks || {}).length ? h('div', { class: 'hint' }, 'Change the cards on this slide in the advanced editor.') : null,
       h('div', { class: 'se-actions' },
         h('button', { class: 'btn sm', onclick: () => patchSlide(slide.id, { hidden: !slide.hidden }) }, slide.hidden ? 'Show in the offer' : 'Hide from the offer')));
   };
