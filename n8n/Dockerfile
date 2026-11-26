@@ -22,5 +22,8 @@ RUN npm run build \
 FROM n8nio/n8n:${N8N_VERSION}
 COPY --from=nodes /out /opt/n8n-custom/node_modules/n8n-nodes-offer-studio
 COPY --chmod=0755 entrypoint.sh /offer-studio-entrypoint.sh
+# Offer workflows from git, imported and published on every start (sync-workflows.mjs).
+COPY workflows/ /opt/offer-workflows/
+COPY sync-workflows.mjs /opt/offer-sync-workflows.mjs
 ENV N8N_CUSTOM_EXTENSIONS=/opt/n8n-custom
 ENTRYPOINT ["tini", "--", "/offer-studio-entrypoint.sh"]

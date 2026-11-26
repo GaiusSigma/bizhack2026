@@ -150,7 +150,13 @@ Form / Website form / Fireflies transcript / Gmail
   → Kontekst treści → AI: treść slajdów → Sprawdź treść ⇄ Samopoprawka treści (up to 3 tries)
   → Zapisz treść                 PUT /api/offers/:id/content
   → Pobierz PDF → Podsumowanie → Discord
+                               → Zgłoszenie z landingu? → PDF dla landingu (Respond to Webhook)
 ```
+
+**Website form** answers only when the deck is ready (`responseMode: responseNode`): **PDF dla landingu** sends
+the same PDF that goes to Discord (`application/pdf`, headers `X-Offer-Id`, `X-Offer-Name` URL-encoded,
+`X-Offer-Tiles`). The landing turns it into its "Download PDF" button. The Form, Fireflies and Gmail triggers
+skip that node.
 
 The model writes the copy in English and only from the enquiry; a field it has nothing for keeps the scenario's
 default. **Sprawdź treść** applies the same rules as Offer Studio (fields, character limits, item counts) and sends
