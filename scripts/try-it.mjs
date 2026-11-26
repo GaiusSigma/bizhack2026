@@ -42,7 +42,16 @@ for (const job of jobs) {
   const url = job.name.startsWith('fireflies') ? FIREFLIES : FORM;
   const t0 = performance.now();
   try {
-    const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(job.body), signal: AbortSignal.timeout(300_000) });
+    // Right after `docker compose up` n8n answers before its webhooks are registered (404): wait up to 90 s.
+    let res;
+    for (let waited = 0; ; waited += 5) {
+      res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(job.body), signal: AbortSignal.timeout(300_000) }).catch((e) => e);
+      const notYet = res instanceof Error || res.status === 404 || res.status === 502;
+      if (!notYet || waited >= 90) break;
+      if (waited === 0) console.log(`… n8n is not ready yet (${res instanceof Error ? res.cause?.code || res.message : res.status}), waiting up to 90 s`);
+      await new Promise((ok) => setTimeout(ok, 5000));
+    }
+    if (res instanceof Error) throw res;
     const s = ((performance.now() - t0) / 1000).toFixed(1);
     if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
     if ((res.headers.get('content-type') || '').includes('application/pdf')) {

@@ -22,7 +22,7 @@ node scripts/try-it.mjs       # sends every file in sample-data/ and saves the d
 Windows (PowerShell): `Copy-Item .env.example .env` instead of `cp`.
 
 - The offer workflow imports and publishes itself when n8n starts (no clicks, no owner account needed for the
-  webhooks). Give n8n about a minute after `up`: `docker compose logs n8n | grep offer-workflows` says when it is published.
+  webhooks). n8n needs about a minute after `up`; `try-it.mjs` waits for it by itself.
 - Landing http://localhost:8080 ("Generate my offer" posts to your local n8n via `OFFER_WEBHOOK_URL`), n8n http://localhost:5678,
   Offer Studio http://localhost:8082 (password `studio`), FigCraft http://localhost:8081.
 - Your own case: `node scripts/try-it.mjs --text-file my-call.txt` (an email, notes or a transcript; Polish or English),
