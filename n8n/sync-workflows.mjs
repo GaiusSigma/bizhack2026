@@ -6,13 +6,33 @@
 // The workflow in git is the source of truth: edits made in the n8n editor are replaced on the next start.
 // Turn it off with N8N_SYNC_WORKFLOWS=false. A failure is logged and never stops n8n from starting.
 import { execFileSync, spawn } from 'node:child_process';
-import { readdirSync, readFileSync, rmSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DIR = process.env.OFFER_WORKFLOWS_DIR || '/opt/offer-workflows';
 const n8n = (...args) => execFileSync('n8n', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 const log = (msg) => console.log(`offer-workflows: ${msg}`);
 const paths = (wf) => (wf.nodes || []).filter((n) => /webhook/i.test(n.type || '') && n.parameters?.path).map((n) => String(n.parameters.path));
+
+// "ElevenLabs" credential (header xi-api-key) used by the workflow to transcribe voice notes the browser could not.
+// With ELEVENLABS_API_KEY it is set from the env on every start. Without it, it is only created (empty) when missing:
+// n8n refuses to publish a workflow whose node points at a credential that does not exist, and a key entered in
+// the editor stays. With an empty key the transcription step fails softly and the offer is built without the text.
+const credentialExists = () => {
+  try { n8n('export:credentials', '--id=elevenLabsKey', '--output=/tmp/offer-elevenlabs-check.json'); return true; } catch { return false; } finally { rmSync('/tmp/offer-elevenlabs-check.json', { force: true }); }
+};
+if (process.env.ELEVENLABS_API_KEY || !credentialExists()) {
+  const file = '/tmp/offer-elevenlabs-credential.json';
+  try {
+    writeFileSync(file, JSON.stringify([{ id: 'elevenLabsKey', name: 'ElevenLabs', type: 'httpHeaderAuth', data: { name: 'xi-api-key', value: process.env.ELEVENLABS_API_KEY || '' } }]), { mode: 0o600 });
+    n8n('import:credentials', `--input=${file}`);
+    log(process.env.ELEVENLABS_API_KEY ? 'ElevenLabs credential set from ELEVENLABS_API_KEY' : 'ElevenLabs credential created empty (set ELEVENLABS_API_KEY to transcribe voice notes in n8n)');
+  } catch (e) {
+    log(`could not set the ElevenLabs credential: ${String(e.stderr || e.message).trim().split('\n').pop()}`);
+  } finally {
+    rmSync(file, { force: true });
+  }
+}
 
 try {
   const files = readdirSync(DIR).filter((f) => f.endsWith('.json'));
