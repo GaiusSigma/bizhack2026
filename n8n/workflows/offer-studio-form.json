@@ -1,0 +1,127 @@
+{
+  "id": "offerStudioForm",
+  "name": "Formularz n8n → oferta (Offer Studio)",
+  "nodes": [
+    {
+      "id": "f6b84604-22fe-4017-b0b9-2518851da913",
+      "name": "Form",
+      "webhookId": "89fcc9e5-4fc9-4377-8af7-422dd9a92eac",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "formTitle": "Zapytanie o ofertę Gaius Vault",
+        "formDescription": "Opisz krótko, czym zajmuje się zespół i co chcesz usprawnić. Przygotujemy ofertę dopasowaną do Twoich potrzeb.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Firma",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Imię i nazwisko"
+            },
+            {
+              "fieldLabel": "E-mail",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Segment",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Kancelaria"
+                  },
+                  {
+                    "option": "Dział prawny (in-house)"
+                  },
+                  {
+                    "option": "Administracja publiczna"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Twoja rola",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Prawnik / lider zespołu"
+                  },
+                  {
+                    "option": "Zarząd / partner zarządzający"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Opis potrzeb",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Cena",
+              "placeholder": "np. 12 000 zł netto / mies. (opcjonalnie, dla handlowca)"
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Dziękujemy! Oferta jest w przygotowaniu."
+            }
+          }
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/dd7c4b67-f5f6-40f4-9325-1ca924d5ff78",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({}, $json, { source: 'n8n-form' })) }}",
+        "options": {
+          "timeout": 150000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "3d7334fb-87c2-43a4-8885-d2a5036caa83",
+      "name": "Wyślij do workflow oferty",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Form": {
+      "main": [
+        [
+          {
+            "node": "Wyślij do workflow oferty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
