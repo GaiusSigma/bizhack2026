@@ -92,7 +92,7 @@ Po zakończeniu: **Open the deck** w karcie Discorda (jedno spojrzenie, bez prze
 Karta: landing → sekcja **Measured result**.
 
 > „Te liczby nie są z prezentacji, tylko z wykonań produkcyjnego workflow, a skrypt `measure.mjs` w repo liczy je
-> od nowa. Mediana 12 sekund zamiast około 3 godzin. Koszt AI 0,2 centa za ofertę. N decków, zero błędów.
+> od nowa. Mediana 12 sekund zamiast około 3 godzin. Koszt AI ok. 0,3 centa za ofertę. N decków, zero błędów.
 > A tu zielona linia: wasze uruchomienie sprzed minuty, X sekund.”
 
 Narrator podaje źródło baseline'u: dzisiejsza praca zespołu sprzedaży Gaius-Lex (listopad 2026).
@@ -117,5 +117,5 @@ zamiast trzech godzin.”
 | Skąd 3 godziny? | Z obecnej pracy zespołu sprzedaży Gaius-Lex: rozmowa → notatki → wybór slajdów → przepisanie treści → PDF. |
 | Co, jak zgłoszenie jest puste? | Dostaje ofertę domyślną (segment z domeny e-maila, rola champion), a notatka dla handlowca mówi, co dopytać. Pokazane w `sample-data/landing-role-only.json`. |
 | Po polsku? | Wejście po polsku albo angielsku, deck po angielsku (taki jest szablon 2026). Notatka dla handlowca po polsku. |
-| Ile to kosztuje w skali? | ~14 tys. tokenów na deck, ok. $0,002. 100 ofert miesięcznie to ok. 20 centów. |
+| Ile to kosztuje w skali? | ~14 tys. tokenów na deck, ok. $0,003. 100 ofert miesięcznie to ok. 30 centów. |
 | Co jest zamockowane? | Zapis do CRM i alert na Discordzie. Wszystko inne jest na produkcji. |

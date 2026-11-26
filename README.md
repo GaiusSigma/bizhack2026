@@ -5,7 +5,7 @@ Gaius-Lex deck (PDF) with copy written from what the client said, and the sales 
 
 - **Live:** landing https://bizhack.trygaius.com · n8n https://n8n.bizhack.trygaius.com · Offer Studio https://studio.bizhack.trygaius.com
 - **Measured** on the production workflow (`node scripts/measure.mjs`): median 12 s per deck instead of ~3 hours by hand,
-  about $0.002 of AI per deck, 0 failed runs. Numbers on the landing come from `landing/src/lib/measured.json`.
+  about $0.003 of AI per deck, 0 failed runs of 49. Numbers on the landing come from `landing/src/lib/measured.json`.
 - **What is mocked:** the CRM write and the Discord alert. The offer, the AI copy and the PDF are real.
 
 ## Try it
