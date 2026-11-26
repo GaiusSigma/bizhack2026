@@ -7,6 +7,7 @@ import {
 import { LIBRARY_EDITORS, LIBRARY_TYPE_LABELS } from './views/library-fields.js';
 import { viewNewOffer } from './views/new-offer.js';
 import { viewOffer, viewOfferList } from './views/offer.js';
+import { viewLessons } from './views/lessons.js';
 import { viewScenarios } from './views/scenarios.js';
 import { plainTags, solutionLinker, tileTagEditor, viewTiles } from './views/tiles.js';
 
@@ -92,6 +93,7 @@ const VIEWS = {
   'offer-advanced': (...a) => viewOffers(...a),
   tiles: (...a) => viewTiles(...a),
   scenarios: (...a) => viewScenarios(...a),
+  lessons: () => viewLessons(),
 };
 
 function route() {
@@ -546,7 +548,7 @@ const compChips = (c) => [
 function picksBox(slide, set, slots, save) {
   const box = h('div', { class: 'box' });
   const meta = state.componentSets.find((x) => x.id === set);
-  const render = (aiResult) => {
+  const render = () => {
     const byId = Object.fromEntries(state.components.map((c) => [c.id, c]));
     const picks = slide.picks?.[set] || [];
     const setPicks = (next) => {
@@ -555,22 +557,6 @@ function picksBox(slide, set, slots, save) {
       render();
     };
     const swap = (i, j) => { const n = [...picks]; [n[i], n[j]] = [n[j], n[i]]; setPicks(n); };
-    const brief = autosize(h('textarea', { rows: 2, placeholder: 'Brief for the AI, e.g. "bank, wary of the cloud, the board decides". The AI already sees the offer variables (client etc.).' }, box.dataset.brief || ''));
-    brief.oninput = () => (box.dataset.brief = brief.value);
-    const aiBtn = h('button', { class: 'btn primary sm', onclick: async () => {
-      aiBtn.disabled = true;
-      aiBtn.textContent = 'AI is picking cards…';
-      try {
-        const r = await api('POST', `/slides/${encodeURIComponent(slide.id)}/pick`, { brief: brief.value });
-        slide.picks = r.slide.picks;
-        toast(`AI picked ${plural(r.picks[set]?.length ?? 0, 'card')}`);
-        render(r);
-      } catch (e) {
-        toast(e.message, true);
-        aiBtn.disabled = false;
-        aiBtn.textContent = 'Pick cards (AI)';
-      }
-    } }, 'Pick cards (AI)');
     box.replaceChildren(...[
       h('h3', {}, `Cards from set @${set}: ${picks.length} / ${slots} `,
         h('button', { class: 'btn sm', onclick: async () => {
@@ -607,12 +593,6 @@ function picksBox(slide, set, slots, save) {
             h('button', { class: 'icon', onclick: () => i < picks.length - 1 && swap(i, i + 1) }, '↓'),
             h('button', { class: 'icon', title: 'Remove from slide', onclick: () => setPicks(picks.filter((_, j) => j !== i)) }, '×')));
       })),
-      h('div', { class: 'ai-box' },
-        brief,
-        h('div', { class: 'bar' }, aiBtn,
-          h('span', { class: 'hint' }, 'The AI reads the card descriptions from the database (Components tab), the set rules and the offer variables.')),
-        aiResult ? h('div', { class: 'ai-note' },
-          aiResult.note, aiResult.warnings?.length ? h('div', { class: 'hint' }, `Notes: ${aiResult.warnings.join('; ')}`) : null) : null),
     ].filter(Boolean));
   };
   render();
@@ -666,7 +646,7 @@ function viewComponents(focusSet) {
         h('li', {}, 'In FigCraft (or Figma), draw a top-level frame named ', h('code', {}, '@set-name'), ', e.g. ', h('code', {}, '@why'), '. Every frame inside it is one ready-made card with its own icon, colour and layout. The card name is its key.'),
         h('li', {}, 'On a slide, name the card placeholders ', h('code', {}, '#pick:set-name'), ' (e.g. 6 slots in a grid). With nothing picked, the slide shows what was drawn.'),
         h('li', {}, 'Name the card texts that may be changed ', h('code', {}, '{{title}}'), ', ', h('code', {}, '{{body}}'), '… With no value, the drawn text stays.'),
-        h('li', {}, 'Upload the file in the Slides tab. The cards show up here: describe when to use each one. The AI reads these descriptions (SQLite) when you click "Pick cards".'))),
+        h('li', {}, 'Upload the file in the Slides tab. The cards show up here: describe when to use each one. You pick cards by hand on the slide; an AI agent in n8n can read the same descriptions (GET /api/slides/:id/pick-context).'))),
   );
   for (const set of sets) {
     const meta = state.componentSets.find((x) => x.id === set) || { id: set, title: set, rules: '' };

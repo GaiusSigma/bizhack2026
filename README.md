@@ -5,7 +5,12 @@ Gaius-Lex deck (PDF) with copy written from what the client said, and the sales 
 
 - **Live:** landing https://bizhack.trygaius.com · n8n https://n8n.bizhack.trygaius.com · Offer Studio https://studio.bizhack.trygaius.com
 - **Measured** on the production workflow (`node scripts/measure.mjs`): median 12 s per deck instead of ~3 hours by hand,
-  about $0.003 of AI per deck, 0 failed runs of 49. Numbers on the landing come from `landing/src/lib/measured.json`.
+  about $0.003 of AI per deck, 0 failed runs of 59. Numbers on the landing come from `landing/src/lib/measured.json`.
+- **Determinism, measured** (`node scripts/determinism.mjs`, [docs/DETERMINISM.md](docs/DETERMINISM.md)): the same
+  tiles always give the identical deck (14 of 14); the model picks the same tiles in 84% of repeated runs and the same
+  main pain in 96%. Where it cannot decide (is this head of legal a champion or the budget owner?), the sales team
+  settles it with a **lesson** in Offer Studio: in our test one lesson turned a 3-to-2 split into 5 of 5, also on an
+  enquiry it had never seen.
 - **What is mocked:** the CRM write and the Discord alert. The offer, the AI copy and the PDF are real.
 
 ## Try it
@@ -83,7 +88,8 @@ OFFER_WEBHOOK_URL=http://localhost:15678/webhook/dd7c4b67-f5f6-40f4-9325-1ca924d
 | ![Deck](docs/screenshots/03-deck-preview.jpg) The deck, full screen in the browser | ![Live run](docs/screenshots/04-workflow-live-run.jpg) "Run the workflow": the production workflow on a sample call |
 | ![Starting point](docs/screenshots/09-deck-starting-point.jpg) Slide written from the call | ![Team support](docs/screenshots/10-deck-team-support.jpg) Concerns "From our call", with our answers |
 | ![Offer Studio](docs/screenshots/06-offer-studio-offers.jpg) Offer Studio: every offer, with its tiles | ![Offer](docs/screenshots/07-offer-studio-offer.jpg) An offer: which slides AI wrote, edit, recompute, PDF |
-| ![Results](docs/screenshots/05-measured-results.jpg) Measured on real runs | |
+| ![Results](docs/screenshots/05-measured-results.jpg) Measured on real runs | ![Corrections](docs/screenshots/12-offer-studio-corrections.jpg) Teach the model: what the team changed after it |
+| ![Lessons](docs/screenshots/11-offer-studio-lessons.jpg) Lessons: rules the model reads on every run | |
 
 ![n8n workflow](docs/screenshots/08-n8n-workflow.jpg)
 The n8n workflow: enquiry (website, Fireflies, Gmail, voice note) → tiles → AI plan → offer in Offer Studio →
@@ -112,8 +118,11 @@ One `docker-compose.yml` with four apps, ready to deploy with **Coolify**:
 ├── n8n/                        # n8n image + Offer Studio nodes (n8n-nodes-offer-studio)
 ├── offer-studio/               # offer dashboard: Node + SQLite + rendering via figcraft-cli
 ├── sample-data/                # sample enquiries (landing, voice note, pasted call, Fireflies), no real clients
-├── scripts/                    # try-it.mjs (send enquiries, save decks), measure.mjs (numbers for the landing)
+├── scripts/                    # try-it.mjs (send enquiries, save decks), measure.mjs (numbers for the landing),
+│                               # determinism.mjs + lessons-check.mjs (same enquiry N times, before and after lessons)
+├── bench/                      # every determinism run (inputs, tiles, copy) behind docs/DETERMINISM.md
 ├── docs/DEMO.md                # the live demo script
+├── docs/DETERMINISM.md         # determinism benchmark and the lessons experiment
 └── figcraft/
     ├── web/                    # Dockerfile: official figcraft-web-<version>.zip + nginx
     └── server/                 # Dockerfile: official figcraft-server binary + entrypoint

@@ -141,12 +141,13 @@ export async function download(path, fallbackName) {
 }
 
 // ------------------------------------------------------------------ state and routing
-export const state = { blocks: [], offers: [], templates: [], library: [], components: [], componentSets: [], tiles: [], scenarios: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
+export const state = { blocks: [], offers: [], templates: [], library: [], components: [], componentSets: [], tiles: [], scenarios: [], lessons: [], meta: { types: [], tags: [] }, filter: { type: '', tag: '', q: '' } };
 
 export async function loadAll() {
-  [state.blocks, state.offers, state.templates, state.library, state.components, state.componentSets, state.meta, state.tiles, state.scenarios] = await Promise.all([
+  [state.blocks, state.offers, state.templates, state.library, state.components, state.componentSets, state.meta, state.tiles, state.scenarios, state.lessons] = await Promise.all([
     api('GET', '/blocks'), api('GET', '/offers'), api('GET', '/templates'), api('GET', '/library'),
     api('GET', '/components?missing=1'), api('GET', '/component-sets'), api('GET', '/meta'), api('GET', '/tiles'), api('GET', '/scenarios'),
+    api('GET', '/lessons'),
   ]);
 }
 

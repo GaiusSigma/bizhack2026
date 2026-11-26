@@ -1,0 +1,176 @@
+{
+  "baseline": {
+    "label": "baseline",
+    "measuredAt": "2026-11-26T08:49:25.744Z",
+    "model": "z-ai/glm-5.3-flash",
+    "modelOptions": [
+      {
+        "node": "OpenRouter Chat Model",
+        "responseFormat": "json_object",
+        "reasoningEffort": "low",
+        "providerRouting": {
+          "sort": "throughput"
+        }
+      },
+      {
+        "node": "OpenRouter (treść)",
+        "responseFormat": "json_object",
+        "reasoningEffort": "low",
+        "providerRouting": {
+          "sort": "throughput"
+        }
+      }
+    ],
+    "enquiries": 9,
+    "runsPerEnquiry": 5,
+    "runs": 45,
+    "failed": 0,
+    "minutes": 2.91,
+    "studio": {
+      "tileSets": 15,
+      "identical": 15
+    },
+    "plan": {
+      "role": 0.98,
+      "segment": 1,
+      "product": 0.98,
+      "mainPain": 0.84,
+      "painSet": 0.84,
+      "wholeTileSet": 0.84
+    },
+    "client": 0.98,
+    "slidesShown": 1,
+    "copy": {
+      "words": 0.63,
+      "exact": 0.3
+    },
+    "seconds": {
+      "median": 9.97,
+      "max": 20.3
+    }
+  },
+  "temp0": {
+    "label": "temp0",
+    "measuredAt": "2026-11-26T08:56:24.037Z",
+    "model": "z-ai/glm-5.3-flash",
+    "modelOptions": [
+      {
+        "node": "OpenRouter Chat Model",
+        "responseFormat": "json_object",
+        "reasoningEffort": "low",
+        "providerRouting": {
+          "sort": "throughput"
+        },
+        "temperature": 0
+      },
+      {
+        "node": "OpenRouter (treść)",
+        "responseFormat": "json_object",
+        "reasoningEffort": "low",
+        "providerRouting": {
+          "sort": "throughput"
+        },
+        "temperature": 0
+      }
+    ],
+    "enquiries": 9,
+    "runsPerEnquiry": 5,
+    "runs": 45,
+    "failed": 0,
+    "minutes": 2.86,
+    "studio": {
+      "tileSets": 13,
+      "identical": 13
+    },
+    "plan": {
+      "role": 0.96,
+      "segment": 1,
+      "product": 0.98,
+      "mainPain": 0.96,
+      "painSet": 0.93,
+      "wholeTileSet": 0.89
+    },
+    "client": 1,
+    "slidesShown": 1,
+    "copy": {
+      "words": 0.68,
+      "exact": 0.34
+    },
+    "seconds": {
+      "median": 10.25,
+      "max": 16.22
+    }
+  },
+  "final": {
+    "label": "final",
+    "measuredAt": "2026-11-26T09:17:50.776Z",
+    "model": "z-ai/glm-5.3-flash",
+    "modelOptions": [
+      {
+        "node": "OpenRouter Chat Model",
+        "responseFormat": "json_object",
+        "reasoningEffort": "low",
+        "providerRouting": {
+          "sort": "throughput"
+        },
+        "temperature": 0
+      },
+      {
+        "node": "OpenRouter (treść)",
+        "responseFormat": "json_object",
+        "reasoningEffort": "low",
+        "providerRouting": {
+          "sort": "throughput"
+        },
+        "temperature": 0
+      }
+    ],
+    "enquiries": 9,
+    "runsPerEnquiry": 5,
+    "runs": 45,
+    "failed": 0,
+    "minutes": 2.92,
+    "studio": {
+      "tileSets": 14,
+      "identical": 14
+    },
+    "plan": {
+      "role": 0.96,
+      "segment": 1,
+      "product": 0.96,
+      "mainPain": 0.96,
+      "painSet": 0.9,
+      "wholeTileSet": 0.84
+    },
+    "client": 1,
+    "slidesShown": 1,
+    "copy": {
+      "words": 0.69,
+      "exact": 0.37
+    },
+    "seconds": {
+      "median": 10.62,
+      "max": 21.07
+    }
+  },
+  "lessonsExperiment": {
+    "lesson": "A director or head of the legal department of a capital group is the Board role and gets Vault.",
+    "rows": [
+      {
+        "enquiry": "Head of legal, construction group (the correction came from this one)",
+        "before": "Champion 3 · Board 2",
+        "after": "Board 5 of 5"
+      },
+      {
+        "enquiry": "Head of legal, energy group (never seen by the lesson)",
+        "before": "Champion 5 of 5",
+        "after": "Board 5 of 5"
+      },
+      {
+        "enquiry": "Five law-firm enquiries (the lesson is not about them)",
+        "before": "1 Board, 4 Champion (each 5 of 5)",
+        "after": "the same"
+      }
+    ]
+  }
+}

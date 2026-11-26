@@ -163,9 +163,6 @@ services:
       - STUDIO_API_TOKEN=${SERVICE_PASSWORD_64_STUDIOAPI}
       # "Open FigCraft" link in the dashboard (the web version from this stack).
       - FIGCRAFT_WEB_URL=${SERVICE_URL_FIGCRAFT}
-      # Card picking by Claude ("Pick cards (AI)"). Without a key everything else works and the AI returns 503.
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - STUDIO_AI_MODEL=${STUDIO_AI_MODEL:-claude-opus-5-5}
     volumes:
       - offer-studio-data:/data
     restart: unless-stopped

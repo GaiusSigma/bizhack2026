@@ -6,10 +6,10 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { analyzeLead, pickComponents } from './ai.js';
 import { applyContent, cleanIntake, contentContext, evidencePack, productName } from './content.js';
 import { applySlotChoice, buildSlides, buildSlots, coverage, mergeRecompute, parseSelection } from './generate.js';
 import { COMPONENT_EDITABLE, HttpError, TILE_CATEGORIES, openDb, slugify } from './db.js';
+import { correctionsFor, draftFromCorrection, lessonInput, lessonsFor, lessonUse, LESSON_KINDS } from './lessons.js';
 import {
   buildLibrary, describeComponents, describeTemplate, hashOf, normalizeUpload, parseTemplate, renderFigcraft, renderPdf, renderPreview, renderThumbnails, UPLOAD_EXT,
 } from './figcraft.js';
@@ -352,7 +352,8 @@ async function preview(offerId) {
 }
 
 // Card-picking context for a slide: sets with #pick slots, set rules and card descriptions from the database.
-// Claude (POST /slides/:id/pick) and any external agent (GET …/pick-context) get the same JSON.
+// For an AI agent in n8n (GET …/pick-context); the choice goes back with PATCH /slides/:id {picks}.
+// Offer Studio itself calls no model: all AI runs in n8n.
 function pickContext(slideId) {
   const slide = store.mustGet('slides', slideId);
   const offer = store.mustGet('offers', slide.offer_id);
@@ -699,12 +700,22 @@ api.post('/offers/generate', async (c) => {
   const price = b.price ?? all.find((t) => t.id === sel.product)?.data?.price ?? '';
   const slides = buildSlides(scenario, sel, generationData());
   const tiles = [sel.role, sel.segment, sel.product, ...sel.pains];
+  // Made by a model (n8n sends made_by): keep its tiles, the enquiry it read and the lessons it had, so the team
+  // can see later what they corrected (GET /api/offers/:id/corrections) and teach it (lessons).
+  const made = b.made_by ? {
+    made_by: String(b.made_by).slice(0, 80),
+    first_tiles: tiles,
+    ...(b.enquiry ? { enquiry: String(b.enquiry).slice(0, 8000) } : {}),
+    ...(b.summary ? { summary: String(b.summary).slice(0, 2000) } : {}),
+    ...(Array.isArray(b.lessons) && b.lessons.length ? { lessons_used: b.lessons.map(String).slice(0, 100) } : {}),
+  } : {};
+  // How the request was read (n8n sends intake): shown in the offer view.
   const intake = cleanIntake(b.intake, tiles);
   const created = store.tx(() => {
     const o = store.insert('offers', {
       name: b.name || `${b.client} · ${label(sel.role)}`,
       template_id: store.list('templates')[0]?.id ?? null,
-      data: { client: b.client, price: String(price), tiles, scenario_id: scenario.id, ...(intake ? { intake } : {}) },
+      data: { client: b.client, price: String(price), tiles, scenario_id: scenario.id, ...made, ...(intake ? { intake } : {}) },
     }, b.client);
     slides.forEach((s, i) => store.insert('slides', { ...s, offer_id: o.id, position: i }, 'slide'));
     return o;
@@ -762,6 +773,11 @@ function contentFor(offerId) {
   ctx.product_name = offerVars(offer).product_name;
   ctx.client_tiles = ctx.tiles.map((id) => ({ id, label: tiles[id]?.label, description: tiles[id]?.description }));
   ctx.evidence = evidencePack(sel, { tiles, blocks: store.list('blocks') });
+  // the team's lessons for this offer's tiles (see src/lessons.js); n8n puts them into the prompt
+  const steps = new Set(ctx.slides.map((s) => s.step));
+  ctx.lessons = lessonsFor(store.list('lessons'), { kind: 'copy', tiles: offer.data.tiles })
+    .filter((l) => !l.step || steps.has(l.step))
+    .map(({ id, text, step, tiles: lt, example }) => ({ id, text, step, tiles: lt, example }));
   return ctx;
 }
 api.get('/offers/:id/content', (c) => c.json(contentFor(c.req.param('id'))));
@@ -769,18 +785,23 @@ api.put('/offers/:id/content', async (c) => {
   const id = c.req.param('id');
   const b = await body(c);
   const { patches } = applyContent(contentFor(id), b);
+  const lessons = Array.isArray(b.lessons) ? b.lessons.map(String).slice(0, 100) : [];
   store.tx(() => {
     for (const [slideId, p] of Object.entries(patches)) {
       const cur = store.mustGet('slides', slideId);
-      // written copy is kept on recompute, like manual edits
+      // written copy is kept on recompute, like manual edits; ai_data keeps what the model wrote, so a later
+      // edit by a person shows up as a correction to learn from
       store.update('slides', slideId, {
         data: { ...(cur.data || {}), ...p.data },
         ...(p.hidden !== undefined ? { hidden: p.hidden } : {}),
         locked: true,
-        origin: { ...(cur.origin || {}), written_by: String(b.written_by || 'model') },
+        origin: { ...(cur.origin || {}), written_by: String(b.written_by || 'model'), ai_data: { ...(cur.origin?.ai_data || {}), ...p.data } },
       });
     }
-    store.touch('offers', id);
+    if (lessons.length) {
+      const o = store.mustGet('offers', id);
+      store.update('offers', id, { data: { lessons_used: [...new Set([...(o.data.lessons_used || []), ...lessons])] } });
+    } else store.touch('offers', id);
   });
   changed('slides', null, { offer_id: id });
   return c.json(offerView(id));
@@ -882,20 +903,8 @@ api.patch('/component-sets/:id', async (c) => {
   return c.json(row);
 });
 
-// card picking for a slide: context for any agent, or Claude directly
+// card picking for a slide: the context for an agent in n8n
 api.get('/slides/:id/pick-context', (c) => c.json(pickContext(c.req.param('id'))));
-api.post('/slides/:id/pick', async (c) => {
-  const b = c.req.header('content-type')?.includes('json') ? await body(c) : {};
-  const ctx = pickContext(c.req.param('id'));
-  const result = await pickComponents({ offer: ctx.offer, slide: ctx.slide, brief: b.brief, sets: ctx.sets });
-  let slide = store.mustGet('slides', ctx.slide.id);
-  if (b.apply !== false) {
-    slide = store.update('slides', slide.id, { picks: { ...(slide.picks || {}), ...result.picks }, locked: true });
-    store.touch('offers', slide.offer_id);
-    changed('slides', slide.id, { offer_id: slide.offer_id });
-  }
-  return c.json({ applied: b.apply !== false, ...result, slide });
-});
 
 // tiles
 api.get('/tiles', (c) => c.json(store.list('tiles')));
@@ -938,16 +947,47 @@ api.put('/scenarios/:id', async (c) => {
   return c.json(row);
 });
 
-// lead analysis: n8n sends text (email, transcript) and gets back the segment, decision-maker role and concerns
-api.post('/leads/analyze', async (c) => {
-  const b = await body(c);
-  const text = String(b.text || '').trim();
-  if (!text) throw new HttpError(400, 'Missing "text": nothing to analyze');
-  if (text.length > 60000) throw new HttpError(413, 'Text is too long (max 60,000 characters)');
-  const active = store.list('tiles').filter((t) => t.status !== 'soon');
-  const pick = (category) => active.filter((t) => t.category === category).map(({ id, label, description }) => ({ id, label, description }));
-  const catalog = { pains: pick('pain'), products: pick('product') };
-  return c.json(await analyzeLead({ text, hints: b.hints && typeof b.hints === 'object' ? b.hints : {}, catalog }));
+// lessons: what the sales team teaches the model (src/lessons.js)
+const lessonView = (l, used = lessonUse(store.list('offers'))) => ({ ...l, used: used[l.id]?.offers || 0, last_used: used[l.id]?.last || null });
+api.get('/lessons', (c) => {
+  const q = c.req.query();
+  if (q.kind && !LESSON_KINDS.includes(q.kind)) throw new HttpError(400, `kind: ${LESSON_KINDS.join(' or ')}`);
+  const all = store.list('lessons');
+  // with tiles or active=1: only the active lessons that apply (what n8n puts into the prompt)
+  const picked = q.tiles != null || q.active === '1' || q.step
+    ? lessonsFor(all, { kind: q.kind, tiles: q.tiles != null ? q.tiles.split(',').map((t) => t.trim()).filter(Boolean) : null, step: q.step })
+    : all.filter((l) => !q.kind || l.kind === q.kind);
+  const used = lessonUse(store.list('offers'));
+  return c.json(picked.map((l) => lessonView(l, used)));
+});
+api.get('/lessons/:id', (c) => c.json(lessonView(store.mustGet('lessons', c.req.param('id')))));
+api.post('/lessons', async (c) => {
+  const input = lessonInput(await body(c), { tiles: store.list('tiles') });
+  const l = store.insert('lessons', { tiles: [], step: '', example: {}, active: true, ...input }, `lesson-${input.kind}`);
+  changed('lessons', l.id);
+  return c.json(lessonView(l), 201);
+});
+api.patch('/lessons/:id', async (c) => {
+  const l = store.update('lessons', c.req.param('id'), lessonInput(await body(c), { tiles: store.list('tiles'), partial: true }));
+  changed('lessons', l.id);
+  return c.json(lessonView(l));
+});
+api.delete('/lessons/:id', (c) => {
+  store.remove('lessons', c.req.param('id'));
+  changed('lessons', c.req.param('id'));
+  return c.body(null, 204);
+});
+// What people changed after the model on one offer, each with a lesson draft to finish and save.
+api.get('/offers/:id/corrections', (c) => {
+  const offer = store.getOffer(c.req.param('id'));
+  const label = (id) => store.get('tiles', id)?.label || id;
+  const found = correctionsFor(offer);
+  return c.json({
+    ...found,
+    tiles: found.tiles ? { ...found.tiles, draft: draftFromCorrection(offer, { kind: 'tiles', ...found.tiles }, { tileLabel: label }) } : null,
+    fields: found.fields.map((f) => ({ ...f, draft: draftFromCorrection(offer, f, { tileLabel: label }) })),
+    lessons_used: offer.data?.lessons_used || [],
+  });
 });
 
 // export / import of the whole database

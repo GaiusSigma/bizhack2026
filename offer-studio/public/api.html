@@ -87,7 +87,6 @@ curl -X POST "$URL/api/templates?id=case-study&amp;name=Case%20study" -H "Author
 <tr><td>PATCH /api/component-sets/:id</td><td><code>{"title": "...", "rules": "Exactly 6 cards, one highlighted…"}</code></td></tr>
 <tr><td>PATCH /api/slides/:id</td><td>Manual picks: <code>{"picks": {"why": [{"component": "why/on-premise", "data": {"title": "…"}}, …]}}</code></td></tr>
 <tr><td>GET /api/slides/:id/pick-context</td><td>Everything an agent needs to pick cards: the offer, the slide, the number of slots, rules and card descriptions (e.g. for n8n with its own model)</td></tr>
-<tr><td>POST /api/slides/:id/pick</td><td>Card picking by Claude: <code>{"brief": "bank, wary of the cloud", "apply": true}</code> → <code>{picks, note, warnings, slide}</code>. <code>apply: false</code> only suggests. Requires <code>ANTHROPIC_API_KEY</code></td></tr>
 </table>
 <pre>curl -X POST $URL/api/slides/s-why/pick -H "Authorization: Bearer $TOKEN" \
   -H "content-type: application/json" -d '{"brief": "Bank regulated by the financial supervisor, the board is wary of the cloud"}'</pre>

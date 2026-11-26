@@ -11,10 +11,11 @@
 //                    what it shows, when to pick it, when to avoid it, topic (variants of one argument), tags.
 //                    Rows are created and updated by the library sync; descriptions are written by a human or the AI.
 //   component_sets – set rules for the AI (e.g. "exactly one highlighted card").
+//   lessons        – rules the sales team teaches the model (choosing tiles, writing slides), see src/lessons.js.
 import { DatabaseSync } from 'node:sqlite';
 import { randomBytes } from 'node:crypto';
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS blocks (
@@ -110,6 +111,20 @@ CREATE TABLE IF NOT EXISTS scenarios (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS lessons (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,                      -- plan (choosing tiles) | copy (writing slides)
+  text TEXT NOT NULL DEFAULT '',           -- the rule, in the team's words
+  tiles TEXT NOT NULL DEFAULT '[]',        -- plan: the tiles it is about; copy: applies when the offer has all of them
+  step TEXT NOT NULL DEFAULT '',           -- copy: the slide (scenario step) it is for; empty = the whole deck
+  example TEXT NOT NULL DEFAULT '{}',      -- the correction that taught it: {field, before, after, quote}
+  offer_id TEXT,                           -- the offer it came from
+  author TEXT NOT NULL DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS component_sets (
   id TEXT PRIMARY KEY,                     -- set name without @
   title TEXT NOT NULL DEFAULT '',
@@ -163,6 +178,12 @@ export const TABLES = {
     fields: ['name', 'steps'],
     json: { steps: [] },
     order: 'id',
+  },
+  lessons: {
+    fields: ['kind', 'text', 'tiles', 'step', 'example', 'offer_id', 'author', 'active'],
+    json: { tiles: [], example: {} },
+    bool: ['active'],
+    order: 'kind, created_at, id',
   },
 };
 
@@ -715,7 +736,7 @@ export class Store {
       .map((t) => ({ id: t.id, name: t.name, created_at: t.created_at, updated_at: t.updated_at, file_base64: Buffer.from(t.file).toString('base64') }));
     return {
       format: 'offer-studio',
-      version: 4,
+      version: 5,
       exported_at: now(),
       blocks: this.list('blocks'),
       templates,
@@ -725,6 +746,7 @@ export class Store {
       component_sets: this.list('component_sets'),
       tiles: this.list('tiles'),
       scenarios: this.list('scenarios'),
+      lessons: this.list('lessons'),
     };
   }
 
@@ -734,13 +756,13 @@ export class Store {
   // A v2 export has no components: the library sync adds them after the import.
   importAll(dump, mode = 'merge') {
     if (!dump || dump.format !== 'offer-studio') throw new HttpError(400, 'This is not an offer-studio export (missing format: "offer-studio")');
-    if (![1, 2, 3, 4].includes(dump.version)) throw new HttpError(400, `Unsupported export version: ${dump.version}`);
+    if (![1, 2, 3, 4, 5].includes(dump.version)) throw new HttpError(400, `Unsupported export version: ${dump.version}`);
     if (!['merge', 'replace'].includes(mode)) throw new HttpError(400, 'mode: merge or replace');
     const slides = (dump.slides || []).map((s) => (dump.version === 1 ? { ...s, frame: s.layout_id } : s));
     const counts = {};
     this.tx(() => {
       if (mode === 'replace') {
-        for (const t of ['slides', 'offers', 'blocks', 'templates', 'components', 'component_sets', 'tiles', 'scenarios']) this.db.exec(`DELETE FROM ${t}`);
+        for (const t of ['slides', 'offers', 'blocks', 'templates', 'components', 'component_sets', 'tiles', 'scenarios', 'lessons']) this.db.exec(`DELETE FROM ${t}`);
       }
       counts.templates = 0;
       for (const t of dump.templates || []) {
@@ -748,7 +770,7 @@ export class Store {
         counts.templates++;
       }
       // Order matters: slides point to offers.
-      for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides], ['components', dump.components], ['component_sets', dump.component_sets], ['tiles', dump.tiles], ['scenarios', dump.scenarios]]) {
+      for (const [table, items] of [['blocks', dump.blocks], ['offers', dump.offers], ['slides', slides], ['components', dump.components], ['component_sets', dump.component_sets], ['tiles', dump.tiles], ['scenarios', dump.scenarios], ['lessons', dump.lessons]]) {
         counts[table] = 0;
         for (const item of items || []) {
           this.upsert(table, item);

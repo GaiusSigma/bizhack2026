@@ -14,10 +14,8 @@
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.14.0",
     "@hono/node-server": "^2.1.11",
     "fflate": "^0.8.3",
-    "hono": "^4.13.22",
-    "zod": "^4.6.7"
+    "hono": "^4.13.22"
   }
 }

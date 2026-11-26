@@ -42,8 +42,8 @@ const TAGS = [
   { name: 'Slides', description: 'Offer slides' },
   { name: 'Knowledge blocks', description: 'Use cases, problems, arguments and other blocks' },
   { name: 'Templates', description: 'Slide library: FigCraft files, every top-level frame = a slide' },
-  { name: 'Components', description: 'Swappable cards from @… sets (#pick:… slots), their descriptions for the AI and card picking by Claude' },
-  { name: 'Leads', description: 'AI lead analysis for the n8n offer workflow' },
+  { name: 'Components', description: 'Swappable cards from @… sets (#pick:… slots) and their descriptions for an AI agent in n8n' },
+  { name: 'Lessons', description: 'Rules the sales team teaches the model (choosing tiles, writing slides), and the corrections they come from' },
   { name: 'Database', description: 'Export and import of the whole database' },
   { name: 'System', description: 'API description, metadata, events' },
 ];
@@ -64,6 +64,16 @@ const slideFields = {
   position: { type: 'number', description: 'Position in the slide list (from 0)' },
   hidden: { type: 'boolean', description: 'Hidden slide (skipped in the PDF)' },
   locked: { type: 'boolean', description: 'Edited by hand: recompute leaves it alone. Any change sets true; {"locked": false} restores the automatic content' },
+};
+const lessonFields = {
+  kind: { type: 'string', enum: ['plan', 'copy'], description: 'plan: choosing the tiles from the enquiry; copy: writing the slides' },
+  text: { type: 'string', description: 'The rule, in one or two sentences (max 600 characters)' },
+  tiles: { type: 'array', items: { type: 'string' }, description: 'plan: the tiles it is about; copy: it applies when the offer has all of these tiles (empty = every offer)' },
+  step: { type: 'string', description: 'copy: the slide (scenario step key, e.g. starting-point) it is for; empty = the whole deck' },
+  example: { type: 'object', description: 'The correction that taught it: {field, before, after, quote}' },
+  offer_id: { type: 'string', description: 'The offer it came from' },
+  author: { type: 'string', description: 'Who wrote it' },
+  active: { type: 'boolean', description: 'false = the model stops reading it' },
 };
 const tileFields = {
   label: { type: 'string', description: 'Name, e.g. "Confidentiality"' },
@@ -138,6 +148,14 @@ const SCHEMAS = {
     properties: {
       id: { type: 'string', description: 'Role tile id, e.g. role:board' }, name: { type: 'string' },
       steps: { type: 'array', items: anyObject, description: 'Steps: [{key, label, frame, data, data_by_product, fill: {kind: none|pains|blocks|picks, type, min, max, set}, when: {any: [tiles]}}]' },
+      created_at: { type: 'string' }, updated_at: { type: 'string' },
+    },
+  },
+  Lesson: {
+    type: 'object',
+    properties: {
+      id: { type: 'string' }, ...lessonFields,
+      used: { type: 'number', description: 'Offers made with it' }, last_used: { type: 'string' },
       created_at: { type: 'string' }, updated_at: { type: 'string' },
     },
   },
@@ -386,6 +404,10 @@ export const DOCS = {
       tiles: tilesList,
       name: { type: 'string', description: 'Offer name (default: client · role)' },
       price: { type: 'string', description: 'Price (default: the product tile price)' },
+      made_by: { type: 'string', description: 'Set when a model chose the tiles (e.g. "n8n (AI)"): the offer keeps these tiles, so later changes show as corrections' },
+      enquiry: { type: 'string', description: 'The enquiry the model read (kept on the offer, shown with corrections)' },
+      summary: { type: 'string', description: 'The model\'s note for the salesperson' },
+      lessons: { type: 'array', items: { type: 'string' }, description: 'Ids of the lessons the model was given (counted as used)' },
       intake: { type: 'object', description: 'How the request was read, shown in the offer view: {source, text (what came in), transcribed_by, summary, analysis: [steps], reasons: {role, segment, product, pains}, evidence: {<tile id>: "the client\'s words behind it"}}. Only these keys, capped sizes' },
     }, ['client', 'tiles']),
     responses: { 201: json(one('Offer'), 'Created') },
@@ -426,6 +448,7 @@ export const DOCS = {
     requestBody: body({
       slides: { type: 'object', description: '{"<slide key>": {"<field>": "text" | [{"title", "value", "value2"?}], "hide"?: true}}' },
       written_by: { type: 'string', description: 'Who wrote it, shown in the offer (default "model")' },
+      lessons: { type: 'array', items: { type: 'string' }, description: 'Ids of the lessons the model was given (from "lessons" in GET)' },
     }, ['slides']),
     responses: { 200: json(one('Offer')) },
   },
@@ -488,34 +511,51 @@ export const DOCS = {
   },
   'GET /api/slides/:id/pick-context': {
     tag: 'Components', operationId: 'getPickContext', summary: 'Card-picking context',
-    description: 'Offer, slide, slot count, set rules and card descriptions: everything an agent needs to pick cards',
+    description: 'Offer, slide, slot count, set rules and card descriptions: everything an agent (e.g. in n8n) needs to pick cards. Send the choice with PATCH /api/slides/:id {"picks": {"<set>": [{"component": "…"}]}}',
     parameters: [idParam('slide')],
     responses: { 200: json(anyObject) },
   },
-  'POST /api/slides/:id/pick': {
-    tag: 'Components', operationId: 'pickComponents', summary: 'Pick cards with AI',
-    description: 'Claude picks cards for the #pick slots from the card descriptions in the database, the set rules, the offer variables and the brief. Requires ANTHROPIC_API_KEY (otherwise 503)',
-    parameters: [idParam('slide')],
-    requestBody: {
-      required: false,
-      content: { 'application/json': { schema: { type: 'object', properties: {
-        brief: { type: 'string', description: 'Context from the salesperson, e.g. "bank, afraid of the cloud"' },
-        apply: { type: 'boolean', description: 'false = suggestion only, not saved to the slide', default: true },
-      } } } },
-    },
-    responses: { 200: json(anyObject, '{applied, picks, note, warnings, slide}') },
-  },
 
-  'POST /api/leads/analyze': {
-    tag: 'Leads', operationId: 'analyzeLead', summary: 'Analyze a lead (AI)',
-    description: 'Claude reads an email, call transcript or meeting note and returns the segment (law-firm, in-house, public-sector, other), the decision-maker role (champion, board), the client, their concerns, and the pain and product tiles that fit (ready for POST /api/offers/generate). Fields it cannot establish are null. Needs ANTHROPIC_API_KEY (503 otherwise)',
-    requestBody: body({
-      text: { type: 'string', description: 'Text from the client: email, call transcript, meeting note' },
-      hints: { type: 'object', description: 'What we already know, e.g. {"segment": "law-firm"} picked on the website' },
-    }, ['text']),
-    responses: { 200: json(anyObject, '{segment, role, product, pains, client, person, country, concerns, summary, model}') },
+  // ---------------------------------------------------------------- lessons
+  'GET /api/lessons': {
+    tag: 'Lessons', operationId: 'listLessons', summary: 'List lessons',
+    description: 'Every lesson, or with active=1 / tiles / step only the active ones that apply: kind=plan for choosing tiles (n8n reads these before planning), kind=copy&tiles=<offer tiles> for writing (the content endpoint already includes them). Each has "used": how many offers were made with it',
+    parameters: [
+      { name: 'kind', in: 'query', schema: { type: 'string', enum: ['', 'plan', 'copy'] }, description: 'plan or copy' },
+      { name: 'active', in: 'query', schema: { type: 'string', enum: ['', '1'] }, description: '1 = only active lessons' },
+      { name: 'tiles', in: 'query', schema: { type: 'string' }, description: 'Comma-separated offer tiles: copy lessons that apply to them' },
+      { name: 'step', in: 'query', schema: { type: 'string' }, description: 'Only lessons for this slide (and the whole deck)' },
+    ],
+    responses: { 200: json(list('Lesson')) },
   },
-
+  'GET /api/lessons/:id': {
+    tag: 'Lessons', operationId: 'getLesson', summary: 'Get a lesson',
+    parameters: [idParam('lesson', '/api/lessons')],
+    responses: { 200: json(one('Lesson')) },
+  },
+  'POST /api/lessons': {
+    tag: 'Lessons', operationId: 'createLesson', summary: 'Teach the model a rule',
+    description: 'Works from the next offer: the model reads active lessons on every run. Start from a draft in GET /api/offers/:id/corrections',
+    requestBody: body(lessonFields, ['kind', 'text']),
+    responses: { 201: json(one('Lesson'), 'Created') },
+  },
+  'PATCH /api/lessons/:id': {
+    tag: 'Lessons', operationId: 'updateLesson', summary: 'Update a lesson (e.g. {"active": false})',
+    parameters: [idParam('lesson', '/api/lessons')],
+    requestBody: body(lessonFields),
+    responses: { 200: json(one('Lesson')) },
+  },
+  'DELETE /api/lessons/:id': {
+    tag: 'Lessons', operationId: 'deleteLesson', summary: 'Delete a lesson',
+    parameters: [idParam('lesson', '/api/lessons')],
+    responses: { 204: noContent },
+  },
+  'GET /api/offers/:id/corrections': {
+    tag: 'Lessons', operationId: 'getOfferCorrections', summary: 'What people changed after the model',
+    description: 'For an offer made by the model: the tiles it chose against the tiles now (tiles: {model, now, added, removed}) and every slide field it wrote whose text was changed since (fields: [{step, field, model, now}]). Each comes with "draft": a lesson to finish and send to POST /api/lessons',
+    parameters: [idParam('offer', '/api/offers')],
+    responses: { 200: json(anyObject) },
+  },
   // ---------------------------------------------------------------- database
   'GET /api/export': {
     tag: 'Database', operationId: 'exportAll', summary: 'Export the whole database',

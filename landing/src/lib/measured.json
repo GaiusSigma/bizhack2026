@@ -1,31 +1,31 @@
 {
-  "measuredAt": "2026-11-26T06:39:30.061Z",
+  "measuredAt": "2026-11-26T09:39:14.304Z",
   "workflow": "offerStudioDeck",
   "model": "z-ai/glm-5.3-flash",
   "from": "2026-11-26T00:13:54.730Z",
-  "to": "2026-11-26T05:16:20.935Z",
-  "runs": 49,
+  "to": "2026-11-26T09:37:19.546Z",
+  "runs": 59,
   "failed": 0,
-  "decks": 49,
+  "decks": 59,
   "bySource": {
-    "landing": 46,
+    "landing": 56,
     "fireflies": 3
   },
   "seconds": {
-    "median": 12,
+    "median": 12.1,
     "p90": 18.7,
     "max": 32.9
   },
-  "tokensPerDeck": 16678,
+  "tokensPerDeck": 17451,
   "costPerDeckUsd": 0.0032,
   "slidesWrittenMedian": 9,
-  "decksWithoutWarnings": 42,
-  "firstTryValid": 9,
+  "decksWithoutWarnings": 51,
+  "firstTryValid": 12,
   "stageSeconds": {
-    "read": 0.38,
-    "plan": 3.82,
+    "read": 0.54,
+    "plan": 4.07,
     "offer": 0.1,
-    "copy": 5.5,
+    "copy": 5.66,
     "pdf": 0.63
   }
 }

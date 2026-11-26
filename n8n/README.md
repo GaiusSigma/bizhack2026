@@ -70,81 +70,18 @@ the dashboard saves edits as you type. With "Fetch Current Record" it attaches t
 template in its current state. On a slide change it attaches the whole offer, and after a record is
 deleted it sets `deleted: true`.
 
-## Workflow "Offer Studio · offer for a lead"
-
-File: [`workflows/offer-studio-lead.json`](workflows/offer-studio-lead.json). n8n runs the whole offer
-process and decides which tiles the offer is built from; Offer Studio generates the offer from those
-tiles (the champion and board scenarios live there) and renders the PDF.
-
-```
-Lead (webhook POST /webhook/offer)
-  → Brief                        one input format for every source
-  → CRM: what we already know    DISABLED (after the hackathon: client data from the CRM)
-  → Do we know anything?         is there text (email, transcript, note)?
-      true  → Analyze lead (AI)  POST /api/leads/analyze: segment, role, product, pain tiles
-      false → (defaults)
-  → Offer plan                   tiles: role, segment, product, 1–5 pains
-  → Generate offer               POST /api/offers/generate
-  → Mark as lead offer           data.origin = "n8n-lead"
-  → Result → Reply to source (JSON) + CRM + Discord (mock)
-
-Offer PDF (webhook GET /webhook/offer-pdf?id=…)
-  → Offer for PDF → Offer from a lead? → Get PDF → Send PDF   (404 otherwise)
-```
-
-**Input** (`POST /webhook/offer`, JSON). Every field is optional:
-
-| Field | Meaning |
-|---|---|
-| `source` | where the lead came from: `landing-email`, `gmail`, `fireflies`, `gaius-meet`… |
-| `segment` | `law-firm`, `in-house` or `public-sector` |
-| `role` | `champion` or `board` (who reads the offer) |
-| `email`, `client` | contact and organization name |
-| `text` | an email, transcript or note. When present, the AI fills in the missing fields |
-| `touched`, `tryItAs`, `pickedRole`, `voice` | sent by the landing: only what the visitor used, `null` otherwise. `voice` has the recorded audio (base64 WebM/Opus) and the browser's transcript; `voice.transcriptionError` means n8n should transcribe the audio itself |
-
-**We know nothing** (no `text`): the segment comes from `segment` or the email domain, otherwise
-`in-house`; the role comes from `role`, otherwise `board`; product Vault; pains confidentiality and
-hallucinated citations. **We know something**: fields sent in the
-request are taken as given, the AI fills in the rest and extracts concerns. An AI error (e.g. no
-`ANTHROPIC_API_KEY`) does not stop the offer.
-
-**The role shapes the offer** through Offer Studio's scenarios (`role:champion`, `role:board`): change
-which slides each reader gets in Offer Studio, not in n8n.
-
-**Reply**: `{offerId, offerName, known, segment, role, who, client, concerns, tiles, coverage, summary, pdfPath, ms}`.
-`pdfPath` (`/webhook/offer-pdf?id=…`) returns a PDF only for offers with `data.origin = "n8n-lead"`.
-
-### Setup
-
-1. In n8n: **Import from File** → `n8n/workflows/offer-studio-lead.json`.
-2. Create the **Offer Studio API** credential (URL and token fill in by themselves) and select it in the
-   Offer Studio nodes if n8n asks.
-3. Set `ANTHROPIC_API_KEY` in Offer Studio (lead analysis). Without a key the
-   workflow still runs, always on defaults.
-4. Activate (publish) the workflow. The landing posts every "Generate my offer" click to the webhook in
-   `PUBLIC_OFFER_WEBHOOK_URL` (default: the production webhook set in `landing/src/pages/index.astro`).
-   If the webhook does not answer with an offer, the landing shows the sample offer.
-
-Test from a terminal:
-
-```bash
-curl -s -X POST http://localhost:5678/webhook/offer -H 'content-type: application/json' -d '{"segment":"law-firm","text":"I am a partner at a law firm, we worry about hallucinated citations."}'
-```
-
-More sources (Gmail, Fireflies, Gaius Meet) are triggers connected to the **Brief** node: they only
-need to pass `text` (the email body, the transcript) and `source`.
-
 ## Workflow "Lead → oferta Gaius Vault (Offer Studio)": the 2026 deck
 
 File: [`workflows/offer-studio-deck.json`](workflows/offer-studio-deck.json), the workflow running in production,
 extended for the 2026 deck. The tile part is unchanged; after the offer is created, a second AI step writes the
-slides' copy from the enquiry or the call transcript.
+slides' copy from the enquiry or the call transcript. This workflow is the only place the stack calls a model:
+Offer Studio holds the knowledge, lessons and templates and calls no AI itself. Both prompts include the sales team's
+lessons from Offer Studio (`GET /api/lessons?kind=plan`, and `lessons` in the content endpoint).
 
 ```
 Form / Website form / Fireflies transcript / Gmail
   → Normalizuj zgłoszenie        one input format, every text part labelled
-  → Kafelki → Kontekst dla AI → AI Agent → Przygotowanie scenariusza ⇄ Samopoprawka AI
+  → Kafelki → Lekcje (wybór kafelków) → Kontekst dla AI → AI Agent → Przygotowanie scenariusza ⇄ Samopoprawka AI
   → Utwórz ofertę                POST /api/offers/generate
   → Pola slajdów                 GET /api/offers/:id/content (fields, hints, limits)
   → Kontekst treści → AI: treść slajdów → Sprawdź treść ⇄ Samopoprawka treści (up to 3 tries)
