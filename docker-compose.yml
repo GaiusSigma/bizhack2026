@@ -39,6 +39,8 @@ services:
       - OFFER_STUDIO_API_TOKEN=${SERVICE_PASSWORD_64_STUDIOAPI}
       # Optional: the OpenRouter key for the models in the offer workflows (n8n/entrypoint.sh fills the credential).
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # Optional: ElevenLabs key for voice notes the browser could not transcribe (Safari, Firefox, iPhone).
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
       - N8N_EDITOR_BASE_URL=${SERVICE_URL_N8N}
       - WEBHOOK_URL=${SERVICE_URL_N8N}
       - N8N_HOST=${SERVICE_URL_N8N}

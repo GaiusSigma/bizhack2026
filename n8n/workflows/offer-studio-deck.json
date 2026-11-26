@@ -67,7 +67,7 @@
       ],
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Jedno zgłoszenie (formularz n8n, landing tekst/głos, Fireflies, Gmail) -> wspólny format dla reszty workflow.\n// Bierzemy WSZYSTKIE źródła treści naraz (transkrypcja nagrania, tekst, persona, wiadomość), a nie tylko pierwsze znalezione.\nconst j = $json;\nconst b = j.body && typeof j.body === 'object' ? j.body : j; // webhook trzyma dane w body\nconst str = (v) => (v == null ? '' : typeof v === 'object' ? String(v.text ?? v.value ?? '') : String(v)).trim();\nconst pick = (...vals) => vals.map(str).find(Boolean) || '';\nconst get = (k) => b[k] ?? j[k];\n\nlet source = 'inne';\ntry {\n  source = { Form: 'formularz n8n', 'Website form': 'formularz WWW', 'Transkrypcja z fireflies': 'Fireflies', 'Gmail Trigger': 'Gmail' }[$prevNode.name] || $prevNode.name;\n} catch {}\nif (b.source) source = `${source} (${b.source}${b.mode ? `, ${b.mode}` : ''})`;\n\n// --- treść: każda część osobno, z etykietą ---\nconst parts = [];\nconst add = (label, v) => {\n  const t = str(v);\n  if (t && !parts.some((p) => p.text === t)) parts.push({ label, text: t });\n};\n\n// Fireflies: podsumowanie i wypowiedzi\nconst ff = b.data?.transcript || b.transcript || {};\nadd('Podsumowanie spotkania (Fireflies)', b.summary?.overview || ff.summary?.overview);\nconst sentences = b.sentences || ff.sentences;\nif (Array.isArray(sentences)) add('Transkrypcja spotkania', sentences.map((s) => `${s.speaker_name || s.speaker || ''}: ${s.text || s.raw_text || ''}`).join('\\n'));\n\n// Landing: nagranie głosowe, tekst klienta, przykładowa persona\nconst voice = b.voice || {};\nadd(`Transkrypcja nagrania głosowego${voice.seconds ? ` (${voice.seconds} s)` : ''}`, voice.transcript || voice.sampleTranscript);\nadd('Tekst od klienta', b.brief?.text);\nadd('Opis potrzeb', pick(get('Opis potrzeb'), get('message'), get('wiadomosc'), get('wiadomość'), get('opis'), get('notes'), get('description')));\nif (typeof b.transcript === 'string') add('Transkrypcja', b.transcript);\nadd('Treść', pick(get('text'), get('textPlain'), get('snippet')));\n// landing wysyła tekst persony jako sampleText (starsze wersje: text)\nconst personaText = b.tryItAs && (b.tryItAs.text || b.tryItAs.sampleText);\nif (personaText) add(`Przykładowa persona wybrana na stronie: ${b.tryItAs.label || b.tryItAs.persona || ''}`, personaText);\n// rola kliknięta na stronie (\"Pick your role\"): model dostaje ją słowami, także gdy nie ma dla niej kafelka\nconst PICKED = { champion: 'Team champion (prawnik, który chce wdrożyć narzędzie w zespole)', board: 'Board or managing partner (zarząd, decyduje o budżecie)', legal: 'Head of Legal (szef działu prawnego)', budget: 'Budget owner (właściciel budżetu, pyta o zwrot z inwestycji)', it: 'IT or CTO (dział IT, pyta o infrastrukturę i bezpieczeństwo)', dpo: 'DPO or compliance (ochrona danych osobowych)' };\nif (b.pickedRole) add('Rola wybrana na stronie', PICKED[b.pickedRole] || String(b.pickedRole));\n\nconst subject = pick(get('Subject'), get('subject'));\nif (subject && /Gmail/.test(source)) parts.unshift({ label: 'Temat e-maila', text: subject });\n\nconst text = parts.map((p) => `## ${p.label}\\n${p.text}`).join('\\n\\n').slice(0, 20000);\n\n// --- kontakt ---\nlet email = pick(get('E-mail'), get('email'), get('mail'), get('From'), get('from'));\nconst m = email.match(/[\\w.+-]+@[\\w-]+\\.[\\w.-]+/);\nemail = m ? m[0] : email;\n\n// --- podpowiedzi -> id kafelków (wybór klienta ma pierwszeństwo przed personą demo) ---\nconst low = (s) => str(s).toLowerCase();\nconst asTile = (prefix, v) => (v ? (v.startsWith(`${prefix}:`) ? v : `${prefix}:${v}`) : null);\nconst segRaw = low(pick(b.brief?.segment, get('Segment'), get('segment'), b.tryItAs?.segment));\nconst roleRaw = low(pick(b.brief?.role, b.pickedRole, get('Twoja rola'), get('Rola'), get('role'), b.tryItAs?.role));\nconst prodRaw = low(pick(get('Produkt'), get('product'), get('produkt')));\nconst hints = {\n  segment: /^(segment:)?(law-firm|in-house|public-sector|finance|tax-advisors|notaries|mass-claims)$/.test(segRaw) ? asTile('segment', segRaw)\n    : /kancel|law/.test(segRaw) ? 'segment:law-firm' : /dział|dzial|in-house|firm/.test(segRaw) ? 'segment:in-house' : /publi|urząd|urzad/.test(segRaw) ? 'segment:public-sector' : null,\n  role: /^(role:)?(board|champion|cto|gc|budget|dpo)$/.test(roleRaw) ? asTile('role', roleRaw)\n    : /zarz|partner|board|dyrek|prezes|ceo/.test(roleRaw) ? 'role:board' : /prawnik|lider|champion|radca|adwokat/.test(roleRaw) ? 'role:champion' : null,\n  product: /^(product:)?(saas|vault|on-prem)$/.test(prodRaw) ? asTile('product', prodRaw)\n    : /on-?prem|serwer/.test(prodRaw) ? 'product:on-prem' : /saas|chmur/.test(prodRaw) ? 'product:saas' : /vault/.test(prodRaw) ? 'product:vault' : null,\n};\nfor (const k of Object.keys(hints)) if (!hints[k]) delete hints[k];\n\nreturn {\n  json: {\n    source,\n    company: pick(get('Firma'), get('company'), get('firma'), get('organization'), get('organizacja'), get('client'), get('klient')),\n    contact_name: pick(get('Imię i nazwisko'), get('name'), get('imie'), get('contact'), get('kontakt')) || pick(get('From'), get('from')).replace(/<.*>/, '').trim(),\n    email,\n    hints,\n    price: pick(get('Cena'), get('price'), get('cena')),\n    language: str(b.language),\n    parts: parts.map((p) => p.label),\n    text,\n    received_at: new Date().toISOString(),\n  },\n};\n"
+        "jsCode": "// Jedno zgłoszenie (formularz n8n, landing tekst/głos, Fireflies, Gmail) -> wspólny format dla reszty workflow.\n// Bierzemy WSZYSTKIE źródła treści naraz (transkrypcja nagrania, tekst, persona, wiadomość), a nie tylko pierwsze znalezione.\nconst j = $json;\nconst b = j.body && typeof j.body === 'object' ? j.body : j; // webhook trzyma dane w body\nconst str = (v) => (v == null ? '' : typeof v === 'object' ? String(v.text ?? v.value ?? '') : String(v)).trim();\nconst pick = (...vals) => vals.map(str).find(Boolean) || '';\nconst get = (k) => b[k] ?? j[k];\n\nlet source = 'inne';\ntry {\n  source = { Form: 'formularz n8n', 'Website form': 'formularz WWW', 'Nagranie do przepisania?': 'formularz WWW', 'Dołącz transkrypcję': 'formularz WWW (nagranie przepisane w n8n)', 'Transkrypcja z fireflies': 'Fireflies', 'Gmail Trigger': 'Gmail' }[$prevNode.name] || $prevNode.name;\n} catch {}\nif (b.source) source = `${source} (${b.source}${b.mode ? `, ${b.mode}` : ''})`;\n\n// --- treść: każda część osobno, z etykietą ---\nconst parts = [];\nconst add = (label, v) => {\n  const t = str(v);\n  if (t && !parts.some((p) => p.text === t)) parts.push({ label, text: t });\n};\n\n// Fireflies: podsumowanie i wypowiedzi\nconst ff = b.data?.transcript || b.transcript || {};\nadd('Podsumowanie spotkania (Fireflies)', b.summary?.overview || ff.summary?.overview);\nconst sentences = b.sentences || ff.sentences;\nif (Array.isArray(sentences)) add('Transkrypcja spotkania', sentences.map((s) => `${s.speaker_name || s.speaker || ''}: ${s.text || s.raw_text || ''}`).join('\\n'));\n\n// Landing: nagranie głosowe, tekst klienta, przykładowa persona\nconst voice = b.voice || {};\nadd(`Transkrypcja nagrania głosowego${voice.seconds ? ` (${voice.seconds} s)` : ''}`, voice.transcript || voice.sampleTranscript);\nadd('Tekst od klienta', b.brief?.text);\nadd('Opis potrzeb', pick(get('Opis potrzeb'), get('message'), get('wiadomosc'), get('wiadomość'), get('opis'), get('notes'), get('description')));\nif (typeof b.transcript === 'string') add('Transkrypcja', b.transcript);\nadd('Treść', pick(get('text'), get('textPlain'), get('snippet')));\n// landing wysyła tekst persony jako sampleText (starsze wersje: text)\nconst personaText = b.tryItAs && (b.tryItAs.text || b.tryItAs.sampleText);\nif (personaText) add(`Przykładowa persona wybrana na stronie: ${b.tryItAs.label || b.tryItAs.persona || ''}`, personaText);\n// rola kliknięta na stronie (\"Pick your role\"): model dostaje ją słowami, także gdy nie ma dla niej kafelka\nconst PICKED = { champion: 'Team champion (prawnik, który chce wdrożyć narzędzie w zespole)', board: 'Board or managing partner (zarząd, decyduje o budżecie)', legal: 'Head of Legal (szef działu prawnego)', budget: 'Budget owner (właściciel budżetu, pyta o zwrot z inwestycji)', it: 'IT or CTO (dział IT, pyta o infrastrukturę i bezpieczeństwo)', dpo: 'DPO or compliance (ochrona danych osobowych)' };\nif (b.pickedRole) add('Rola wybrana na stronie', PICKED[b.pickedRole] || String(b.pickedRole));\n\nconst subject = pick(get('Subject'), get('subject'));\nif (subject && /Gmail/.test(source)) parts.unshift({ label: 'Temat e-maila', text: subject });\n\nconst text = parts.map((p) => `## ${p.label}\\n${p.text}`).join('\\n\\n').slice(0, 20000);\n\n// --- kontakt ---\nlet email = pick(get('E-mail'), get('email'), get('mail'), get('From'), get('from'));\nconst m = email.match(/[\\w.+-]+@[\\w-]+\\.[\\w.-]+/);\nemail = m ? m[0] : email;\n\n// --- podpowiedzi -> id kafelków (wybór klienta ma pierwszeństwo przed personą demo) ---\nconst low = (s) => str(s).toLowerCase();\nconst asTile = (prefix, v) => (v ? (v.startsWith(`${prefix}:`) ? v : `${prefix}:${v}`) : null);\nconst segRaw = low(pick(b.brief?.segment, get('Segment'), get('segment'), b.tryItAs?.segment));\nconst roleRaw = low(pick(b.brief?.role, b.pickedRole, get('Twoja rola'), get('Rola'), get('role'), b.tryItAs?.role));\nconst prodRaw = low(pick(get('Produkt'), get('product'), get('produkt')));\nconst hints = {\n  segment: /^(segment:)?(law-firm|in-house|public-sector|finance|tax-advisors|notaries|mass-claims)$/.test(segRaw) ? asTile('segment', segRaw)\n    : /kancel|law/.test(segRaw) ? 'segment:law-firm' : /dział|dzial|in-house|firm/.test(segRaw) ? 'segment:in-house' : /publi|urząd|urzad/.test(segRaw) ? 'segment:public-sector' : null,\n  role: /^(role:)?(board|champion|cto|gc|budget|dpo)$/.test(roleRaw) ? asTile('role', roleRaw)\n    : /zarz|partner|board|dyrek|prezes|ceo/.test(roleRaw) ? 'role:board' : /prawnik|lider|champion|radca|adwokat/.test(roleRaw) ? 'role:champion' : null,\n  product: /^(product:)?(saas|vault|on-prem)$/.test(prodRaw) ? asTile('product', prodRaw)\n    : /on-?prem|serwer/.test(prodRaw) ? 'product:on-prem' : /saas|chmur/.test(prodRaw) ? 'product:saas' : /vault/.test(prodRaw) ? 'product:vault' : null,\n};\nfor (const k of Object.keys(hints)) if (!hints[k]) delete hints[k];\n\nreturn {\n  json: {\n    source,\n    company: pick(get('Firma'), get('company'), get('firma'), get('organization'), get('organizacja'), get('client'), get('klient')),\n    contact_name: pick(get('Imię i nazwisko'), get('name'), get('imie'), get('contact'), get('kontakt')) || pick(get('From'), get('from')).replace(/<.*>/, '').trim(),\n    email,\n    hints,\n    price: pick(get('Cena'), get('price'), get('cena')),\n    language: str(b.language),\n    parts: parts.map((p) => p.label),\n    text,\n    received_at: new Date().toISOString(),\n  },\n};\n"
       }
     },
     {
@@ -637,6 +637,108 @@
         3856,
         120
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "voice-needs-stt",
+              "leftValue": "={{ !!($json.body && $json.body.voice && $json.body.voice.audioBase64) && !String(($json.body.voice && $json.body.voice.transcript) || '').trim() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c9ccd2d1-9241-4bc5-8685-a270effeae44",
+      "name": "Nagranie do przepisania?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        12,
+        -396
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Nagranie ze strony (base64) -> plik binarny dla ElevenLabs. Przeglądarka nie przepisała mowy (Safari, Firefox, iPhone).\nconst item = $input.first();\nconst b = item.json.body || item.json;\nconst v = b.voice || {};\nconst mime = String(v.mimeType || 'audio/webm').split(';')[0];\nconst ext = /mp4|m4a|aac/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : /wav/.test(mime) ? 'wav' : /mpeg|mp3/.test(mime) ? 'mp3' : 'webm';\nreturn [{ json: item.json, binary: { audio: { data: String(v.audioBase64 || ''), mimeType: mime, fileName: `voice.${ext}` } } }];"
+      },
+      "id": "5b28d6da-3fca-4c88-a553-fba44de2506d",
+      "name": "Nagranie → plik",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        232,
+        -476
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/speech-to-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "audio"
+            },
+            {
+              "name": "model_id",
+              "value": "scribe_v1"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 25000
+        }
+      },
+      "id": "92f3c9ad-3da8-4a22-98f8-22acd58ba5a4",
+      "name": "ElevenLabs: mowa na tekst",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        452,
+        -476
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "elevenLabsKey",
+          "name": "ElevenLabs"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tekst z ElevenLabs trafia tam, gdzie zwykle jest transkrypcja z przeglądarki. Bez klucza albo przy błędzie\n// zgłoszenie idzie dalej bez tekstu (oferta z domyślnych kafelków), nigdy nie przerywa workflow.\nconst original = $('Nagranie → plik').first().json;\nconst out = JSON.parse(JSON.stringify(original));\nconst text = String(($json && $json.text) || '').trim();\nconst b = out.body || out;\nb.voice = { ...(b.voice || {}) };\ndelete b.voice.audioBase64;\nif (text) { b.voice.transcript = text; b.voice.transcribedBy = 'ElevenLabs Scribe'; }\nelse b.voice.transcriptionError = String(b.voice.transcriptionError || ($json && $json.error && ($json.error.message || $json.error)) || 'ElevenLabs: brak tekstu');\nreturn [{ json: out }];"
+      },
+      "id": "6e0cd9b1-3ed2-4b74-87fe-b2df38563421",
+      "name": "Dołącz transkrypcję",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -396
+      ]
     }
   ],
   "connections": {
@@ -655,7 +757,7 @@
       "main": [
         [
           {
-            "node": "Normalizuj zgłoszenie",
+            "node": "Nagranie do przepisania?",
             "type": "main",
             "index": 0
           }
@@ -922,6 +1024,57 @@
           }
         ],
         []
+      ]
+    },
+    "Nagranie do przepisania?": {
+      "main": [
+        [
+          {
+            "node": "Nagranie → plik",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalizuj zgłoszenie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nagranie → plik": {
+      "main": [
+        [
+          {
+            "node": "ElevenLabs: mowa na tekst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ElevenLabs: mowa na tekst": {
+      "main": [
+        [
+          {
+            "node": "Dołącz transkrypcję",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dołącz transkrypcję": {
+      "main": [
+        [
+          {
+            "node": "Normalizuj zgłoszenie",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
