@@ -278,3 +278,15 @@ test('product name on the slides: Gaius-Lex only for law firms, Gaius for other 
   assert.equal(productName(['role:board', 'segment:law-firm', 'product:on-prem']), 'Gaius Vault');
   assert.equal(productName([]), 'Gaius');
 });
+
+test('evidence pack: facts about other tools, with our side worded for the offered product', () => {
+  const blocks = [...seedAll.blocks, ...seedSolutions];
+  const ev = (product) => evidencePack({ role: 'role:board', segment: 'segment:in-house', product, pains: [] }, { tiles: {}, blocks });
+  const copilot = (product) => ev(product).tools.find((t) => t.id === 'tool-copilot');
+  assert.ok(copilot('product:on-prem').aliases.includes('Copilota'));
+  const data = (product) => copilot(product).facts.find((f) => f.area === 'Where data goes');
+  assert.equal(data('product:on-prem').them, 'Processed in the provider’s cloud');
+  assert.match(data('product:on-prem').us, /your server/);
+  assert.match(data('product:saas').us, /EEA/);
+  assert.equal(ev('product:saas').tools.find((t) => t.id === 'tool-lex-legalis').facts.find((f) => f.area === 'Commentaries').their_strength, true);
+});

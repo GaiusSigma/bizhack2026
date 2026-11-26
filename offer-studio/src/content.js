@@ -120,6 +120,7 @@ export function applyContent(ctx, answer, { strict = true } = {}) {
 export const SOLUTION_TYPES = ['solution', 'use_case'];
 export const PROOF_TYPES = ['differentiator', 'comparison', 'pillar', 'testimonial'];
 export const OBJECTION_TYPE = 'objection';
+export const COMPETITOR_TYPE = 'competitor';
 const PER_PAIN = 3;
 
 export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
@@ -136,7 +137,9 @@ export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
   });
   const proof = (b) => {
     const cmp = b.data?.them || b.data?.us ? `Others: ${b.data.them || '-'}. Gaius: ${b.data.us || '-'}` : '';
-    return { id: b.id, type: b.type, title: b.title, text: [b.body, cmp].filter(Boolean).join(' ') };
+    // a testimonial is named only with the person's consent (data.quote_by_name); otherwise its body gives the role only
+    const by = b.type === 'testimonial' && b.data?.quote_by_name && b.data?.author ? ` (${b.data.author})` : '';
+    return { id: b.id, type: b.type, title: b.title, text: [`${b.body || ''}${by}`, cmp].filter(Boolean).join(' ') };
   };
   // Objections clients raise, with our answer for this product and segment (for the concerns, security and
   // comparison slides). Only the answers the library has; `no_answer` means none is confirmed.
@@ -147,9 +150,18 @@ export function evidencePack(sel, { tiles = {}, blocks = [] } = {}) {
     ...(b.data?.quotes?.length ? { typical_quotes: b.data.quotes } : {}),
     ...(b.data?.no_answer ? { no_answer: true } : {}),
   });
+  // Other tools clients compare us with: the facts the library has, our side worded for this product.
+  const tool = (b) => ({
+    id: b.id, name: b.title, aliases: b.data?.aliases || [],
+    facts: (b.data?.facts || []).map((f) => ({
+      area: f.area, them: f.them, us: f.us_by_product?.[sel.product] || f.us || '',
+      ...(f.their_strength ? { their_strength: true } : {}),
+    })).filter((f) => f.them && f.us),
+  });
   return {
     segment: about(sel.segment),
     product: about(sel.product),
+    tools: blocks.filter((b) => b.type === COMPETITOR_TYPE && segmentOk(b.tags, sel)).map(tool),
     objections: blocks.filter((b) => b.type === OBJECTION_TYPE && segmentOk(b.tags, sel) && productOk(b.tags, sel)).map(objection),
     pains: sel.pains.map((id) => {
       let solutions = fitting(SOLUTION_TYPES, id).map(solution);
