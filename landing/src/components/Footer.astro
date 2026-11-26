@@ -1,5 +1,11 @@
 ---
 import Icon from './Icon.astro';
+
+const team = [
+  { name: 'Janusz Marszałek', url: 'https://www.linkedin.com/in/januszmarszalek/' },
+  { name: 'Veronika Sabara', url: 'https://www.linkedin.com/in/veronika-sabara-b91441187/' },
+  { name: 'Maciej Szporak', url: 'https://www.linkedin.com/in/maciejszporak/' },
+];
 ---
 <footer class="footer">
   <!-- Full-screen QR to the live page: scrolled to from "Scan to try" in the header, easy to scan from across a room -->
@@ -20,6 +26,11 @@ import Icon from './Icon.astro';
     <div class="footer__brand">
       <span class="wordmark wordmark--light">GAIUS-LEX</span>
       <span>Built at BizHack AI Hackathon · Budapest · 24–26 November 2026</span>
+      <ul class="footer__team" aria-label="Team">
+        {team.map((p) => (
+          <li><a href={p.url} target="_blank" rel="noopener" aria-label={`${p.name} on LinkedIn`}><Icon name="linkedin" size={14} />{p.name}</a></li>
+        ))}
+      </ul>
     </div>
     <div class="footer__links">
       <a href="https://github.com/GaiusSigma/bizhack2026" target="_blank" rel="noopener"><Icon name="code" size={16} />Source code on GitHub</a>

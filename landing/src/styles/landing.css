@@ -325,6 +325,9 @@
 .footer__links a { color: var(--rose-soft-on-ink); display: flex; gap: 6px; align-items: center; }
 .footer__links a:hover { color: #fff; }
 .footer__note { display: flex; gap: 6px; align-items: center; }
+.footer__team { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.footer__team a { color: var(--rose-soft-on-ink); display: flex; gap: 6px; align-items: center; }
+.footer__team a:hover { color: #fff; }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 860px) {
