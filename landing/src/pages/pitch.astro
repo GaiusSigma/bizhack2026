@@ -1,6 +1,7 @@
 ---
-// Pitch mode: the live demo as slides. Arrow keys move; F full screen; P opens the presenter view (notes, timer,
-// next slide) in a second window, kept in sync. Speaker notes are in Polish and never shown on the audience screen.
+// Pitch mode: the 5-minute pitch with the live demo, as slides. Arrow keys move; F full screen; P opens the presenter
+// view (notes, timer, next slide) in a second window, kept in sync. Speaker notes are in Polish and never shown on the
+// audience screen. Slides marked data-optional are backups (questions, or while a deck is still generating).
 import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
 import '../styles/landing.css';
@@ -11,50 +12,115 @@ const usd = (x: number | null) => (x == null ? '' : x < 0.01 ? `$${x.toFixed(3)}
 const st = measured.stageSeconds;
 const fmt = (x: number) => (x < 1 ? `${Math.round(x * 1000)} ms` : `${x.toFixed(1)} s`);
 const REPO = 'github.com/GaiusSigma/bizhack2026';
+const median = Math.round(measured.seconds.median ?? 12);
+// 1,000 sign-ups a month (Poland only, today): the same work by hand vs. with this workflow, at the measured median and cost
+const SIGNUPS = 1000;
+const byHandHours = SIGNUPS * 3;
+const machineHours = (SIGNUPS * (measured.seconds.median ?? 12)) / 3600;
+const aiCost = SIGNUPS * (measured.costPerDeckUsd ?? 0);
+const integrations = ['SharePoint', 'Teams', 'Outlook', 'OneDrive', 'Google Drive', 'Gmail', 'Word add-in', 'API', 'n8n'];
 ---
 
-<Layout title="Pitch · Gaius-Lex Offer Studio" description="Gaius-Lex at BizHack AI 2026: the live demo, slide by slide.">
+<Layout title="Pitch · Gaius-Lex" description="Gaius: document intelligence and automation on small language models. The 5-minute pitch with a live demo.">
   <div class="pitch" data-pitch>
     <!-- 1 -->
-    <section class="slide slide--ink" data-slide data-title="Title" data-at="0:00">
+    <section class="slide slide--ink" data-slide data-title="Tytuł" data-at="0:00–0:15">
       <div class="slide__inner">
         <span class="overline overline--on-ink"><Icon name="spark" size={14} />BizHack AI 2026 · Challenge 07 · Gaius-Lex</span>
-        <h1 class="slide__h1">From a sales call to a tailored offer in {Math.round(measured.seconds.median ?? 12)} seconds<span class="dot">.</span></h1>
-        <p class="slide__lead slide__lead--on-ink">Live, on a real Gaius-Lex sales conversation.</p>
+        <h1 class="slide__h1 slide__h1--wide">Document intelligence and automation on small language models, inside your organisation<span class="dot">.</span></h1>
+        <p class="slide__lead slide__lead--on-ink">Today, live: how we automated our own sales offer.</p>
       </div>
       <aside class="notes" hidden>
-        Przedstaw się jednym zdaniem. Bez pitchu: „Pokażemy to na żywo, na prawdziwej rozmowie sprzedażowej”.
+        Jedno zdanie o sobie. „Gaius to platforma document intelligence i automatyzacji na małych modelach językowych,
+        którą wdrażamy w organizacjach on-prem. Dziś pokażemy na żywo, jak zautomatyzowaliśmy własne ofertowanie.”
         Kierowca ma otwarte karty: landing, n8n (Executions), Offer Studio, GitHub.
       </aside>
     </section>
 
     <!-- 2 -->
-    <section class="slide" data-slide data-title="Problem" data-at="0:00–0:30">
+    <section class="slide" data-slide data-title="Kim jesteśmy" data-at="0:15–0:45">
       <div class="slide__inner">
-        <span class="overline">The problem</span>
-        <h2 class="slide__h2">Today a tailored offer takes <em>about 3 hours</em> and reaches the client <em>up to 2 days</em> later.</h2>
-        <div class="slide__grid2">
-          <div class="pcard"><Icon name="alert" size={28} stroke="#ce5e64" /><b>Choosing the wrong tool</b><span>No checklist for AI yet: a poor pick wastes budget and the team stops trying.</span></div>
-          <div class="pcard"><Icon name="lock" size={28} stroke="#ce5e64" /><b>A data leak no one owns</b><span>Lawyers ask first: can we put client documents here?</span></div>
+        <span class="overline">Gaius</span>
+        <h2 class="slide__h2">We put AI where the documents are, and build automations on top.</h2>
+        <div class="slide__grid3">
+          <div class="pcard"><Icon name="book" size={26} stroke="#9b5155" /><b>Document intelligence</b><span>Research and document analysis on small language models. Every answer leads to its source.</span></div>
+          <div class="pcard"><Icon name="server" size={26} stroke="#9b5155" /><b>Deployed on-premise</b><span>Gaius Vault on dedicated hardware in the organisation, one licence for everyone, no per-user count.</span></div>
+          <div class="pcard"><Icon name="workflow" size={26} stroke="#9b5155" /><b>Automations on your tools</b><span>We connect it to the systems the team already works in and automate the process around the documents.</span></div>
         </div>
-        <p class="slide__lead">A generic deck answers neither. Each buyer needs the offer that leads with their fear.</p>
+        <div class="pchips">{integrations.map((x) => <span class="pchip pchip--sm">{x}</span>)}</div>
+        <p class="slide__fine">In production at SGB Bank (compliance, data protection, risk) and inside mKomornik.</p>
       </div>
       <aside class="notes" hidden>
-        „Gaius-Lex sprzedaje prywatne AI kancelariom i działom prawnym. Dopasowana oferta po rozmowie to dziś ok. 3 godzin
-        pracy handlowca, klient czeka do 2 dni. Kupujący boją się dwóch rzeczy… Ogólny deck nie odpowiada na żadną.”
-        Baseline: zespół sprzedaży Gaius-Lex, listopad 2026.
+        Podkreśl trzy rzeczy: document intelligence, sLLM on-prem, automatyzacje na integracjach (SharePoint, Teams…).
+        Referencje: SGB Bank (compliance, ochrona danych, ryzyko), mKomornik. Nie mów, że każdy wariant Vault liczy
+        wszystko lokalnie — „wdrażamy w organizacji, na sprzęcie klienta”.
       </aside>
     </section>
 
     <!-- 3 -->
-    <section class="slide" data-slide data-title="Live: a real call" data-at="0:30–2:00">
+    <section class="slide" data-slide data-title="Problem: FOMU i FOBO" data-at="0:45–1:15">
+      <div class="slide__inner">
+        <span class="overline">In the age of AI slop</span>
+        <h2 class="slide__h2">Every buyer now has two fears: <em>FOMU</em> and <em>FOBO</em>.</h2>
+        <div class="slide__grid2">
+          <div class="pcard pcard--fear"><span class="pfear">FOMU</span><b>Fear of messing up</b><span>Picking a tool the team drops after a month, or one that leaks client documents with no one accountable.</span></div>
+          <div class="pcard pcard--fear"><span class="pfear">FOBO</span><b>Fear of a better option</b><span>A new model every month and AI everywhere. Waiting feels safer than choosing.</span></div>
+        </div>
+        <p class="slide__lead">For a deployment from <b>€50,000 a year</b>, “we are cool” answers neither. Only proof that we understood <b>their</b> need does.</p>
+      </div>
+      <aside class="notes" hidden>
+        „W dobie AI slopu u kupujących wyostrzyły się dwa lęki: FOMU, czyli strach przed pomyłką, i FOBO, czyli strach,
+        że jest coś lepszego. Żeby je zbić, trzeba pokazać, że rozumiemy ich potrzebę produktową i że ją rozwiązujemy.
+        Przy produkcie za minimum 50 tys. euro rocznie oferta nie może brzmieć: jesteśmy fajni.”
+      </aside>
+    </section>
+
+    <!-- 4 -->
+    <section class="slide slide--sand" data-slide data-title="Problem: nasz proces" data-at="1:15–1:45">
+      <div class="slide__inner">
+        <span class="overline">Our side of it</span>
+        <h2 class="slide__h2">A tailored offer costs us about 3 hours, and the client waits up to 2 days.</h2>
+        <div class="pstats">
+          <div class="pstat"><b>~3 h</b><span>of a salesperson’s work per offer, even with templates</span></div>
+          <div class="pstat"><b>2 days</b><span>until it reaches the client, between everyday duties</span></div>
+          <div class="pstat"><b>~1,000</b><span>new SaaS sign-ups a month, in Poland alone</span></div>
+          <div class="pstat"><b>€50k+</b><span>a year: what each deployment we sell is worth</span></div>
+        </div>
+        <p class="slide__lead">People ask us for an offer directly, or sign up and test the SaaS, not the deployment we sell. A startup team cannot look after every one of them.</p>
+      </div>
+      <aside class="notes" hidden>
+        „Ludzie przychodzą do nas wprost po ofertę, a często rejestrują się w SaaS i testują sam produkt, nie wdrożenie,
+        które sprzedajemy. Samej Polski to ok. 1000 rejestracji miesięcznie. Startupowym zespołem nie da się zaopiekować
+        wszystkimi, żeby zostali na dłużej. Stąd to rozwiązanie.”
+      </aside>
+    </section>
+
+    <!-- 5 -->
+    <section class="slide" data-slide data-title="Nasze rozwiązanie" data-at="1:45–2:05">
+      <div class="slide__inner">
+        <span class="overline"><Icon name="spark" size={14} />What we built</span>
+        <h2 class="slide__h2">Every enquiry, call and sign-up gets an offer that answers their fears, in their own words.</h2>
+        <ol class="psteps">
+          <li><span>1</span><b>Understands</b><small>An email, a call transcript or a voice note: who they are, what they need, what worries them.</small></li>
+          <li><span>2</span><b>Answers</b><small>Each concern with our answer from our own sales knowledge, never a generic brochure.</small></li>
+          <li><span>3</span><b>Hands over</b><small>The deck for the client, and a note for our salesperson on what to ask next.</small></li>
+        </ol>
+        <p class="slide__lead">FOMU: their concerns, answered one by one. FOBO: a concrete pilot and next step instead of a promise.</p>
+      </div>
+      <aside class="notes" hidden>
+        Jedno zdanie i od razu do dema: „Zamiast mówić, pokażemy”.
+      </aside>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide" data-slide data-title="Demo: prawdziwa rozmowa" data-at="2:05–3:20">
       <div class="slide__inner">
         <span class="overline"><Icon name="play" size={14} />Live</span>
-        <h2 class="slide__h2">A real Gaius-Lex call, anonymised.</h2>
+        <h2 class="slide__h2">A real Gaius-Lex sales call, anonymised.</h2>
         <ol class="psteps">
           <li><span>1</span><b>Paste the transcript</b><small>“Paste a call” on our landing page</small></li>
-          <li><span>2</span><b>Generate</b><small>n8n reads it, picks tiles, writes the slides, checks every field</small></li>
-          <li><span>3</span><b>The deck</b><small>written from what this client said, plus a note for our salesperson</small></li>
+          <li><span>2</span><b>Generate</b><small>n8n reads it, picks the tiles, writes the slides, checks every field</small></li>
+          <li><span>3</span><b>The deck in ~{median} s</b><small>written from what this client said, plus a note for our salesperson</small></li>
         </ol>
         <div class="slide__actions">
           <a class="btn btn--ink btn--lg" href="/#generator" target="_blank" rel="noopener"><Icon name="spark" size={18} />Open the generator</a>
@@ -62,13 +128,14 @@ const REPO = 'github.com/GaiusSigma/bizhack2026';
       </div>
       <aside class="notes" hidden>
         Kierowca: zakładka Paste a call → Load a file → real-call.txt → Generate. W trakcie (ok. 12 s) przełącz na n8n:
-        nowe wykonanie na liście. Potem View the deck: slajd 2 (słowa klienta), 4 (obawy „From our call”), 6 (kroki).
-        Rozwiń „What our sales team gets with it”. PLAN B: PDF z próby (out/) — powiedz wprost, że to wynik sprzed 20 minut.
+        nowe wykonanie na liście. Potem View the deck: slajd 2 (słowa klienta), 4 (obawy „From our call” — to jest FOMU
+        zbite odpowiedziami), 6 (kroki przed decyzją — to jest FOBO). Rozwiń „What our sales team gets with it”.
+        PLAN B: PDF z próby (out/) — powiedz wprost, że to wynik sprzed 20 minut.
       </aside>
     </section>
 
-    <!-- 4 -->
-    <section class="slide" data-slide data-title="What just happened" data-at="(w trakcie kroku 2)">
+    <!-- 7 (optional) -->
+    <section class="slide" data-slide data-optional data-title="Jak to działa (opcjonalny)" data-at="tylko na pytanie / gdy deck się generuje">
       <div class="slide__inner">
         <span class="overline"><Icon name="workflow" size={14} />Under the hood</span>
         <h2 class="slide__h2">Two narrow AI jobs, each checked before anything is saved.</h2>
@@ -83,14 +150,13 @@ const REPO = 'github.com/GaiusSigma/bizhack2026';
         <div class="slide__actions"><a class="btn btn--outline btn--lg" href="/how-it-works" target="_blank" rel="noopener"><Icon name="eye" size={18} />How it’s built</a></div>
       </div>
       <aside class="notes" hidden>
-        Opcjonalny — pokaż, gdy jury pyta „jak to działa” albo gdy deck się jeszcze generuje.
-        Mediany etapów z produkcji. Szczegóły i zabezpieczenia: /how-it-works, test 12 zgłoszeń w docs/EVAL.md
-        (pusty, piekarnia, prompt injection).
+        OPCJONALNY — pomiń w 5 minutach. Pokaż na pytanie „jak to działa” albo gdy deck się jeszcze generuje.
+        Szczegóły: /how-it-works, test 12 zgłoszeń w docs/EVAL.md (puste, piekarnia, prompt injection).
       </aside>
     </section>
 
-    <!-- 5 -->
-    <section class="slide" data-slide data-title="The salesperson takes over" data-at="2:00–2:45">
+    <!-- 8 (optional) -->
+    <section class="slide" data-slide data-optional data-title="Handlowiec przejmuje (opcjonalny)" data-at="tylko gdy jest czas">
       <div class="slide__inner slide__inner--split">
         <div class="slide__col">
           <span class="overline">Offer Studio</span>
@@ -101,58 +167,59 @@ const REPO = 'github.com/GaiusSigma/bizhack2026';
         <img class="slide__shot" src="/shots/07-offer-studio-offer.jpg" alt="Offer Studio with the offer's slides marked as written by AI and a live preview." />
       </div>
       <aside class="notes" hidden>
-        Kierowca: najnowsza oferta → oznaczenie „written by n8n (AI)” → zmień jedno słowo → podgląd się odświeża → Download PDF.
-        15 pkt: „firma realnie może dalej używać”.
+        OPCJONALNY. Kierowca: najnowsza oferta → „written by n8n (AI)” → zmień słowo → podgląd się odświeża.
       </aside>
     </section>
 
-    <!-- 6 -->
-    <section class="slide" data-slide data-title="No form needed" data-at="2:45–3:30">
-      <div class="slide__inner">
-        <span class="overline"><Icon name="workflow" size={14} />In daily work</span>
-        <h2 class="slide__h2">Nobody pastes anything. The call ends, the deck is waiting.</h2>
-        <div class="pflow">
-          <div class="pflow__col"><span class="pchip"><Icon name="file" size={18} />Fireflies transcript</span><span class="pchip"><Icon name="mail" size={18} />Email to sales@</span><span class="pchip"><Icon name="chat" size={18} />Web form</span></div>
-          <Icon name="arrow" size={28} stroke="#ce5e64" />
-          <div class="pflow__col"><span class="pchip pchip--ink"><Icon name="workflow" size={18} />n8n · the same workflow</span></div>
-          <Icon name="arrow" size={28} stroke="#ce5e64" />
-          <div class="pflow__col"><span class="pchip"><Icon name="file" size={18} />Deck in Offer Studio</span><span class="pchip pchip--mock"><Icon name="chat" size={18} />#sales alert <small>mock</small></span><span class="pchip pchip--mock"><Icon name="db" size={18} />CRM card <small>mock</small></span></div>
-        </div>
-        <div class="slide__actions"><a class="btn btn--ink btn--lg" href="/#flow" target="_blank" rel="noopener"><Icon name="play" size={18} />Run the workflow</a></div>
-      </div>
-      <aside class="notes" hidden>
-        Landing → How it runs → Fireflies transcript → Run the workflow. „Leci prawdziwy produkcyjny workflow na przykładowej
-        rozmowie. Uczciwie: CRM i Discord są zamockowane, oferta i PDF są prawdziwe.” Nie mów, że Fireflies jest podpięty
-        na żywo (prawdziwy webhook Fireflies wysyła tylko id spotkania).
-      </aside>
-    </section>
-
-    <!-- 7 -->
-    <section class="slide slide--sand" data-slide data-title="Measured" data-at="3:30–4:15">
+    <!-- 9 -->
+    <section class="slide slide--sand" data-slide data-title="Zmierzone" data-at="3:20–3:55">
       <div class="slide__inner">
         <span class="overline">Measured on {measured.decks} production runs</span>
-        <h2 class="slide__h2">Not slideware: every number comes from the workflow’s own log.</h2>
+        <h2 class="slide__h2">From about 3 hours to {median} seconds per offer.</h2>
         <div class="pstats">
-          <div class="pstat"><s>about 3 hours</s><b>{Math.round(measured.seconds.median ?? 0)} s</b><span>per tailored offer (median; 9 in 10 under {Math.ceil(measured.seconds.p90 ?? 0)} s)</span></div>
+          <div class="pstat"><s>about 3 hours</s><b>{median} s</b><span>per tailored offer (median; 9 in 10 under {Math.ceil(measured.seconds.p90 ?? 0)} s)</span></div>
+          <div class="pstat"><s>up to 2 days</s><b>same day</b><span>to the client: the deck is ready while the call is still fresh</span></div>
           <div class="pstat"><s>3 h of a salesperson</s><b>{usd(measured.costPerDeckUsd)}</b><span>AI cost per offer</span></div>
-          <div class="pstat"><s>generic deck</s><b>{measured.slidesWrittenMedian} of 10</b><span>deck sections written for this client</span></div>
           <div class="pstat"><s>&nbsp;</s><b>{measured.failed} / {measured.runs}</b><span>failed runs</span></div>
         </div>
-        <p class="slide__fine">Before: the Gaius-Lex sales team, November 2026. After: <code>node scripts/measure.mjs</code> on the n8n API, {measured.from?.slice(0, 10)}.</p>
+        <p class="pscale"><b>{SIGNUPS.toLocaleString('en')} sign-ups a month</b> would take about {byHandHours.toLocaleString('en')} hours of offers by hand. With this: about {Math.round(machineHours)} hours of machine time and {usd(aiCost)} of AI.</p>
+        <p class="slide__fine">Before: the Gaius-Lex sales team, November 2026. After: <code>node scripts/measure.mjs</code> on the n8n API, {measured.from?.slice(0, 10)}. Scale line: today’s median and cost × 1,000.</p>
       </div>
       <aside class="notes" hidden>
-        „Te liczby są z wykonań produkcyjnego workflow, skrypt measure.mjs w repo liczy je od nowa.” Pokaż też zieloną linię
-        „Your run just now” na landingu (sekcja Results), jeśli został czas. 25 pkt: zmierzona poprawa czasu/kosztu/jakości.
+        „Te liczby są z wykonań produkcyjnego workflow, skrypt measure.mjs w repo liczy je od nowa.” Skala: 1000 rejestracji
+        × 3 h = 3000 godzin ofert ręcznie (ok. 19 etatów); z automatem kilka godzin pracy maszyny i parę dolarów za AI.
+        Jeśli został czas: zielona linia „Your run just now” w sekcji Results na landingu.
       </aside>
     </section>
 
-    <!-- 8 -->
-    <section class="slide" data-slide data-title="Run it yourself" data-at="4:15–4:40">
+    <!-- 10 -->
+    <section class="slide" data-slide data-title="Dowód: automatyzujemy każdy proces" data-at="3:55–4:25">
+      <div class="slide__inner">
+        <span class="overline">Why it matters for our clients</span>
+        <h2 class="slide__h2">If we automated our own offers, we can automate your process.</h2>
+        <div class="pflow">
+          <div class="pflow__col"><span class="pchip"><Icon name="mail" size={18} />Emails and calls</span><span class="pchip"><Icon name="file" size={18} />Documents</span><span class="pchip"><Icon name="db" size={18} />Your knowledge</span></div>
+          <Icon name="arrow" size={28} stroke="#ce5e64" />
+          <div class="pflow__col"><span class="pchip pchip--ink"><Icon name="shield" size={18} />A model with guardrails, inside your organisation</span></div>
+          <Icon name="arrow" size={28} stroke="#ce5e64" />
+          <div class="pflow__col"><span class="pchip"><Icon name="file" size={18} />Finished documents</span><span class="pchip"><Icon name="workflow" size={18} />SharePoint, Teams, CRM</span><span class="pchip"><Icon name="user" size={18} />A person who approves</span></div>
+        </div>
+        <p class="slide__lead">This is the pattern we build for clients on Gaius. And it is part of our sales now: the offer itself shows how well we work with AI.</p>
+      </div>
+      <aside class="notes" hidden>
+        „Ten system to też element sprzedaży: pokazuje, że świetnie operujemy AI i potrafimy zautomatyzować każdy proces —
+        nawet ofertowanie. Dokładnie taki wzorzec budujemy klientom na Gaiusie: dokumenty i rozmowy na wejściu, model z
+        zabezpieczeniami w ich organizacji, gotowe dokumenty w ich narzędziach, człowiek zatwierdza.”
+      </aside>
+    </section>
+
+    <!-- 11 -->
+    <section class="slide" data-slide data-title="Uruchom sam, działa dalej" data-at="4:25–4:45">
       <div class="slide__inner slide__inner--split">
         <div class="slide__col">
-          <span class="overline"><Icon name="code" size={14} />Open source · MIT</span>
+          <span class="overline"><Icon name="code" size={14} />Open source · MIT · already in production</span>
           <h2 class="slide__h2">Two commands. First deck in about 2½ minutes.</h2>
-          <p class="slide__lead">The script asks for one API key, builds the stack, fills Offer Studio, publishes the n8n workflow, makes two sample offers and prints the logins. Tested on a clean clone.</p>
+          <p class="slide__lead">The script asks for one API key, builds the stack, fills Offer Studio, publishes the n8n workflow and makes two sample offers. In production it runs on our server, on tools the team already uses.</p>
           <p class="slide__url">{REPO}</p>
         </div>
         <pre class="pcode"><code>git clone https://{REPO}
@@ -160,32 +227,15 @@ cd bizhack2026
 ./scripts/start.sh</code></pre>
       </div>
       <aside class="notes" hidden>
-        20 pkt: „ktoś spoza zespołu uruchomi z repo”. W README: loginy, zrzuty ekranu, 10 przypadków testowych
-        (sample-data/eval). Jeśli jury nie ma klucza OpenRouter — produkcja działa bez instalacji.
+        20 pkt (uruchomienie z repo) i 15 pkt (firma używa dalej). README: loginy, zrzuty, 10 przypadków testowych.
+        Jeśli jury nie ma klucza OpenRouter — produkcja działa bez instalacji.
       </aside>
     </section>
 
-    <!-- 9 -->
-    <section class="slide" data-slide data-title="It keeps running" data-at="4:40–5:00">
+    <!-- 12 -->
+    <section class="slide slide--ink" data-slide data-title="Zamknięcie" data-at="4:45–5:00">
       <div class="slide__inner">
-        <span class="overline">After the hackathon</span>
-        <h2 class="slide__h2">This is how we make offers from Monday.</h2>
-        <div class="slide__grid3">
-          <div class="pcard"><Icon name="server" size={26} stroke="#9b5155" /><b>Runs on our server</b><span>One Docker Compose file on Coolify, already in production.</span></div>
-          <div class="pcard"><Icon name="tool" size={26} stroke="#9b5155" /><b>Tools we already use</b><span>n8n, Fireflies, Gmail, our CRM and Discord. Nothing new to adopt.</span></div>
-          <div class="pcard"><Icon name="pencil" size={26} stroke="#9b5155" /><b>Changed without code</b><span>Hints, slides and knowledge live in Offer Studio and FigCraft.</span></div>
-        </div>
-        <p class="slide__fine">Next: the real CRM write and #sales alert, and transcripts fetched straight from Fireflies.</p>
-      </div>
-      <aside class="notes" hidden>
-        15 pkt: „firma realnie może dalej używać”. Krótko, jedno zdanie na kartę.
-      </aside>
-    </section>
-
-    <!-- 10 -->
-    <section class="slide slide--ink" data-slide data-title="Close" data-at="5:00">
-      <div class="slide__inner">
-        <h2 class="slide__h1 slide__h1--sm">From the call to an offer that answers this client’s concerns, in seconds instead of hours<span class="dot">.</span></h2>
+        <h2 class="slide__h1 slide__h1--sm">Gaius: document intelligence and automation on small language models. Proven on our own sales<span class="dot">.</span></h2>
         <div class="pclose">
           <span><Icon name="spark" size={18} />bizhack.trygaius.com</span>
           <span><Icon name="code" size={18} />{REPO}</span>
@@ -201,7 +251,7 @@ cd bizhack2026
     <div class="pbar" aria-hidden="true"><span class="pbar__fill" data-progress></span></div>
     <div class="pnav">
       <button type="button" class="pnav__btn" data-prev aria-label="Previous slide"><Icon name="arrow" size={18} class="flip" /></button>
-      <span class="pnav__count" data-count>1 / 10</span>
+      <span class="pnav__count" data-count>1 / 12</span>
       <button type="button" class="pnav__btn" data-next aria-label="Next slide"><Icon name="arrow" size={18} /></button>
       <span class="pnav__hint">← → move · F full screen · P presenter view</span>
     </div>
@@ -211,7 +261,7 @@ cd bizhack2026
   <div class="presenter" data-presenter hidden>
     <header class="presenter__top">
       <span class="presenter__clock"><b data-elapsed>0:00</b> / 5:00</span>
-      <span class="presenter__slot">slajd <b data-p-count>1 / 10</b> · cel: <b data-p-at></b></span>
+      <span class="presenter__slot">slajd <b data-p-count>1 / 12</b> · cel: <b data-p-at></b></span>
       <span class="presenter__btns">
         <button type="button" class="btn btn--outline btn--sm" data-p-prev>← Wstecz</button>
         <button type="button" class="btn btn--ink btn--sm" data-p-next>Dalej →</button>
@@ -319,4 +369,9 @@ cd bizhack2026
   render();
   // the audience window tells an open presenter view where it is
   if (!presenter) send({ type: 'slide', i, started });
+  // a typed address (#7) moves the slides too
+  window.addEventListener('hashchange', () => {
+    const k = Number(location.hash.slice(1));
+    if (!presenter && k >= 1 && k <= N && k - 1 !== i) go(k - 1);
+  });
 </script>
