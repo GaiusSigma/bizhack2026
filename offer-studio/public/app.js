@@ -7,6 +7,7 @@ import {
 import { LIBRARY_EDITORS, LIBRARY_TYPE_LABELS } from './views/library-fields.js';
 import { viewNewOffer } from './views/new-offer.js';
 import { viewOffer, viewOfferList } from './views/offer.js';
+import { viewLessons } from './views/lessons.js';
 import { viewScenarios } from './views/scenarios.js';
 import { plainTags, solutionLinker, tileTagEditor, viewTiles } from './views/tiles.js';
 
@@ -92,6 +93,7 @@ const VIEWS = {
   'offer-advanced': (...a) => viewOffers(...a),
   tiles: (...a) => viewTiles(...a),
   scenarios: (...a) => viewScenarios(...a),
+  lessons: () => viewLessons(),
 };
 
 function route() {

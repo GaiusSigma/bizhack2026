@@ -7,6 +7,7 @@ import Footer from '../components/Footer.astro';
 import '../styles/landing.css';
 import '../styles/tech.css';
 import { measured } from '../lib/data';
+import determinism from '../lib/determinism.json';
 
 const s = measured.stageSeconds;
 const stages = [
@@ -64,9 +65,34 @@ const guards = [
   { icon: 'user', title: 'A person stays in charge', text: 'The salesperson gets a note with what to verify, opens the offer in Offer Studio, edits any slide and downloads a new PDF.' },
 ];
 
+// Determinism benchmark (scripts/determinism.mjs): the same enquiries, 5 runs each, before and after the changes.
+type Bench = typeof determinism.baseline;
+const runsOf = determinism as unknown as Record<string, Bench>;
+const now = runsOf.final || runsOf.temp0;
+const lessonRun = determinism.lessonsExperiment;
+const pct = (x: number | null | undefined) => (x == null ? '–' : `${Math.round(x * 100)}%`);
+const benchCols = [
+  { key: 'baseline', label: 'Before' },
+  { key: 'temp0', label: 'Temperature 0' },
+  { key: 'final', label: 'Now (+ rules fixed)' },
+].filter((c) => runsOf[c.key]);
+const benchRows: [string, (b: Bench) => string][] = [
+  ['Role', (b) => pct(b.plan.role)],
+  ['Segment', (b) => pct(b.plan.segment)],
+  ['Product', (b) => pct(b.plan.product)],
+  ['Main pain', (b) => pct(b.plan.mainPain)],
+  ['All pains (overlap)', (b) => pct(b.plan.painSet)],
+  ['The whole tile set', (b) => pct(b.plan.wholeTileSet)],
+  ['Client name on the deck', (b) => pct(b.client)],
+  ['Optional slides shown or hidden', (b) => pct(b.slidesShown)],
+  ['Slide copy: words in common', (b) => pct(b.copy.words)],
+  ['Median seconds per deck', (b) => `${b.seconds.median} s`],
+  ['Failed runs', (b) => `${b.failed} / ${b.runs}`],
+];
+
 const stack = [
   ['Landing', 'Astro 7, static, served by nginx', 'This site. Sends the enquiry, shows the deck.'],
-  ['n8n 2.50', 'Postgres 17, external task runners', 'The 30-node workflow, webhooks, retries, every run logged.'],
+  ['n8n 2.50', 'Postgres 17, external task runners', 'The 31-node workflow, webhooks, retries, every run logged.'],
   ['Offer Studio', 'Node 22, Hono, SQLite (node:sqlite)', 'Knowledge base, tiles, scenarios, slide library, content API, PDF.'],
   ['n8n-nodes-offer-studio', 'TypeScript, built into the n8n image', 'n8n node that reads Offer Studio’s OpenAPI live: a new endpoint needs no n8n rebuild.'],
   ['FigCraft 0.18', 'WebAssembly editor + collaboration server, CLI', 'Slide design in the browser; rendering and PDF export.'],
@@ -164,7 +190,7 @@ const stack = [
 
         <figure class="tech-shot">
           <img src="/shots/08-n8n-workflow.jpg" alt="The n8n workflow: three triggers, normalisation, AI plan with self-correction, Offer Studio calls, AI copy with a validator, PDF and replies." loading="lazy" width="2040" height="435" />
-          <figcaption>The production workflow in n8n: 30 nodes, three entry points, two AI agents with their correction loops.</figcaption>
+          <figcaption>The production workflow in n8n: three entry points, two AI agents with their correction loops.</figcaption>
         </figure>
       </div>
     </section>
@@ -229,6 +255,53 @@ const stack = [
             </div>
           ))}
         </div>
+      </div>
+    </section>
+
+    <!-- Determinism -->
+    <section class="section section--white">
+      <div class="wrap stack-40">
+        <div class="section-head">
+          <span class="overline">Determinism, measured</span>
+          <h2 class="h2">Same enquiry, same offer?</h2>
+          <p class="lead">We sent each of {now.enquiries} test enquiries {now.runsPerEnquiry} times through the whole workflow and compared the decks. Offer Studio has no AI and repeats itself exactly. The model does not, so we measured it, changed what made it drift, and measured again.</p>
+        </div>
+        <div class="tech-stats">
+          <div class="tech-stat"><span class="tech-stat__n">{now.studio.identical} / {now.studio.tileSets}</span><span>tile sets gave the identical deck 3 times out of 3 (Offer Studio, no AI)</span></div>
+          <div class="tech-stat"><span class="tech-stat__n">{pct(now.plan.wholeTileSet)}</span><span>of runs chose the same tiles as the other runs of that enquiry</span></div>
+          <div class="tech-stat"><span class="tech-stat__n">{pct(now.client)}</span><span>same client name on the title slide</span></div>
+          <div class="tech-stat"><span class="tech-stat__n">{pct(now.copy.words)}</span><span>of words in common between two runs of the same slide</span></div>
+        </div>
+        <div class="tech-table" role="table" aria-label="Determinism before and after">
+          <div class={`tech-table__row tech-table__row--head tech-table__row--bench`} role="row"><span role="columnheader">Share of runs that agree</span>{benchCols.map((c) => <span role="columnheader">{c.label}</span>)}</div>
+          {benchRows.map(([label, f]) => (
+            <div class="tech-table__row tech-table__row--bench" role="row"><span role="cell"><b>{label}</b></span>{benchCols.map((c) => <span role="cell" data-label={c.label}>{f(runsOf[c.key])}</span>)}</div>
+          ))}
+        </div>
+        <div class="tech-cols">
+          <div class="fact">
+            <span class="tile tile--soft"><Icon name="tool" /></span>
+            <span class="fact__title">What we changed</span>
+            <span class="fact__text">Temperature 0 on both model calls. Decisions that can be rules are rules in code: on-premise when the client says the data stays on their servers (the benchmark found the rule missed Polish endings like “naszą infrastrukturę”), the product from the role, the client’s name only when it is a proper name from the enquiry.</span>
+          </div>
+          <div class="fact">
+            <span class="tile tile--soft"><Icon name="alert" /></span>
+            <span class="fact__title">What is left, and why</span>
+            <span class="fact__text">OpenRouter serves this model through about 40 providers at different precisions, and the fastest one answers. Pinning one made decks 3–4× slower and no steadier. A single on-premise model, the way Gaius deploys its sLLMs, removes this source entirely. Same answer is not right answer either, so a person reviews every offer.</span>
+          </div>
+          <div class="fact">
+            <span class="tile tile--soft"><Icon name="user" /></span>
+            <span class="fact__title">The team teaches the model</span>
+            <span class="fact__text">When a salesperson corrects an offer (tiles or slide copy), Offer Studio shows the change and turns it into a lesson: one rule plus the before and after. The model reads the active lessons on every run, from the next offer on; no retraining, and switching a lesson off stops it at once.</span>
+          </div>
+        </div>
+        <div class="tech-table" role="table" aria-label="One lesson, before and after">
+          <div class="tech-table__row tech-table__row--head tech-table__row--lesson" role="row"><span role="columnheader">One lesson: “{lessonRun.lesson}” · role chosen in 5 runs</span><span role="columnheader">Without</span><span role="columnheader">With the lesson</span></div>
+          {lessonRun.rows.map((r) => (
+            <div class="tech-table__row tech-table__row--lesson" role="row"><span role="cell"><b>{r.enquiry}</b></span><span role="cell">{r.before}</span><span role="cell">{r.after}</span></div>
+          ))}
+        </div>
+        <p class="tech-note">Method and every run: <a href="https://github.com/GaiusSigma/bizhack2026/blob/main/docs/DETERMINISM.md">docs/DETERMINISM.md</a> · <code>node scripts/determinism.mjs</code></p>
       </div>
     </section>
 

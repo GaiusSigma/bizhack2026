@@ -2,6 +2,7 @@
 // (client and pain coverage · slides with "why it is here" · FigCraft preview).
 import { $, api, autosize, debounce, download, editorUrl, go, h, loadAll, modal, state, tileById, tileLabel, toast, ui } from '../lib.js';
 import { cleanSelection, slotMatches } from '../selection.js';
+import { correctionsDialog, lessonDialog } from './lessons.js';
 import { scoreTags, segmentOk, selectionOf, selectionSummary, tilePicker } from './new-offer.js';
 
 // Human names for slide fields (instead of template keys).
@@ -108,6 +109,7 @@ export async function viewOffer(offerId, slideId) {
     offer = await api('GET', `/offers/${encodeURIComponent(offer.id)}`);
     renderClient();
     renderSlides();
+    renderTeach();
     refreshPreviewSoon();
   };
   const patchSlide = async (id, patch) => {
@@ -145,6 +147,26 @@ export async function viewOffer(offerId, slideId) {
     update();
   };
 
+  // --- teaching the model: what the team changed after it, and the lessons this offer was made with
+  const teachBox = h('div', { class: 'teach' });
+  const renderTeach = async () => {
+    if (!offer.data?.made_by) return teachBox.replaceChildren();
+    let c = { count: 0 };
+    try { c = await api('GET', `/offers/${encodeURIComponent(offer.id)}/corrections`); } catch { /* offer deleted */ }
+    const used = (offer.data.lessons_used || []).map((id) => state.lessons.find((l) => l.id === id)).filter(Boolean);
+    const fieldLabel = (k) => FIELD_LABELS[k] || k;
+    // DOM replaceChildren prints null as text: build with h() and move its children
+    teachBox.replaceChildren(...h('div', {},
+      h('div', { class: 'teach-head' }, 'Teach the model'),
+      h('div', { class: 'hint' }, c.count
+        ? `You changed ${c.count === 1 ? '1 thing' : `${c.count} things`} the model wrote. Worth repeating? Make it a lesson: the model reads it from the next offer.`
+        : `Made by ${offer.data.made_by}. Change what is wrong (tiles or slide copy), then turn the change into a lesson.`),
+      used.length ? h('div', { class: 'hint' }, `Made with ${used.length === 1 ? '1 lesson' : `${used.length} lessons`}: `, used.map((l, i) => [i ? '; ' : '', h('a', { href: '#/lessons', title: l.text }, l.text.length > 50 ? `${l.text.slice(0, 50)}…` : l.text)])) : null,
+      h('div', { class: 'cc-actions' },
+        h('button', { class: `btn ${c.count ? 'primary' : ''}`, onclick: () => correctionsDialog(offer, { fieldLabel }) }, c.count ? `Review ${c.count} change${c.count === 1 ? '' : 's'}` : 'What changed'),
+        h('button', { class: 'btn', onclick: () => lessonDialog({ kind: 'copy', offer_id: offer.id, tiles: (offer.data.tiles || []).filter((t) => t.startsWith('segment:')) }) }, '+ Lesson'))).childNodes);
+  };
+
   // --- left column: client and pain coverage
   const clientCol = h('div', { class: 'col client-col' });
   const saveOffer = debounce(async (patch) => {
@@ -177,6 +199,10 @@ export async function viewOffer(offerId, slideId) {
       h('div', { class: 'cc-actions' },
         h('button', { class: 'btn', onclick: changeTiles }, 'Change tiles'),
         h('button', { class: 'btn', onclick: recompute, title: 'Rebuild the offer from its tiles. Slides edited by hand stay.' }, 'Recompute')),
+      offer.data?.enquiry ? h('details', { class: 'enquiry' }, h('summary', {}, 'What the client said'),
+        offer.data.summary ? h('p', { class: 'hint' }, offer.data.summary) : null,
+        h('pre', {}, offer.data.enquiry)) : null,
+      teachBox,
       h('details', { class: 'advanced' }, h('summary', {}, 'Advanced'),
         h('p', { class: 'hint' }, 'Editor for template people: FigCraft slide names, {{…}} variables, block queries and cards.'),
         h('a', { class: 'btn sm', href: `#/offer-advanced/${encodeURIComponent(offer.id)}` }, 'Open the advanced editor')),
@@ -299,6 +325,7 @@ export async function viewOffer(offerId, slideId) {
   };
   renderClient();
   renderSlides();
+  renderTeach();
   $('#view').replaceChildren(clientCol, slidesCol, preview);
   await refreshPreview();
   if (openId) shotFor.get(openId)?.scrollIntoView({ block: 'center' });

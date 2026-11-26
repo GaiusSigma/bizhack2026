@@ -63,6 +63,30 @@ upload the result on the Slides tab (it replaces `gaius-deck`), or start with an
 `base` scenario moves onto it; the previous base deck is kept as the `base-2025` scenario, and offers made from it
 keep their slides (the 2025 template stays in the library).
 
+## Lessons: the team teaches the model
+
+The model makes two decisions per offer: which tiles fit the enquiry (role, segment, product, pains) and what to
+write on the slides. When the sales team corrects either, they can turn the correction into a **lesson**: one rule in
+their own words, plus the correction itself as an example. n8n gives the model the active lessons on every run, so a
+lesson works from the next offer. Nothing is retrained or fine-tuned: switching a lesson off stops it at once, and
+every offer records which lessons it was made with.
+
+- **Where corrections come from.** An offer made by n8n keeps the tiles the model chose, the enquiry it read and what
+  it wrote on each slide. In the offer, **Teach the model** lists what people changed since (tiles, any slide field
+  the model wrote), and **Make a lesson** opens a draft: the kind, the scope, the before/after example and the start
+  of the sentence. Only a person knows *why* they changed it, so the rule itself is theirs to write.
+- **Two kinds.** *Choosing tiles* (`plan`): read before the model picks the tiles; `tiles` says which tiles the rule
+  is about. *Writing slides* (`copy`): read when it writes; it applies to offers that have **all** of its tiles
+  (none = every offer), and `step` limits it to one slide.
+- **The Lessons tab** lists them by kind with how many offers used each, the offer it came from, an on/off switch,
+  edit and delete. Export and import carry lessons with the rest of the database.
+- **API.** `GET /api/lessons` (`?kind=plan&active=1` is what n8n reads), `POST`, `PATCH`, `DELETE /api/lessons/:id`;
+  `GET /api/offers/:id/corrections` returns the changes with a lesson draft each. `GET /api/offers/:id/content`
+  includes the copy lessons for that offer's tiles. `POST /api/offers/generate` takes `made_by`, `enquiry`,
+  `summary` and `lessons` (n8n sends them), and `PUT /api/offers/:id/content` takes `lessons`.
+- **In the prompts.** Lessons go into a section "Lekcje od zespołu sprzedaży" in both prompts. The system prompts
+  say lessons come before the general guidance, but never before "do not invent facts".
+
 ## Editing slides in the browser (FigCraft web)
 
 Offer Studio ships the FigCraft web editor (WebAssembly) and serves it at `/figcraft/`, so slide files

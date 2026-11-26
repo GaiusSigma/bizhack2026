@@ -93,3 +93,20 @@
   .tech-step p { grid-column: 1; grid-row: auto; }
   .tech-code { font-size: 13px; padding: 20px; }
 }
+
+/* Determinism table: a metric and one column per configuration */
+.tech-table__row--bench { grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); }
+.tech-table__row--bench span[role='cell']:not(:first-child) { font-variant-numeric: tabular-nums; }
+.tech-note { margin: 0; font-size: 14px; color: var(--muted); }
+.tech-note code { font-size: 13px; background: var(--sand); padding: 1px 4px; }
+@media (max-width: 640px) {
+  .tech-table__row--bench { grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, auto)); gap: 10px; }
+  .tech-table__row--bench.tech-table__row--head { display: grid; font-size: 10px; letter-spacing: .4px; }
+}
+.tech-table__row--lesson { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
+.tech-table__row--lesson.tech-table__row--head { text-transform: none; letter-spacing: 0; font-size: 13px; }
+@media (max-width: 640px) {
+  .tech-table__row--lesson { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tech-table__row--lesson span:first-child { grid-column: 1 / -1; }
+  .tech-table__row--lesson.tech-table__row--head { display: grid; }
+}

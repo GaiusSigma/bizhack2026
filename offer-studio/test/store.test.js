@@ -327,7 +327,7 @@ test('v4: a v3 database from the volume gets tiles and the base offer survives',
   a.db.close();
 
   const b = openDb(path);
-  assert.equal(b.db.prepare('PRAGMA user_version').get().user_version, 5);
+  assert.equal(b.db.prepare('PRAGMA user_version').get().user_version, 6);
   const cols = b.db.prepare('PRAGMA table_info(slides)').all().map((c) => c.name);
   assert.ok(cols.includes('origin') && cols.includes('locked'));
   assert.equal(b.getOffer('gaius-vault-base').slides.length, 11);
@@ -362,7 +362,7 @@ test('export v4 -> import replace restores tiles and scenarios', () => {
   const a = fresh();
   a.update('scenarios', 'base', { steps: [{ key: 'okladka', frame: 'okladka', fill: { kind: 'none' } }] });
   const dump = JSON.parse(JSON.stringify(a.exportAll()));
-  assert.equal(dump.version, 4);
+  assert.equal(dump.version, 5);
   assert.equal(dump.tiles.length, seed.tiles.length);
   const b = openDb(':memory:');
   const counts = b.importAll(dump, 'replace');

@@ -1,0 +1,2400 @@
+{
+  "summary": {
+    "label": "lessons",
+    "measuredAt": "2026-11-26T09:21:01.472Z",
+    "model": "z-ai/glm-5.3-flash",
+    "modelOptions": [
+      {
+        "node": "OpenRouter Chat Model",
+        "responseFormat": "json_object",
+        "reasoningEffort": "low",
+        "providerRouting": {
+          "sort": "throughput"
+        },
+        "temperature": 0
+      },
+      {
+        "node": "OpenRouter (treść)",
+        "responseFormat": "json_object",
+        "reasoningEffort": "low",
+        "providerRouting": {
+          "sort": "throughput"
+        },
+        "temperature": 0
+      }
+    ],
+    "enquiries": 7,
+    "runsPerEnquiry": 5,
+    "runs": 35,
+    "failed": 0,
+    "minutes": 2.29,
+    "studio": {
+      "tileSets": 8,
+      "identical": 8
+    },
+    "plan": {
+      "role": 1,
+      "segment": 1,
+      "product": 1,
+      "mainPain": 0.94,
+      "painSet": 0.91,
+      "wholeTileSet": 0.91
+    },
+    "client": 1,
+    "slidesShown": 1,
+    "copy": {
+      "words": 0.73,
+      "exact": 0.38
+    },
+    "seconds": {
+      "median": 11.44,
+      "max": 15.19
+    }
+  },
+  "perInput": [
+    {
+      "input": "03-inhouse-group-copilot",
+      "runs": 5,
+      "failed": 0,
+      "seconds": {
+        "median": 11.28,
+        "min": 10.48,
+        "max": 12.6
+      },
+      "plan": {
+        "role": 1,
+        "segment": 1,
+        "product": 1,
+        "mainPain": 1,
+        "painSet": 1,
+        "wholeTileSet": 1,
+        "variants": [
+          "role:board,segment:in-house,product:vault,pain:group-scale,pain:templates-at-scale,pain:board-pressure,pain:chatgpt-only-informs"
+        ]
+      },
+      "client": {
+        "agreement": 1,
+        "names": [
+          "your legal team"
+        ]
+      },
+      "slidesShown": 1,
+      "copy": {
+        "words": 0.74,
+        "exact": 0.34,
+        "fields": {
+          "title.title": {
+            "words": 0.78,
+            "exact": 0.6
+          },
+          "title.lead": {
+            "words": 0.26,
+            "exact": 0
+          },
+          "starting-point.lead": {
+            "words": 0.65,
+            "exact": 0
+          },
+          "starting-point.areas": {
+            "words": 0.72,
+            "exact": 0
+          },
+          "use-areas.solutions": {
+            "words": 0.52,
+            "exact": 0
+          },
+          "team-support.lead": {
+            "words": 0.94,
+            "exact": 0.6
+          },
+          "team-support.concerns": {
+            "words": 0.4,
+            "exact": 0
+          },
+          "tool-comparison.tool": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.lead": {
+            "words": 0.69,
+            "exact": 0.3
+          },
+          "tool-comparison.rows": {
+            "words": 1,
+            "exact": 1
+          },
+          "security.lead": {
+            "words": 0.9,
+            "exact": 0.3
+          },
+          "preparation.title": {
+            "words": 0.9,
+            "exact": 0.3
+          },
+          "preparation.lead": {
+            "words": 0.87,
+            "exact": 0.3
+          },
+          "preparation.steps": {
+            "words": 0.6,
+            "exact": 0
+          },
+          "add-on-services.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "add-on-services.services": {
+            "words": 0.6,
+            "exact": 0
+          },
+          "contact-person.lead": {
+            "words": 0.7,
+            "exact": 0.3
+          }
+        }
+      }
+    },
+    {
+      "input": "heldout-energy-group",
+      "runs": 5,
+      "failed": 0,
+      "seconds": {
+        "median": 12.29,
+        "min": 9.66,
+        "max": 12.57
+      },
+      "plan": {
+        "role": 1,
+        "segment": 1,
+        "product": 1,
+        "mainPain": 1,
+        "painSet": 1,
+        "wholeTileSet": 1,
+        "variants": [
+          "role:board,segment:in-house,product:vault,pain:group-scale,pain:shadow-ai,pain:board-pressure"
+        ]
+      },
+      "client": {
+        "agreement": 1,
+        "names": [
+          "your legal team"
+        ]
+      },
+      "slidesShown": 1,
+      "copy": {
+        "words": 0.69,
+        "exact": 0.28,
+        "fields": {
+          "title.title": {
+            "words": 0.35,
+            "exact": 0
+          },
+          "title.lead": {
+            "words": 0.53,
+            "exact": 0.1
+          },
+          "starting-point.lead": {
+            "words": 0.74,
+            "exact": 0
+          },
+          "starting-point.areas": {
+            "words": 0.43,
+            "exact": 0
+          },
+          "use-areas.solutions": {
+            "words": 0.44,
+            "exact": 0
+          },
+          "team-support.lead": {
+            "words": 0.84,
+            "exact": 0.2
+          },
+          "team-support.concerns": {
+            "words": 0.38,
+            "exact": 0
+          },
+          "tool-comparison.tool": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.lead": {
+            "words": 0.74,
+            "exact": 0.2
+          },
+          "tool-comparison.rows": {
+            "words": 0.94,
+            "exact": 0.6
+          },
+          "security.lead": {
+            "words": 0.81,
+            "exact": 0
+          },
+          "preparation.title": {
+            "words": 0.5,
+            "exact": 0.3
+          },
+          "preparation.lead": {
+            "words": 0.93,
+            "exact": 0.6
+          },
+          "preparation.steps": {
+            "words": 0.98,
+            "exact": 0.6
+          },
+          "add-on-services.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "add-on-services.services": {
+            "words": 0.52,
+            "exact": 0
+          },
+          "contact-person.lead": {
+            "words": 0.67,
+            "exact": 0.1
+          }
+        }
+      }
+    },
+    {
+      "input": "01-law-firm-board-lex",
+      "runs": 5,
+      "failed": 0,
+      "seconds": {
+        "median": 12.55,
+        "min": 12.33,
+        "max": 12.81
+      },
+      "plan": {
+        "role": 1,
+        "segment": 1,
+        "product": 1,
+        "mainPain": 1,
+        "painSet": 1,
+        "wholeTileSet": 1,
+        "variants": [
+          "role:board,segment:law-firm,product:on-prem,pain:weak-case-law-search,pain:shadow-ai,pain:hallucinated-citations,pain:confidentiality"
+        ]
+      },
+      "client": {
+        "agreement": 1,
+        "names": [
+          "your law firm"
+        ]
+      },
+      "slidesShown": 1,
+      "copy": {
+        "words": 0.68,
+        "exact": 0.31,
+        "fields": {
+          "title.title": {
+            "words": 0.33,
+            "exact": 0.2
+          },
+          "title.lead": {
+            "words": 0.78,
+            "exact": 0.1
+          },
+          "starting-point.lead": {
+            "words": 0.47,
+            "exact": 0
+          },
+          "starting-point.areas": {
+            "words": 0.4,
+            "exact": 0
+          },
+          "use-areas.solutions": {
+            "words": 0.55,
+            "exact": 0
+          },
+          "team-support.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "team-support.concerns": {
+            "words": 0.5,
+            "exact": 0
+          },
+          "tool-comparison.tool": {
+            "words": 0.73,
+            "exact": 0.6
+          },
+          "tool-comparison.lead": {
+            "words": 0.29,
+            "exact": 0
+          },
+          "tool-comparison.rows": {
+            "words": 1,
+            "exact": 0.6
+          },
+          "security.lead": {
+            "words": 0.8,
+            "exact": 0
+          },
+          "preparation.title": {
+            "words": 0.87,
+            "exact": 0.6
+          },
+          "preparation.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "preparation.steps": {
+            "words": 0.65,
+            "exact": 0
+          },
+          "add-on-services.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "add-on-services.services": {
+            "words": 0.65,
+            "exact": 0
+          },
+          "contact-person.lead": {
+            "words": 0.58,
+            "exact": 0.1
+          }
+        }
+      }
+    },
+    {
+      "input": "02-solo-advocate-saas",
+      "runs": 5,
+      "failed": 0,
+      "seconds": {
+        "median": 12.89,
+        "min": 11.02,
+        "max": 15.19
+      },
+      "plan": {
+        "role": 1,
+        "segment": 1,
+        "product": 1,
+        "mainPain": 1,
+        "painSet": 1,
+        "wholeTileSet": 1,
+        "variants": [
+          "role:champion,segment:law-firm,product:saas,pain:copy-to-word,pain:chatgpt-only-informs"
+        ]
+      },
+      "client": {
+        "agreement": 1,
+        "names": [
+          "your law firm"
+        ]
+      },
+      "slidesShown": 1,
+      "copy": {
+        "words": 0.65,
+        "exact": 0.28,
+        "fields": {
+          "title.title": {
+            "words": 0.66,
+            "exact": 0.2
+          },
+          "title.lead": {
+            "words": 0.54,
+            "exact": 0
+          },
+          "starting-point.lead": {
+            "words": 0.87,
+            "exact": 0.4
+          },
+          "starting-point.areas": {
+            "words": 0.25,
+            "exact": 0
+          },
+          "use-areas.solutions": {
+            "words": 0.31,
+            "exact": 0
+          },
+          "team-support.lead": {
+            "words": 0.58,
+            "exact": 0
+          },
+          "team-support.concerns": {
+            "words": 0.65,
+            "exact": 0.1
+          },
+          "tool-comparison.tool": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.lead": {
+            "words": 0.43,
+            "exact": 0.1
+          },
+          "tool-comparison.rows": {
+            "words": 0.85,
+            "exact": 0.4
+          },
+          "security.lead": {
+            "words": 0.82,
+            "exact": 0.3
+          },
+          "preparation.title": {
+            "words": 1,
+            "exact": 1
+          },
+          "preparation.lead": {
+            "words": 0.65,
+            "exact": 0.2
+          },
+          "preparation.steps": {
+            "words": 0.44,
+            "exact": 0
+          },
+          "add-on-services.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "add-on-services.services": {
+            "words": 0.48,
+            "exact": 0
+          },
+          "contact-person.lead": {
+            "words": 0.54,
+            "exact": 0
+          }
+        }
+      }
+    },
+    {
+      "input": "05-intl-firm-english-archive",
+      "runs": 5,
+      "failed": 0,
+      "seconds": {
+        "median": 10.22,
+        "min": 8.44,
+        "max": 10.41
+      },
+      "plan": {
+        "role": 1,
+        "segment": 1,
+        "product": 1,
+        "mainPain": 1,
+        "painSet": 1,
+        "wholeTileSet": 1,
+        "variants": [
+          "role:champion,segment:law-firm,product:saas,pain:unsearchable-archive,pain:confidentiality"
+        ]
+      },
+      "client": {
+        "agreement": 1,
+        "names": [
+          "your law firm"
+        ]
+      },
+      "slidesShown": 1,
+      "copy": {
+        "words": 0.71,
+        "exact": 0.34,
+        "fields": {
+          "title.title": {
+            "words": 0.32,
+            "exact": 0.1
+          },
+          "title.lead": {
+            "words": 0.53,
+            "exact": 0
+          },
+          "starting-point.lead": {
+            "words": 0.69,
+            "exact": 0.3
+          },
+          "starting-point.areas": {
+            "words": 0.57,
+            "exact": 0
+          },
+          "use-areas.solutions": {
+            "words": 0.55,
+            "exact": 0
+          },
+          "team-support.lead": {
+            "words": 0.44,
+            "exact": 0
+          },
+          "team-support.concerns": {
+            "words": 0.68,
+            "exact": 0
+          },
+          "tool-comparison.tool": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.rows": {
+            "words": 1,
+            "exact": 1
+          },
+          "security.lead": {
+            "words": 0.76,
+            "exact": 0.1
+          },
+          "preparation.title": {
+            "words": 0.89,
+            "exact": 0.6
+          },
+          "preparation.lead": {
+            "words": 0.95,
+            "exact": 0.6
+          },
+          "preparation.steps": {
+            "words": 0.7,
+            "exact": 0
+          },
+          "add-on-services.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "add-on-services.services": {
+            "words": 0.55,
+            "exact": 0
+          },
+          "contact-person.lead": {
+            "words": 0.47,
+            "exact": 0
+          }
+        }
+      }
+    },
+    {
+      "input": "07-edge-gmail-only",
+      "runs": 5,
+      "failed": 0,
+      "seconds": {
+        "median": 10.78,
+        "min": 10.1,
+        "max": 12.82
+      },
+      "plan": {
+        "role": 1,
+        "segment": 1,
+        "product": 1,
+        "mainPain": 0.6,
+        "painSet": 0.4,
+        "wholeTileSet": 0.4,
+        "variants": [
+          "role:champion,segment:law-firm,product:saas,pain:confidentiality",
+          "role:champion,segment:law-firm,product:saas,pain:chatgpt-only-informs",
+          "role:champion,segment:law-firm,product:saas,pain:confidentiality,pain:chatgpt-only-informs"
+        ]
+      },
+      "client": {
+        "agreement": 1,
+        "names": [
+          "your law firm"
+        ]
+      },
+      "slidesShown": 1,
+      "copy": {
+        "words": 0.89,
+        "exact": 0.74,
+        "fields": {
+          "title.title": {
+            "words": 0.67,
+            "exact": 0.6
+          },
+          "title.lead": {
+            "words": 0.75,
+            "exact": 0.6
+          },
+          "starting-point.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "starting-point.areas": {
+            "words": 1,
+            "exact": 1
+          },
+          "use-areas.solutions": {
+            "words": 0.73,
+            "exact": 0.1
+          },
+          "team-support.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "team-support.concerns": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.tool": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.rows": {
+            "words": 1,
+            "exact": 1
+          },
+          "security.lead": {
+            "words": 0.75,
+            "exact": 0.1
+          },
+          "preparation.title": {
+            "words": 1,
+            "exact": 1
+          },
+          "preparation.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "preparation.steps": {
+            "words": 1,
+            "exact": 1
+          },
+          "add-on-services.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "add-on-services.services": {
+            "words": 0.64,
+            "exact": 0.1
+          },
+          "contact-person.lead": {
+            "words": 0.59,
+            "exact": 0.1
+          }
+        }
+      }
+    },
+    {
+      "input": "09-edge-prompt-injection",
+      "runs": 5,
+      "failed": 0,
+      "seconds": {
+        "median": 10.35,
+        "min": 9.94,
+        "max": 11.44
+      },
+      "plan": {
+        "role": 1,
+        "segment": 1,
+        "product": 1,
+        "mainPain": 1,
+        "painSet": 1,
+        "wholeTileSet": 1,
+        "variants": [
+          "role:champion,segment:law-firm,product:saas,pain:confidentiality"
+        ]
+      },
+      "client": {
+        "agreement": 1,
+        "names": [
+          "your law firm"
+        ]
+      },
+      "slidesShown": 1,
+      "copy": {
+        "words": 0.78,
+        "exact": 0.37,
+        "fields": {
+          "title.title": {
+            "words": 0.94,
+            "exact": 0.3
+          },
+          "title.lead": {
+            "words": 0.4,
+            "exact": 0
+          },
+          "starting-point.lead": {
+            "words": 0.45,
+            "exact": 0
+          },
+          "starting-point.areas": {
+            "words": 0.75,
+            "exact": 0.3
+          },
+          "use-areas.solutions": {
+            "words": 0.72,
+            "exact": 0.3
+          },
+          "team-support.lead": {
+            "words": 0.97,
+            "exact": 0.4
+          },
+          "team-support.concerns": {
+            "words": 0.62,
+            "exact": 0
+          },
+          "tool-comparison.tool": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.lead": {
+            "words": 1,
+            "exact": 1
+          },
+          "tool-comparison.rows": {
+            "words": 1,
+            "exact": 1
+          },
+          "security.lead": {
+            "words": 0.87,
+            "exact": 0
+          },
+          "preparation.title": {
+            "words": 1,
+            "exact": 1
+          },
+          "preparation.lead": {
+            "words": 0.84,
+            "exact": 0.4
+          },
+          "preparation.steps": {
+            "words": 0.94,
+            "exact": 0
+          },
+          "add-on-services.lead": {
+            "words": 0.82,
+            "exact": 0.6
+          },
+          "add-on-services.services": {
+            "words": 0.35,
+            "exact": 0
+          },
+          "contact-person.lead": {
+            "words": 0.54,
+            "exact": 0
+          }
+        }
+      }
+    }
+  ],
+  "runs": [
+    {
+      "input": "03-inhouse-group-copilot",
+      "k": 0,
+      "ok": true,
+      "seconds": 12.603155723999999,
+      "offer_id": "your-legal-team-adcc11298a",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:templates-at-scale",
+        "pain:board-pressure",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "One contract standard\nfor 14 companies",
+        "title.lead": "Gaius Vault: a private environment where your group’s templates and documents work for you, at a cost that does not grow with every user.",
+        "starting-point.lead": "Your legal team covers 14 companies in Poland: 9 lawyers at the centre and one lawyer in each larger company. Each company keeps its own subcontractor templates, and hundreds of contracts a year are filled in by hand.",
+        "starting-point.areas": "One contract standard | Each company has its own subcontractor templates; you want one standard for the whole group.\nManual contract filling | Hundreds of contracts a year are filled in by hand with data from your system.\nSavings without new hires | The board expects savings, because there will be no new positions in 2027.",
+        "use-areas.solutions": "One contract standard | Gaius works on your templates and drafts contracts in the group’s standard, directly in the Word add-in.\nManual contract filling | Drafts built from your templates and documents, filled with the data from the case file, ready to check.\nSavings without new hires | A fixed monthly licence per compute unit: no per-user fees, so all lawyers in the group use it at one known cost.",
+        "team-support.lead": "We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Savings without new hires | A fixed monthly licence per compute unit: no per-user fees and no token billing. The pilot measures time saved on real contracts before the decision.\nWhy not Copilot? | Copilot is a good general tool, but its provider’s cloud processes the data. Gaius Vault keeps documents out of model training.",
+        "tool-comparison.tool": "Microsoft Copilot",
+        "tool-comparison.lead": "Your board asks why the Microsoft 365 Copilot licences you already have are not enough.",
+        "tool-comparison.rows": "Purpose | A general tool for office work | Built for legal work: research, documents, drafts\nWhere data goes | Processed in the provider’s cloud | Private environment, never used to train models\nPolish law | Knows Polish law only in general | Polish statutes and case law, with sources\nSide by side | Can stay for general office work | Takes the documents that must stay private",
+        "security.lead": "Your documents stay in a private environment: never used to train models, access set per team and matter, encrypted files.",
+        "preparation.title": "Decisions before the Q1\nbudget round",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for the board’s decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the legal team and reports the result to you.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on contracts, quality, adoption across the group.\nInvolve your DPO | To agree on the data processing rules and have the data processing agreement ready.\nInvolve IT | To check access to the system that supplies the contract data, so the pilot can start on day one.\nSet the contract volume | To size the environment to the number of contracts a year and price the licence precisely.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Building the group’s contract standard with the legal team on real matters. | three workshops\nDeveloper hours | Connecting Gaius to the system that supplies the data for your contracts. | package of hours\nDevelopment plans | Rolling Gaius out to the lawyers in the individual companies. | after the pilot",
+        "contact-person.lead": "Next step: a pilot before the Q1 decision, with the scope and success criteria agreed with the board."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "03-inhouse-group-copilot",
+      "k": 1,
+      "ok": true,
+      "seconds": 11.547457509,
+      "offer_id": "your-legal-team-796f227433",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:templates-at-scale",
+        "pain:board-pressure",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "One contract standard\nfor 14 companies",
+        "title.lead": "Gaius Vault: a private environment where your legal team drafts and fills contracts at group scale, with a fixed cost and no new hires.",
+        "starting-point.lead": "A construction group with 14 companies in Poland: 9 lawyers at the centre and one in each larger company. Each company keeps its own subcontractor templates, and hundreds of contracts a year are filled by hand with data from the system.",
+        "starting-point.areas": "One group standard | Each company has its own subcontractor templates; the group wants one standard.\nFilling contracts by hand | Hundreds of contracts a year are filled manually with data from the system.\nSavings without new hires | The board expects savings: no new positions in 2027.\nWhy not Copilot | You already have Microsoft 365 Copilot licences; the board asks why that is not enough.",
+        "use-areas.solutions": "One group standard | Gaius works on your templates and documents, so every company drafts to the same standard.\nFilling contracts by hand | Drafts straight in Word: contracts built from your templates and case data, no copying.\nSavings without new hires | A monthly licence per compute unit, no per-user fees: all 13 lawyers use it, budget known in advance.\nWhy not Copilot | Gaius works on your documents, not only informs: drafts and checks with sources you can verify.",
+        "team-support.lead": "We run the rollout with your team: workshops on your real matters, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Will it pay off? | A 1–3 month pilot on your real contracts measures time saved before any longer contract or budget decision.\nWhy not Copilot? | Copilot is a good general tool, but the provider’s cloud processes the data; Gaius Vault keeps documents out of model training.",
+        "tool-comparison.tool": "Microsoft Copilot",
+        "tool-comparison.lead": "The board asks why the Copilot licences you already have are not enough for contract work.",
+        "tool-comparison.rows": "Purpose | A general tool for office work | Built for legal work: research, documents, drafts\nWhere data goes | Processed in the provider’s cloud | Private environment, never used to train models\nPolish law | Knows Polish law only in general | Polish statutes and case law, with sources\nSide by side | Can stay for general office work | Takes the documents that must stay private",
+        "security.lead": "Your documents stay in a private environment: never used to train models, access set per team and matter, encrypted.",
+        "preparation.title": "Decisions before the\nQ1 budget",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for the board’s decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the legal team and reports the result to the board.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on contract filling, one template standard, adoption.\nConfirm the data source | To agree how contract data reaches Gaius from your system, so filling works from day one.\nInvolve IT | To check access and integration, so the pilot can start on day one.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Building the group’s contract standard and working routines with the legal team. | three workshops\nDeveloper hours | Connecting Gaius to the system your contract data comes from. | package of hours\nDevelopment plans | Rolling Gaius out to lawyers in the larger companies. | after the pilot",
+        "contact-person.lead": "Next step: agree the pilot scope and success criteria, so the board has a clear basis for the Q1 budget decision."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "03-inhouse-group-copilot",
+      "k": 2,
+      "ok": true,
+      "seconds": 10.476112816999999,
+      "offer_id": "your-legal-team-0ba8b1a403",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:templates-at-scale",
+        "pain:board-pressure",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "One contract standard\nfor 14 companies",
+        "title.lead": "A private Legal AI that gives your lawyers back hours of research and drafting, with client data under your control.",
+        "starting-point.lead": "Your legal team covers 14 companies in Poland: 9 lawyers at the centre and one in each larger company. Each company keeps its own subcontractor templates, and hundreds of contracts a year are filled by hand with data from the system.",
+        "starting-point.areas": "One group standard | Each of the 14 companies has its own subcontractor templates; you want one standard for the whole group.\nManual contract filling | Hundreds of contracts a year are filled by hand with data from the system.\nSavings without new hires | The board expects savings, because there will be no new positions in 2027.",
+        "use-areas.solutions": "One group standard | Gaius works on your templates and documents, so one group standard is applied across all 14 companies.\nManual contract filling | Drafts straight in Word: contracts filled from your data, in the form you send them in, no copying or formatting.\nSavings without new hires | A monthly licence per compute unit, no per-user fees: the whole team uses it and the budget is known in advance.",
+        "team-support.lead": "We run the rollout with your team: workshops on your real matters, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Is it worth the cost? | During the pilot we measure time saved on real matters and review the result with you before any wider rollout.\nIs the AI’s output reliable? | Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.",
+        "tool-comparison.tool": "Microsoft Copilot",
+        "tool-comparison.lead": "Your board asks why the Microsoft 365 Copilot licences you already have are not enough.",
+        "tool-comparison.rows": "Purpose | A general tool for office work | Built for legal work: research, documents, drafts\nWhere data goes | Processed in the provider’s cloud | Private environment, never used to train models\nPolish law | Knows Polish law only in general | Polish statutes and case law, with sources\nSide by side | Can stay for general office work | Takes the documents that must stay private",
+        "security.lead": "Your documents stay in a private environment under your control: never used to train models, access set per team and matter.",
+        "preparation.title": "Decisions before the\nQ1 budget",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for your decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the legal team and reports the result to you.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on contract filling, one group standard, adoption.\nConfirm contract volume | So the environment is sized to the real number of contracts and the pilot proves the savings you expect.\nInvolve your DPO | To agree on the data processing rules and have the data processing agreement ready.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Three workshops with the legal team: needs, a concrete contract example, adjustments after tests. | with the rollout\nDevelopment plans | Rolling the group standard out to the lawyers in the individual companies. | after the pilot",
+        "contact-person.lead": "Next step: agree the pilot scope and success criteria, so the board’s Q1 budget decision rests on pilot results."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "03-inhouse-group-copilot",
+      "k": 3,
+      "ok": true,
+      "seconds": 11.173625292,
+      "offer_id": "your-legal-team-11146dc586",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:templates-at-scale",
+        "pain:board-pressure",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "One contract standard\nfor 14 companies",
+        "title.lead": "Gaius Vault: a private environment for your legal team, with a fixed monthly cost and a pilot before the budget decision in Q1.",
+        "starting-point.lead": "Your legal team serves 14 companies in the group: 9 lawyers at the centre and one in each larger company. Hundreds of subcontractor contracts a year are filled in by hand with data from your system.",
+        "starting-point.areas": "One standard for the group | Each company keeps its own subcontractor contract templates; the group wants one standard.\nFilling contracts by hand | Hundreds of contracts a year are filled manually with data from the system.\nSavings without new hires | The board expects savings: there will be no new positions in 2027.\nWhy not Copilot | You already have Microsoft 365 Copilot licences and the board asks why that is not enough.",
+        "use-areas.solutions": "One standard for the group | One licence per compute unit, no per-user fees: all 13 lawyers work in one environment.\nFilling contracts by hand | Drafts straight in Word: Gaius works on your templates and drafts from the case file data.\nSavings without new hires | A fixed monthly cost known in advance, with a pilot before the decision.\nWhy not Copilot | A private environment for legal documents, with sources for every answer.",
+        "team-support.lead": "We run the rollout with your team: workshops on your real matters, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Cost must be predictable | A fixed monthly licence per compute unit: no per-user fees and no token billing. The pilot measures time saved before the Q1 decision.\nWhy not Copilot? | Copilot is a good general tool, but the provider’s cloud processes the data; Gaius Vault keeps documents out of model training.",
+        "tool-comparison.tool": "Microsoft Copilot",
+        "tool-comparison.lead": "The board asks why the existing Copilot licences are not enough for the legal team’s work.",
+        "tool-comparison.rows": "Purpose | A general tool for office work | Built for legal work: research, documents, drafts\nWhere data goes | Processed in the provider’s cloud | Private environment, never used to train models\nPolish law | Knows Polish law only in general | Polish statutes and case law, with sources\nSide by side | Can stay for general office work | Takes the documents that must stay private",
+        "security.lead": "Your documents stay in a private environment under your control: never used to train models, access set per team and matter.",
+        "preparation.title": "Decisions before the\nQ1 budget round",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for the board’s decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the legal team and reports the result to you.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on contract work, quality, adoption.\nConfirm the data source | To agree which system supplies the contract data and how Gaius reads it.\nInvolve IT | To check access to your system, so the pilot can start on day one.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Three workshops with the legal team: needs, a concrete contract example, adjustments after tests. | during the pilot\nDeveloper hours | Connecting Gaius to the system your contract data comes from. | package of hours\nDevelopment plans | Rolling Gaius out to lawyers in the larger companies of the group. | after the pilot",
+        "contact-person.lead": "Next step: agree the pilot scope and success criteria, so the board has a clear basis for the Q1 budget decision."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "03-inhouse-group-copilot",
+      "k": 4,
+      "ok": true,
+      "seconds": 11.28010847,
+      "offer_id": "your-legal-team-fc2108fdcc",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:templates-at-scale",
+        "pain:board-pressure",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "One contract standard\nfor the whole group",
+        "title.lead": "Gaius Vault: a private environment where your 14 companies’ legal work runs on one standard, at a fixed cost.",
+        "starting-point.lead": "A construction group with 14 companies in Poland: 9 lawyers at the centre and one in each larger company.",
+        "starting-point.areas": "One standard for the group | Each of the 14 companies has its own subcontractor templates; you want one standard for the whole group.\nContracts filled by hand | Hundreds of contracts a year are filled manually with data from your system.\nSavings without new hires | The board expects savings, because there will be no new positions in 2027.",
+        "use-areas.solutions": "One standard for the group | Gaius works on your templates and documents, so every company drafts to the group’s standard.\nContracts filled by hand | Bulk review: Gaius analyses contracts at scale against your standard and drafts the documents.\nSavings without new hires | A monthly licence per compute unit, no per-user fees: the whole team uses it, the budget is known in advance.",
+        "team-support.lead": "We run the rollout with your team: workshops on your real matters, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Will it bring the savings? | A 1–3 month pilot on your real contracts measures time saved before any longer contract or budget decision.\nWhy not the Copilot we have? | Copilot is a good general tool, but the provider’s cloud processes the data; Vault keeps documents out of model training. Both can work side by side.",
+        "tool-comparison.tool": "Microsoft Copilot",
+        "tool-comparison.lead": "Your board asks why the Microsoft 365 Copilot licences you already have are not enough.",
+        "tool-comparison.rows": "Purpose | A general tool for office work | Built for legal work: research, documents, drafts\nWhere data goes | Processed in the provider’s cloud | Private environment, never used to train models\nPolish law | Knows Polish law only in general | Polish statutes and case law, with sources\nSide by side | Can stay for general office work | Takes the documents that must stay private",
+        "security.lead": "Your documents stay in a private environment under your control: never used to train models, access set per team and matter.",
+        "preparation.title": "Decisions before the\nQ1 budget",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for your Q1 decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to you.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on contracts, one standard, adoption.\nConfirm contract volume | So we size the environment and the pilot to the real number of contracts a year.\nInvolve IT | To check access to the system your contract data comes from, so the pilot can start on day one.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Three workshops with the team: needs, a concrete contract example, adjustments after tests. | included in rollout\nDeveloper hours | Connecting Gaius to the system your contract data comes from. | package of hours\nDevelopment plans | Rolling the group standard out to more companies after the pilot. | after the pilot",
+        "contact-person.lead": "Next step: agree the pilot scope and success criteria, so the board has a clear basis for the Q1 budget decision."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "heldout-energy-group",
+      "k": 0,
+      "ok": true,
+      "seconds": 12.569574639999999,
+      "offer_id": "your-legal-team-e25ff74b33",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:shadow-ai",
+        "pain:board-pressure"
+      ],
+      "copy": {
+        "title.title": "AI for contract review\nacross your group",
+        "title.lead": "A private Legal AI environment for your group: contract review against one standard, with documents under your control.",
+        "starting-point.lead": "An energy group of 8 companies with 12 lawyers at the head office. Each company keeps its own connection contracts and annexes, and the team loses time checking them by hand against the group standard.",
+        "starting-point.areas": "Contract compliance | Each company runs its own connection contracts and annexes; checking them against the group standard is manual.\nScale across the group | 8 companies and 12 lawyers in the central legal team need to work to one standard.\nPrivate ChatGPT use | Some lawyers use ChatGPT privately, which the head of legal finds worrying.",
+        "use-areas.solutions": "Contract compliance | Contracts pulled out of scattered files into one searchable place, with key terms and deadlines.\nScale across the group | A monthly licence per compute unit: no per-user fees, so all 12 lawyers and 8 companies work in one environment.\nPrivate ChatGPT use | One official AI tool for the whole team, with control over where documents go.",
+        "team-support.lead": "We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Time lost on manual checks | During the pilot we measure time saved on real contract reviews and review the result with you before any wider rollout.\nDocuments in public chatbots | Your documents are never used to train models, and access is set per team and matter.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "Some of your lawyers use ChatGPT privately today; here is how it compares with a private Legal AI environment.",
+        "tool-comparison.rows": "Data control | Free accounts outside your organisation’s control | One official tool, never used to train models\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nInto Word | Text copied into Word and formatted by hand | Drafts directly in the Word add-in",
+        "security.lead": "Your documents stay in a private environment: never used to train models, with access set per team and matter.",
+        "preparation.title": "Decisions that prepare\nthe rollout proposal",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for your decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to you.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on contract checks, quality, adoption.\nInvolve your DPO | To agree on the data processing rules and have the data processing agreement ready.\nInvolve IT | To check server and network access, so the pilot can start on day one.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops with the legal team on contract review to the group standard. | three workshops with the team\nDevelopment plans | Rolling Gaius out across the 8 companies of the group. | after the pilot",
+        "contact-person.lead": "Next step: agree the pilot scope and success criteria, so your rollout proposal to the board rests on measured results."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "heldout-energy-group",
+      "k": 1,
+      "ok": true,
+      "seconds": 12.290859587000003,
+      "offer_id": "your-legal-team-1b36e3836a",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:shadow-ai",
+        "pain:board-pressure"
+      ],
+      "copy": {
+        "title.title": "Controlled Legal AI\nfor your energy group",
+        "title.lead": "Gaius Vault: a private environment where your 12 lawyers check connection contracts against the group standard, with documents under your control.",
+        "starting-point.lead": "You run the legal department of an energy group: 8 companies, 12 lawyers at headquarters. Each company keeps its own connection contracts and annexes, and your team loses time checking them manually against the group standard.",
+        "starting-point.areas": "Contract review | Each company keeps its own connection contracts and annexes; checking them against the group standard is manual and slow.\nOne standard for 8 companies | 8 companies and 12 lawyers need to work to one standard.\nAI use without control | Some lawyers use ChatGPT privately, which worries you.",
+        "use-areas.solutions": "Contract review | Gaius checks contracts against your group standard and organises them in one searchable place.\nOne standard for 8 companies | A monthly licence per compute unit, no per-user fees: all 12 lawyers use it without counting queries.\nAI use without control | One official AI tool for the whole team, with control over where documents go and access set per team and matter.",
+        "team-support.lead": "We run the rollout with your team: workshops and work routines, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Contract files in public chatbots | Gaius becomes the official tool the team wants to use anyway, with documents never used to train models and access per team and matter.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "Some of your lawyers use ChatGPT privately today; here is how it compares with a private Legal AI environment.",
+        "tool-comparison.rows": "Data control | Free accounts outside your organisation’s control | One official tool, never used to train models\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nInto Word | Text copied into Word and formatted by hand | Drafts directly in the Word add-in",
+        "security.lead": "Your documents stay in a private environment: never used to train models, access set per team and matter, encrypted files.",
+        "preparation.title": "Decisions before\nthe pilot starts",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for your decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to you.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on contract checks, quality, adoption.\nInvolve your DPO | To agree on the data processing rules and have the data processing agreement ready.\nInvolve IT | To check server and network access, so the pilot can start on day one.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops turning contract checks into routines the whole team uses. | three workshops with the team\nDevelopment plans | Rolling Gaius out to the 8 companies of the group. | after the pilot",
+        "contact-person.lead": "Next step: a short call to agree on the pilot scope and the criteria your board will judge the result on."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "heldout-energy-group",
+      "k": 2,
+      "ok": true,
+      "seconds": 12.153581016,
+      "offer_id": "your-legal-team-2aa450cde4",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:shadow-ai",
+        "pain:board-pressure"
+      ],
+      "copy": {
+        "title.title": "AI for contract review\nacross the group",
+        "title.lead": "Gaius Vault: a private environment where your 12 lawyers check connection contracts against the group standard, with documents under your control.",
+        "starting-point.lead": "You run the legal team of an energy group: 8 companies, 12 lawyers at the head office. Each company keeps its own connection contracts and annexes, and your team loses time checking them by hand against the group standard.",
+        "starting-point.areas": "Contract review | Each company keeps its own connection contracts and annexes, checked by hand.\nOne group standard | You lose time verifying whether contracts comply with the group standard.\nPrivate ChatGPT use | Some lawyers use ChatGPT privately, which worries you.",
+        "use-areas.solutions": "Contract review | Clause-by-clause review of contracts and annexes against the group standard, with sources.\nOne group standard | A contract register: contracts pulled from scattered files into one searchable place with key terms.\nPrivate ChatGPT use | One official AI tool for the whole team, with control over where documents go.",
+        "team-support.lead": "We run the rollout with your team: workshops on your real matters, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Documents in private ChatGPT | Gaius becomes the official tool the team wants to use anyway, and documents are never used to train models.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "You mentioned lawyers using ChatGPT privately: how a general chatbot compares with a private Legal AI environment.",
+        "tool-comparison.rows": "Data control | Free accounts outside your organisation’s control | One official tool, never used to train models\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts",
+        "security.lead": "Documents stay in a private environment under your control: never used to train models, access set per team and matter.",
+        "preparation.title": "Decisions before\nthe pilot starts",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for your decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to you.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on contract checks, quality, adoption.\nInvolve your DPO | To agree on the data processing rules and have the data processing agreement ready.\nInvolve IT | To check server and network access, so the pilot can start on day one.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops to turn contract checking into routines the whole team uses. | half a day, up to 15 people\nDevelopment plans | Rolling Gaius out across the group’s 8 companies. | after the pilot",
+        "contact-person.lead": "Next step: a short call to agree on the pilot scope and the criteria your board will judge the result on."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "heldout-energy-group",
+      "k": 3,
+      "ok": true,
+      "seconds": 9.661247059,
+      "offer_id": "your-legal-team-95aaffd06a",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:shadow-ai",
+        "pain:board-pressure"
+      ],
+      "copy": {
+        "title.title": "Controlled Legal AI\nfor your group",
+        "title.lead": "A private Legal AI environment for your 12-lawyer team: contract checks against the group standard, with documents under your control.",
+        "starting-point.lead": "You run the legal team of an energy group: 8 companies, 12 lawyers at headquarters. Each company keeps its own connection contracts and annexes, and the team loses time checking them manually against the group standard.",
+        "starting-point.areas": "Contract compliance | Each company’s connection contracts and annexes are checked by hand against the group standard.\nOne standard for 8 companies | 8 companies and one legal team: documents must follow one standard.\nChatGPT used privately | Some lawyers use ChatGPT privately, outside the organisation’s control.",
+        "use-areas.solutions": "Contract compliance | Clause-by-clause review of contracts against the group standard, with a risk summary.\nOne standard for 8 companies | One monthly licence per compute unit: no per-user fees, so all 8 companies’ work fits one budget.\nChatGPT used privately | One official tool for the whole team, with access set per team and matter.",
+        "team-support.lead": "We run the rollout with your team: workshops and work routines, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Documents in public chatbots | Gaius Vault gives the team a tool as convenient as a chatbot, but documents are never used to train models and access is set per team and matter.\nCost and predictability | A fixed monthly licence per compute unit: no fee per user and no token billing. A 1–3 month pilot comes before the decision.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "Some of your lawyers already use ChatGPT privately; here is how it compares with a private Legal AI environment.",
+        "tool-comparison.rows": "Data control | Free accounts outside your organisation’s control | One official tool, never used to train models\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nInto Word | Text copied into Word and formatted by hand | Drafts directly in the Word add-in",
+        "security.lead": "Your documents stay in a private environment: never used to train models, access set per team and matter, encrypted with keys held by your users.",
+        "preparation.title": "Decisions before\nthe pilot starts",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for the board’s decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to you.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on contract checks, quality, adoption.\nInvolve your DPO | To agree on the data processing rules and have the data processing agreement ready.\nInvolve IT | To check server and network access, so the pilot can start on day one.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Building the contract-checking routine with the team on real matters. | three workshops\nDevelopment plans | Rolling Gaius out to more companies in the group. | after the pilot",
+        "contact-person.lead": "Next step: a short call to agree on the pilot scope and the criteria the board will judge the result on."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "heldout-energy-group",
+      "k": 4,
+      "ok": true,
+      "seconds": 12.344559045000002,
+      "offer_id": "your-legal-team-330bdcc1e4",
+      "client": "your legal team",
+      "tiles": [
+        "role:board",
+        "segment:in-house",
+        "product:vault",
+        "pain:group-scale",
+        "pain:shadow-ai",
+        "pain:board-pressure"
+      ],
+      "copy": {
+        "title.title": "One standard for contracts\nacross 8 companies",
+        "title.lead": "Gaius Vault: a private Legal AI environment for your legal team, with contract work and data under the group’s control.",
+        "starting-point.lead": "You run the legal department of an energy group: 8 companies, 12 lawyers at headquarters. Each company handles its own connection agreements and annexes, and checking them against the group standard is done by hand.",
+        "starting-point.areas": "Contract compliance | Each company runs its own connection agreements and annexes; checking them against the group standard is manual.\nOne standard for 8 companies | 8 companies and 12 lawyers need to work to one standard without multiplying cost.\nClient files in public chatbots | Some lawyers use ChatGPT privately, outside the organisation’s control.\nBoard proposal | You are preparing an AI rollout proposal for the group board for next year.",
+        "use-areas.solutions": "Contract compliance | A contract register: Gaius pulls contracts out of scattered files into one searchable place with key terms.\nOne standard for 8 companies | A monthly licence per compute unit: no per-user fees, so all 12 lawyers work without counting queries.\nClient files in public chatbots | One official AI tool for the whole team, with access set per team and matter.\nBoard proposal | A pilot before the decision, with a fixed monthly budget known in advance.",
+        "team-support.lead": "We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Documents in public chatbots | Gaius becomes the official tool the team wants to use anyway, with control over where documents go: never used to train models.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "Some of your lawyers already use ChatGPT privately; here is how it compares with a private Legal AI environment.",
+        "tool-comparison.rows": "Data control | Free accounts outside your organisation’s control | One official tool, never used to train models\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nInto Word | Text copied into Word and formatted by hand | Drafts directly in the Word add-in",
+        "security.lead": "Your documents stay in a private Vault environment: never used to train models, access set per team and matter.",
+        "preparation.title": "Decisions that prepare\nthe board proposal",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for your decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to you.\nAgree on success criteria | So the pilot ends with a clear answer: time saved on standard checks, quality, adoption.\nInvolve your DPO | To agree on the data processing rules and have the data processing agreement ready.\nInvolve IT | To check server and network access, so the pilot can start on day one.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Building the group-standard contract check into a team workflow. | three workshops with the team\nDevelopment plans | Rolling Gaius out to lawyers in the individual companies. | after the pilot",
+        "contact-person.lead": "Next step: a short call to agree on the pilot scope and the numbers your board proposal needs."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "01-law-firm-board-lex",
+      "k": 0,
+      "ok": true,
+      "seconds": 12.419698560000004,
+      "offer_id": "your-law-firm-421999cd53",
+      "client": "your law firm",
+      "tiles": [
+        "role:board",
+        "segment:law-firm",
+        "product:on-prem",
+        "pain:weak-case-law-search",
+        "pain:shadow-ai",
+        "pain:hallucinated-citations",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Legal AI that stays\nin your infrastructure",
+        "title.lead": "Gaius Vault runs on your own server: faster case-law research, controlled AI use, and client documents never leave the firm.",
+        "starting-point.lead": "Your firm in Warsaw and Poznań has 62 lawyers, mostly in commercial disputes and M&A.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Finding rulings in LEX and Legalis | Answers citing the statutes and rulings behind them, from a database updated daily.\nQuestions pasted into ChatGPT | One official AI tool on your own server, with roles per team and matter.\nCitations that do not exist | Citation checking in finished filings: case numbers, statutes, currency.\nDocuments staying in-house | Gaius Vault on your server, on local models; outbound traffic optional, via your proxy.",
+        "team-support.lead": "We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Citations that do not exist | Every answer links to the statute or ruling it is based on, and Gaius checks citations in finished filings.\nDocuments must stay in-house | Vault runs entirely on your server on local models; IT controls the environment and needs one IP address.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "Your lawyers already use ChatGPT despite the ban; here is what that means for citations and client data.",
+        "tool-comparison.rows": "Citations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nData control | Free accounts outside your organisation’s control | One official tool on your own server\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts",
+        "security.lead": "Gaius Vault runs on your own infrastructure: documents never leave the organisation, and your IT team controls the environment.",
+        "preparation.title": "Recommended steps before\nthe partners’ meeting",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for the partners’ decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to the partners.\nAgree on success criteria | So the pilot ends with a clear answer: time saved, citation quality, adoption.\nInvolve IT | To review the technical brief and check server and network access: one IP address.\nSet the pilot scope | To agree which matters and teams start first, before the 15 January meeting.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops with the team on real matters, so the tool works to your standard from day one. | three workshops\nDeveloper hours | Connecting Gaius Vault to your existing repositories and systems. | package of hours",
+        "contact-person.lead": "Next step: a short call on the pilot scope and deployment timeline, so the partners have a clear basis on 15 January."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "01-law-firm-board-lex",
+      "k": 1,
+      "ok": true,
+      "seconds": 12.547397143999994,
+      "offer_id": "your-law-firm-e5c541aa04",
+      "client": "your law firm",
+      "tiles": [
+        "role:board",
+        "segment:law-firm",
+        "product:on-prem",
+        "pain:weak-case-law-search",
+        "pain:shadow-ai",
+        "pain:hallucinated-citations",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Case-law search under control,\non your own infrastructure",
+        "title.lead": "Gaius Vault runs on your own server: faster case-law research, and documents never leave the organisation.",
+        "starting-point.lead": "Your firm in Warsaw and Poznań has 62 lawyers, mostly in commercial disputes and M&A. LEX and Legalis search falls short, and two court filings already contained a case number that does not exist.",
+        "starting-point.areas": "Finding rulings in LEX | You pay for LEX and Legalis, but the search for case law is weak.\nQuestions pasted into ChatGPT | Despite a formal ban, questions end up in ChatGPT anyway.\nCase numbers that don’t exist | Twice a non-existent case number appeared in a court filing.\nDocuments staying in-house | Financial-sector clients require documents never leave your infrastructure.",
+        "use-areas.solutions": "Finding rulings in LEX | Answers citing the statutes and rulings they rely on, from a database updated daily.\nQuestions pasted into ChatGPT | One official AI tool on your own server, as convenient as a chatbot.\nCase numbers that don’t exist | Citation checking in finished filings: case numbers, statutes, currency.\nDocuments staying in-house | Gaius Vault on your server, on local models; outbound traffic optional, through your proxy.",
+        "team-support.lead": "We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Citations that do not exist | Every answer links to the statute or ruling it is based on, so each citation can be checked at its source in seconds.\nDocuments must stay in-house | Gaius Vault runs entirely on your server on local models; in the fully local variant nothing goes out at all.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "How the chatbot your lawyers already turn to compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Citations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nData control | Free accounts outside your organisation’s control | One official tool on your own server\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts",
+        "security.lead": "Gaius Vault runs on your own infrastructure: documents never leave the organisation and your IT team controls the environment.",
+        "preparation.title": "Recommended steps before\nthe partners’ meeting on 15 January",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for the partners’ decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to the partners.\nAgree on success criteria | So the pilot ends with a clear answer: time saved, quality, adoption.\nInvolve IT | To check server and network access (one IP address), so the pilot can start on day one.\nInvolve your DPO | To agree on the data processing rules and have the data processing agreement ready.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops with the team on real matters, so the tool works to your standard from day one. | three workshops with the team\nDeveloper hours | Connecting Gaius Vault to your repositories and systems. | package of hours\nDevelopment plans | Rolling Gaius out to more practice groups after the pilot. | after the pilot",
+        "contact-person.lead": "Next step: a short call with your IT team on the server and network setup, before the partners’ meeting on 15 January."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "01-law-firm-board-lex",
+      "k": 2,
+      "ok": true,
+      "seconds": 12.331859736999998,
+      "offer_id": "your-law-firm-60802f331c",
+      "client": "your law firm",
+      "tiles": [
+        "role:board",
+        "segment:law-firm",
+        "product:on-prem",
+        "pain:weak-case-law-search",
+        "pain:shadow-ai",
+        "pain:hallucinated-citations",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Case law you can trust,\non your own servers",
+        "title.lead": "Gaius Vault runs on your firm’s own infrastructure: faster case-law research, and client documents never leave the organisation.",
+        "starting-point.lead": "Your firm in Warsaw and Poznań has 62 lawyers, mostly in commercial disputes and M&A. You pay for LEX and Legalis, yet case-law search stays weak, and twice a non-existent case number appeared in a court filing.",
+        "starting-point.areas": "Finding rulings in LEX | You pay for LEX and Legalis, but finding the right rulings is weak and slow.\nQuestions pasted into ChatGPT | Case files and questions end up in public ChatGPT, which the firm has officially banned.\nCase numbers that do not exist | Twice a court filing contained a case number that does not exist.\nDocuments staying in-house | Financial-sector clients require that documents never leave your infrastructure.",
+        "use-areas.solutions": "Finding rulings in LEX | Answers with verifiable sources: statutes and rulings cited, checked at the source.\nQuestions pasted into ChatGPT | Gaius Vault on your own server: one official AI tool the whole team can use.\nCase numbers that do not exist | Citation checking in finished filings: case numbers, statutes, currency.\nDocuments staying in-house | Vault runs on local language models; outbound traffic is optional, through your proxy.",
+        "team-support.lead": "We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Citations that do not exist | Every answer cites the statute or ruling it relies on, and Gaius checks citations in finished filings before they go out.\nDocuments staying in-house | Vault runs entirely on your server on local models; a technical brief lets your IT review the setup before approving it.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "How the chatbot your juniors already use compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Citations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nData control | Free accounts outside your organisation’s control | One official tool on your own server\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts",
+        "security.lead": "Gaius runs on your own infrastructure: documents never leave the organisation and your IT team controls the environment.",
+        "preparation.title": "Recommended steps before\nthe partners’ meeting on 15 January",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for the partners’ decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to the partners.\nAgree on success criteria | So the pilot ends with a clear answer: time saved, quality, adoption.\nInvolve IT | To check the server and network access — Vault needs one IP address in your network.\nInvolve your DPO | To agree on the data processing rules and have the data processing agreement ready.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Working with the team on real matters: research, drafting, verification. | three workshops with the team\nDeveloper hours | Connecting Vault to your repositories and systems via the open API. | package of hours\nDevelopment plans | Rolling Vault out to more teams and practice areas. | after the pilot",
+        "contact-person.lead": "Next step: a short call with your IT team on the server setup, so the pilot can start before the partners’ meeting on 15 January."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "01-law-firm-board-lex",
+      "k": 3,
+      "ok": true,
+      "seconds": 12.697392963999999,
+      "offer_id": "your-law-firm-e708cfa399",
+      "client": "your law firm",
+      "tiles": [
+        "role:board",
+        "segment:law-firm",
+        "product:on-prem",
+        "pain:weak-case-law-search",
+        "pain:shadow-ai",
+        "pain:hallucinated-citations",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Legal AI that stays\nin your infrastructure",
+        "title.lead": "Gaius Vault runs on your own server: faster case-law research and drafting, and client documents never leave the firm.",
+        "starting-point.lead": "Your firm in Warsaw and Poznań has 62 lawyers, mainly in commercial disputes and M&A. Today, weak case-law search pushes work into tools you cannot control.",
+        "starting-point.areas": "Case-law search | You pay for LEX and Legalis, but finding the right rulings is weak.\nQuestions pasted into ChatGPT | Case questions end up in ChatGPT, which you have officially banned.\nCitation risk | Twice a court filing cited a case number that does not exist.\nClient confidentiality | Financial-sector clients require documents to stay in your infrastructure.",
+        "use-areas.solutions": "Case-law search | Answers citing the statutes and rulings behind them, from a database updated daily.\nQuestions pasted into ChatGPT | One official AI tool on your own server, as convenient as a chatbot.\nCitation risk | Gaius checks citations in a finished filing: case numbers, statutes, currency.\nClient confidentiality | Gaius Vault runs entirely on your server, on local language models.",
+        "team-support.lead": "We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Documents must stay in-house | Vault runs on your server on local models; outbound traffic is optional and goes through your proxy.\nCitations that do not exist | Every answer cites its source, so each case number is checked at the source in seconds.",
+        "tool-comparison.tool": "ChatGPT / Lex / Legalis",
+        "tool-comparison.lead": "Your lawyers already use ChatGPT unofficially; here is what that means for citations and client data.",
+        "tool-comparison.rows": "Citations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nData control | Free accounts outside your organisation’s control | One official tool on your own server",
+        "security.lead": "Gaius Vault runs on your own server: documents never leave the firm, and your IT controls the environment through one IP address and your proxy.",
+        "preparation.title": "Recommended steps before\nthe partners’ meeting on 15 January",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for the partners’ decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to the partners.\nAgree on success criteria | So the pilot ends with a clear answer: time saved, citation quality, adoption.\nInvolve IT | To review the technical brief and check server and network access: one IP address.\nConfirm client security needs | So the pilot setup matches what your financial-sector clients expect.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops with the team on real matters, to your own standard. | three workshops\nDeveloper hours | Connecting Gaius Vault to your repositories and systems. | package of hours\nDevelopment plans | Rolling Gaius out to more practice groups after the pilot. | after the pilot",
+        "contact-person.lead": "Next step: a short call with your IT team on the server setup, so the pilot can start before the partners’ meeting on 15 January."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "01-law-firm-board-lex",
+      "k": 4,
+      "ok": true,
+      "seconds": 12.808214005000002,
+      "offer_id": "your-law-firm-e187f081ac",
+      "client": "your law firm",
+      "tiles": [
+        "role:board",
+        "segment:law-firm",
+        "product:on-prem",
+        "pain:weak-case-law-search",
+        "pain:shadow-ai",
+        "pain:hallucinated-citations",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Case law you can trust,\non your own servers",
+        "title.lead": "Gaius Vault runs on your firm’s own infrastructure: faster case-law research, and client documents never leave the organisation.",
+        "starting-point.lead": "Your firm in Warsaw and Poznań has 62 lawyers working mainly on commercial disputes and M&A. You pay for LEX and Legalis, yet case-law search stays weak, and two court filings already contained a citation that does not exist.",
+        "starting-point.areas": "Finding rulings in LEX and Legalis | You pay for LEX and Legalis, but the case-law search is weak and slow.\nCase numbers that do not exist | Twice a court filing contained a citation that does not exist.\nQuestions pasted into ChatGPT | Case questions end up in public ChatGPT despite an official ban.\nDocuments staying in the firm | Financial-sector clients require documents to stay on your infrastructure.",
+        "use-areas.solutions": "Finding rulings in LEX and Legalis | Answers from a legal database updated daily, citing the statutes and rulings behind them.\nCase numbers that do not exist | Gaius checks citations in a finished filing: case numbers, statutes, whether still current.\nQuestions pasted into ChatGPT | One official AI tool on your own server, as convenient as a chatbot.\nDocuments staying in the firm | Gaius Vault runs entirely on your server, on local language models, under IT control.",
+        "team-support.lead": "We run the rollout with your team, so adoption does not depend on your lawyers’ spare time.",
+        "team-support.concerns": "Citations that do not exist | Every answer cites its statute or ruling, so each citation is checked at the source in seconds.\nDocuments must stay in-house | Vault runs on your server on local models; outbound traffic is optional and goes through your proxy.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "Your firm banned ChatGPT, yet questions still end up there: how a general chatbot compares with a Legal AI on your own server.",
+        "tool-comparison.rows": "Citations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nData control | Free accounts outside your organisation’s control | One official tool on your own server\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts",
+        "security.lead": "Gaius Vault runs on your own infrastructure: documents never leave the organisation and your IT controls the environment.",
+        "preparation.title": "Recommended steps before\nthe partners’ meeting on 15 January",
+        "preparation.lead": "A few decisions that give the pilot a clear owner and a clear basis for the partners’ decision.",
+        "preparation.steps": "Name a pilot owner | So one person runs the pilot on the team and reports the result to the partners.\nAgree on success criteria | So the pilot ends with a clear answer: time saved, citation quality, adoption.\nInvolve IT | To review the technical brief and check server and network access: one IP address in your network.\nAgree the pilot scope | So the pilot covers real disputes and M&A matters and proves the result before 15 January.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops with the team on real matters, so the tool works to your standard from day one. | three workshops\nDeveloper hours | Connecting Gaius Vault to your document repositories and systems. | package of hours\nDevelopment plans | Rolling Gaius out to more teams across Warsaw and Poznań. | after the pilot",
+        "contact-person.lead": "Next step: a short call on pilot scope and implementation timeline, so the partners have a clear basis on 15 January."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "02-solo-advocate-saas",
+      "k": 0,
+      "ok": true,
+      "seconds": 11.01559610200001,
+      "offer_id": "your-law-firm-b328e53c23",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:copy-to-word",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "Drafts in Word,\nfrom tomorrow",
+        "title.lead": "Gaius-Lex drafts pleadings straight in Word, on your templates, with sources you can check — a cloud tool you can start using right away.",
+        "starting-point.lead": "You run a solo law practice in Lublin, focused on family and criminal cases, with no IT support and no implementation budget.",
+        "starting-point.areas": "Writing pleadings | Most of your time goes into writing pleadings, and ChatGPT only suggests — it does not draft.\nRetyping into Word | You retype everything into Word and fix the formatting by hand.\nStarting without IT | You want something you can use from tomorrow, without installing servers or an IT project.",
+        "use-areas.solutions": "Writing pleadings | Gaius drafts letters from the case file on your templates, with the legal basis and sources.\nRetyping into Word | Drafts are created directly in the Word add-in, in the form you send them in — no copying or formatting.\nStarting without IT | Gaius in the cloud: lite, standard and pro plans, a 14-day trial, hosted in the European Economic Area.",
+        "team-support.lead": "You start on the 14-day trial on real matters, and we set up the tool with you in short sessions on your own documents.",
+        "team-support.concerns": "Monthly cost and predictability | Gaius in the cloud comes in lite, standard and pro plans with a 14-day trial, so you check it on real matters before paying.\nNo IT and no budget | No servers to install: a cloud tool with team accounts in separate workspaces, ready to use from day one.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "You use ChatGPT for suggestions, but still retype everything into Word — here is where a Legal AI differs.",
+        "tool-comparison.rows": "Into Word | Text copied into Word and formatted by hand | Drafts directly in the Word add-in\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few short conversations that get you ready to start the trial.",
+        "preparation.steps": "Pick your matters | To choose the types of pleadings and monthly volume the trial should cover.\nA short meeting with us | To set up your account and pick the plan that fits your practice.\nStart the 14-day trial | So you can test Gaius on real family and criminal matters from day one.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | A working session on your own pleadings and templates. | short session, solo practice",
+        "contact-person.lead": "Next step: a short call to pick the pleadings for your 14-day trial and set up your account."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "02-solo-advocate-saas",
+      "k": 1,
+      "ok": true,
+      "seconds": 13.268430689999994,
+      "offer_id": "your-law-firm-7fbe0a4718",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:copy-to-word",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "Drafts in Word,\nnot copied from a chatbot",
+        "title.lead": "Gaius-Lex drafts pleadings on your templates, directly in Word, with sources you can check.",
+        "starting-point.lead": "You run a solo law practice in Lublin, focused on family and criminal cases, with no IT support and no implementation budget.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, with sources.\nContract review | Clause-by-clause review against your playbook, with a risk summary.",
+        "team-support.lead": "You start on the 14-day trial on your real matters, and we set up the skills together in short working sessions.",
+        "team-support.concerns": "Monthly cost | Gaius in the cloud comes in lite, standard and pro plans with a 14-day trial, so you check it on real matters before paying.\nNo IT, no rollout budget | No installation or server: a cloud tool with team accounts in separate workspaces, ready to use from day one.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "You use ChatGPT for suggestions, but then retype everything into Word and fix the formatting.",
+        "tool-comparison.rows": "Into Word | Text copied into Word and formatted by hand | Drafts directly in the Word add-in\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nData control | Free accounts outside your organisation’s control | One official tool, files encrypted, keys with users",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models: files on My drive are encrypted and you hold the keys.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few short conversations that get you ready to start the trial.",
+        "preparation.steps": "A short meeting with us | To pick the plan and the matters you will test Gaius on during the trial.\nList your letter types | To match the drafting skills to the pleadings you write most often.\nEstimate monthly volume | So we can recommend the lite, standard or pro plan with a predictable monthly price.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | A working session on your real pleadings: drafting and verification to your standard. | short session, 1 person",
+        "contact-person.lead": "Next step: a short call to set up your 14-day trial and pick the first matters to draft with Gaius."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "02-solo-advocate-saas",
+      "k": 2,
+      "ok": true,
+      "seconds": 11.880756366000002,
+      "offer_id": "your-law-firm-5dd66e0f70",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:copy-to-word",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "Drafts in Word,\nnot copied from a chatbot",
+        "title.lead": "Gaius-Lex drafts pleadings straight in Word on your templates, with sources you can check. A cloud tool you can start tomorrow, without an IT project.",
+        "starting-point.lead": "You run a one-person law firm in Lublin, focused on family and criminal cases, with no IT support and no implementation budget.",
+        "starting-point.areas": "Drafting pleadings | Writing letters and pleadings takes the most of your time, as you said yourself.\nRetyping into Word | ChatGPT gives suggestions, but you retype everything into Word and fix the formatting.\nStarting without IT | You want something you can use from tomorrow, without installing servers or a budget for implementation.",
+        "use-areas.solutions": "Drafting pleadings | Gaius drafts letters from the case file on your templates, also directly in the Word add-in.\nRetyping into Word | The draft is created in the form you send it in: no more copying and formatting by hand.\nStarting without IT | Gaius in the cloud: lite, standard and pro plans, a 14-day trial, hosted in the European Economic Area.",
+        "team-support.lead": "You start on the 14-day trial on your real matters, and we set up the skills together in short sessions.",
+        "team-support.concerns": "Monthly cost and predictability | Gaius in the cloud comes in lite, standard and pro plans with a 14-day trial, so you check it on real matters before paying.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "You use ChatGPT for suggestions, but then retype everything into Word and fix the formatting.",
+        "tool-comparison.rows": "Into Word | Text copied into Word and formatted by hand | Drafts directly in the Word add-in\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models: files on My drive are encrypted and you hold the keys.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few short steps that get you ready to start the 14-day trial.",
+        "preparation.steps": "List your pleadings | To pick the letter and pleading types you write most, so the trial works on your real documents.\nEstimate your volume | So we can recommend the right plan: lite, standard or pro, with a simple monthly price.\nA short meeting with us | To set up your account and workspace, so you can start on real matters from day one.\nDecide on the plan | So you know after the trial whether to stay on a monthly plan and which one fits your practice.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | A working session on your own pleadings: gathering needs, a concrete example, adjustments. | short sessions, solo practice",
+        "contact-person.lead": "Next step: a short call to pick your most frequent pleading types and start the 14-day trial."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "02-solo-advocate-saas",
+      "k": 3,
+      "ok": true,
+      "seconds": 12.890854345999992,
+      "offer_id": "your-law-firm-26001b4e1f",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:copy-to-word",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "Drafts in Word,\nnot copied from chat",
+        "title.lead": "Gaius-Lex drafts letters and pleadings straight in Word, on your templates, with sources you can check.",
+        "starting-point.lead": "You run a one-person law firm in Lublin, focused on family and criminal cases, with no IT support and no implementation budget.",
+        "starting-point.areas": "Writing letters | Most of your time goes to drafting letters and pleadings for family and criminal cases.\nRewriting into Word | Chat output has to be moved into Word and formatted by hand, every time.\nChatGPT only gives hints | ChatGPT suggests something, but it does not produce a document you can send.",
+        "use-areas.solutions": "Writing letters | Gaius drafts letters from the case file, on your templates, with the legal basis cited.\nRewriting into Word | Drafts straight in the Word add-in: no copying, no manual formatting.\nChatGPT only gives hints | Gaius works on Polish statutes and case law and drafts and checks documents, not just information.",
+        "team-support.lead": "You can start on your own real matters during the 14-day trial, and we set up the workspace and accounts with you in a short session.",
+        "team-support.concerns": "Monthly cost and predictability | Gaius in the cloud comes in lite, standard and pro plans with a 14-day trial, so you check it on real matters before paying.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "You use ChatGPT for hints, then rewrite everything into Word: here is where a Legal AI differs.",
+        "tool-comparison.rows": "Into Word | Text copied into Word and formatted by hand | Drafts directly in the Word add-in\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models: files on My drive are encrypted, with the keys held by you.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few short steps that get you into the 14-day trial well prepared.",
+        "preparation.steps": "A short meeting with us | To pick the plan, set up your workspace and choose the matters for the trial.\nCount your monthly letters | To match the plan and pricing to your real volume of letters and case types.\nStart the 14-day trial | To test Gaius on real family and criminal matters before paying anything.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | A working session on your own letters and templates, so drafts match your standard. | short session, 1 person",
+        "contact-person.lead": "Next step: a short call to answer your pricing question and start the 14-day trial on your real matters."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "02-solo-advocate-saas",
+      "k": 4,
+      "ok": true,
+      "seconds": 15.185788564999996,
+      "offer_id": "your-law-firm-9a0ac00b2c",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:copy-to-word",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "Drafts in Word,\nnot copied from chat",
+        "title.lead": "Gaius-Lex drafts letters on your templates, straight in Word, so you stop copying and reformatting chat output.",
+        "starting-point.lead": "You run a one-person law firm in Lublin, focused on family and criminal cases, with no IT support and no implementation budget.",
+        "starting-point.areas": "Writing letters | Writing letters and pleadings takes the most time of all your daily work.\nReformatting in Word | ChatGPT output has to be copied into Word and the formatting fixed by hand.\nLegal research | ChatGPT gives hints, but you have no tool built on Polish statutes and case law.",
+        "use-areas.solutions": "Writing letters | Gaius drafts letters from the case file on your own templates, with the legal basis and sources.\nReformatting in Word | Drafts are created directly in the Word add-in, in the form you send them in: no copying, no reformatting.\nLegal research | Answers cite the statute or ruling behind every claim, from Polish law updated daily.",
+        "team-support.lead": "You start on your own, in the cloud, without an IT project: we set up the trial and help you tune it to your family and criminal matters.",
+        "team-support.concerns": "No budget for implementations | Gaius in the cloud comes in lite, standard and pro plans with a 14-day trial, so you check it on real matters before paying.\nStarting tomorrow, no servers | Gaius runs in the cloud hosted in the European Economic Area: you sign in and work on real matters from day one, no installation.",
+        "tool-comparison.tool": "ChatGPT",
+        "tool-comparison.lead": "You already use ChatGPT for hints, but its output has to be copied into Word and formatted by hand.",
+        "tool-comparison.rows": "Into Word | Text copied into Word and formatted by hand | Drafts directly in the Word add-in\nDocument work | Gives information, does not draft or check | Drafts on your templates and checks contracts\nCitations | Can make up rulings and statute numbers | Cites the statute or ruling behind every answer\nPolish case law | Does not know Polish case law well | Polish statutes and case law, updated daily\nData control | Free accounts outside your organisation’s control | One official tool, files encrypted, keys with users",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models: files on My drive are encrypted and you hold the keys.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few short steps that get you into the 14-day trial well prepared.",
+        "preparation.steps": "A short meeting with us | To pick the family and criminal matters you will test Gaius on during the trial.\nCount your monthly letters | To match the lite, standard or pro plan to your real volume of letters and pleadings.\nStart the 14-day trial | To draft real letters in Word from day one and see what you stop doing by hand.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | A working session on your own templates and real matters, so drafts match your standard. | short session, 1 person",
+        "contact-person.lead": "Next step: a short call to pick your matters and start the 14-day trial, and to match the plan to your monthly volume of letters."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": false,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "05-intl-firm-english-archive",
+      "k": 0,
+      "ok": true,
+      "seconds": 10.215355681999993,
+      "offer_id": "your-law-firm-220890dac0",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:unsearchable-archive",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "15 years of memos,\nfindable again",
+        "title.lead": "Gaius-Lex searches your SharePoint and Outlook archive by content, so the team finds earlier opinions and clauses in seconds instead of asking around.",
+        "starting-point.lead": "You lead knowledge management at the Warsaw office of an international law firm with about 120 lawyers in Poland.",
+        "starting-point.areas": "Finding past work | 15 years of opinions, memos and contracts on SharePoint and in Outlook, found only by file name.\nKeeping client data safe | Client documents and know-how must stay in the EEA and never be used for training.\nRebuilding past work | Partners ask juniors to find memos written for similar clients, and the team rewrites what already exists.",
+        "use-areas.solutions": "Finding past work | Gaius connects to SharePoint and Outlook and answers from document content, without building a second database.\nKeeping client data safe | Hosted in the European Economic Area, never used for training; files encrypted, keys stay with users.\nRebuilding past work | You find an earlier opinion, clause or email by its content, not by its file name.",
+        "team-support.lead": "The team starts on real matters during the 14-day trial: no IT project, and we build skills together in short workshops.",
+        "team-support.concerns": "Data must stay in the EEA | Gaius is hosted in the European Economic Area and your documents are never used to train models.\nNo second database | Gaius works on your documents where they already are: it connects to SharePoint and Outlook and answers from their content.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models; files on My drive are encrypted and the keys stay with you.",
+        "preparation.title": "Recommended steps before\nthe pilot starts",
+        "preparation.lead": "A few conversations that will get you and the managing partner ready for the pilot.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the trial can start on day one.\nPick pilot users | To decide how many lawyers take part and which matters they test Gaius on.\nTalk to the managing partner | So the managing partner knows what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops with the team on real matters: needs, a concrete example, adjustments after tests. | three workshops\nDevelopment plans | Rolling Gaius out to more teams and offices after the pilot. | after the pilot",
+        "contact-person.lead": "Next step: a short call to set up the 14-day trial for your team and plan the proposal for your managing partner."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "05-intl-firm-english-archive",
+      "k": 1,
+      "ok": true,
+      "seconds": 10.251216598999992,
+      "offer_id": "your-law-firm-5e6b32c992",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:unsearchable-archive",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Find 15 years of memos\nby content, not file name",
+        "title.lead": "Gaius-Lex connects to your SharePoint and Outlook and finds opinions, memos and contracts by their content, hosted in the EEA.",
+        "starting-point.lead": "You lead knowledge management at the Warsaw office of an international law firm with about 120 lawyers in Poland. 15 years of opinions, memos and contracts sit on SharePoint and in Outlook, and people can only find things by file name.",
+        "starting-point.areas": "Finding past work | Partners keep asking juniors to ‘find that memo we wrote for a similar client’.\nArchive on SharePoint and Outlook | 15 years of opinions, memos and contracts, found only by file name.\nData stays in the EEA | Open to a cloud solution as long as data stays in the EEA and is never used for training.",
+        "use-areas.solutions": "Finding past work | Search your archive by content: Gaius answers from the content of your documents, not file names.\nArchive on SharePoint and Outlook | Gaius connects to SharePoint, OneDrive, Google Drive, Outlook and Gmail, without building a second database.\nData stays in the EEA | Hosted in the European Economic Area, never used for training; files encrypted, keys stay with you.",
+        "team-support.lead": "The team starts on the 14-day trial on real matters, with no IT project, and we build skills together in short workshops.",
+        "team-support.concerns": "Data must stay in the EEA | Gaius is hosted in the European Economic Area and your documents are never used to train models.\nNo second database to maintain | Gaius works on your documents where they already are: it connects to SharePoint and Outlook and answers from their content.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models; files on My drive are encrypted and you hold the keys.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the managing partner ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the trial can start on day one without an IT project.\nA short meeting with us | To pick the matters for the trial and decide how many users take part.\nTalk to the managing partner | So the managing partner knows what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops with the team on searching and working with the archive, on real matters. | three workshops with the team\nDevelopment plans | Rolling Gaius out to more teams and offices after the trial. | after the trial",
+        "contact-person.lead": "Next step: a short call to plan the 14-day trial and the proposal you can share with your managing partner."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "05-intl-firm-english-archive",
+      "k": 2,
+      "ok": true,
+      "seconds": 9.709545912999994,
+      "offer_id": "your-law-firm-1c77b57b97",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:unsearchable-archive",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "15 years of memos,\nfindable again",
+        "title.lead": "Gaius-Lex searches your archive by content: opinions, memos and contracts on SharePoint and Outlook, without renaming a single file.",
+        "starting-point.lead": "You lead knowledge management at the Warsaw office of an international law firm with about 120 lawyers in Poland.",
+        "starting-point.areas": "Finding past documents | 15 years of opinions, memos and contracts on SharePoint and Outlook, found only by file name.\nRepeating past work | Partners ask juniors to find memos written for similar clients, and the team rewrites what already exists.\nKeeping data in the EEA | You are open to a cloud solution as long as data stays in the EEA and is never used for training.",
+        "use-areas.solutions": "Finding past documents | Gaius connects to SharePoint and Outlook and answers from the content of your documents, without a second database.\nRepeating past work | You find an earlier opinion, clause or email by its content, so the team builds on what it has already done.\nKeeping data in the EEA | Hosted in the European Economic Area, documents never used to train models, files encrypted with keys held by users.",
+        "team-support.lead": "You start with a 14-day trial on the Pro plan: the team works on real matters from day one, no IT project needed.",
+        "team-support.concerns": "Data must stay in the EEA | Gaius is hosted in the European Economic Area and your documents are never used to train models.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models: an answer you can pass on to your managing partner and clients.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the managing partner ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in for the team workspaces, so the trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide how many users take part.\nTalk to the managing partner | So the managing partner knows what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Working sessions with the team on real matters from the archive. | during the trial\nDevelopment plans | Rolling Gaius out to more teams and offices after the pilot. | after the trial",
+        "contact-person.lead": "Next step: a short call to set up the 14-day Pro trial and plan it with your team."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "05-intl-firm-english-archive",
+      "k": 3,
+      "ok": true,
+      "seconds": 10.408995020000003,
+      "offer_id": "your-law-firm-ceaef34c2f",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:unsearchable-archive",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Your 15-year archive,\nsearchable again",
+        "title.lead": "Gaius-Lex searches your opinions, memos and contracts on SharePoint and Outlook by content, so the team finds past work in seconds.",
+        "starting-point.lead": "You lead knowledge management at the Warsaw office of an international law firm with about 120 lawyers in Poland.",
+        "starting-point.areas": "Archive on SharePoint and Outlook | 15 years of opinions, memos and contracts sit on SharePoint and in Outlook, found only by file name.\nFinding past memos | Partners keep asking juniors to ‘find that memo we wrote for a similar client’.\nData stays in the EEA | A cloud solution is acceptable only if data stays in the EEA and is never used for training.",
+        "use-areas.solutions": "Archive on SharePoint and Outlook | Gaius connects to SharePoint and Outlook and answers from document content, without building a second database.\nFinding past memos | You find an earlier opinion, clause or email by its content, not by its file name.\nData stays in the EEA | Hosted in the European Economic Area, never used to train models, files encrypted with keys held by users.",
+        "team-support.lead": "The team starts on a 14-day trial on real matters, with no IT project, and we set it up together with you.",
+        "team-support.concerns": "Data staying in the EEA | Gaius is hosted in the European Economic Area and your documents are never used to train models.\nNo second database | Gaius works on your documents where they already are: it connects to SharePoint and Outlook and answers from their content.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models; files on My drive are encrypted and you hold the keys.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the managing partner ready for the trial.",
+        "preparation.steps": "Check document volume | To size the archive and pick the SharePoint and Outlook folders the trial should cover.\nTalk to IT | To check accounts and sign-in for SharePoint and Outlook, so the trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the managing partner | So the managing partner knows what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Workshops with the team on searching and working with the archive, on real matters. | three workshops with the team\nDeveloper hours | Connecting Gaius to your SharePoint and Outlook environment. | package of hours",
+        "contact-person.lead": "Next step: start the 14-day trial with your team on real matters, and we will prepare the proposal for your managing partner."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "05-intl-firm-english-archive",
+      "k": 4,
+      "ok": true,
+      "seconds": 8.442015979999997,
+      "offer_id": "your-law-firm-1352c0f54b",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:unsearchable-archive",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "15 years of opinions,\nfound by content",
+        "title.lead": "Gaius-Lex searches your SharePoint and Outlook archive by content, so the team finds past opinions, memos and contracts in seconds.",
+        "starting-point.lead": "You lead knowledge management at the Warsaw office of an international law firm with about 120 lawyers in Poland. Day to day, 15 years of opinions, memos and contracts can only be found by file name.",
+        "starting-point.areas": "Finding past work | Partners keep asking juniors to ‘find that memo we wrote for a similar client’.\nSharePoint archive | 15 years of opinions, memos and contracts sit on SharePoint, found only by file name.\nOutlook emails | Emails are part of the archive, but people can only search them by file name.",
+        "use-areas.solutions": "Finding past work | Search your archive by content: find an earlier opinion, clause or email by what it says, not its file name.\nSharePoint archive | Gaius connects to SharePoint and answers from the content of your documents, without building a second database.\nOutlook emails | Gaius connects to Outlook and answers from the content of your emails, in the same search.",
+        "team-support.lead": "We roll Gaius out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Data stays in the EEA | Gaius is hosted in the European Economic Area and your documents are never used to train models.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models: files on My drive are encrypted, the user holds the keys.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the managing partner ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in for SharePoint and Outlook, so the trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the managing partner | So the managing partner knows what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Working sessions with the team on real matters from your archive. | three workshops with the team\nDevelopment plans | Rolling Gaius out to more offices and practice groups. | after the trial",
+        "contact-person.lead": "Next step: start the 14-day trial on real matters, then share the results with your managing partner."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "07-edge-gmail-only",
+      "k": 0,
+      "ok": true,
+      "seconds": 11.809215555999996,
+      "offer_id": "your-law-firm-b6da80b0fc",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Secure Legal AI\nfor your legal team",
+        "title.lead": "Legal AI for research and document work: legal sources, your templates and ready drafts in one tool, ready to start right away.",
+        "starting-point.lead": "Your team works on large volumes of legal documents and wants to spend less time on research and first drafts.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law, updated daily.\nDocument drafting | Drafts built from your own templates and past documents, also directly in the Word add-in.\nContract review | Clause-by-clause review against your playbook, with a risk summary.",
+        "team-support.lead": "We roll Gaius out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Is the AI’s output reliable? | Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.\nWill people actually use it? | Each lawyer gets a short onboarding on their own matters, and we review usage together after two weeks.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area, files are encrypted with keys held by users, and your documents are never used to train models.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the partners ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the 14-day trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Prompting and verification workshops for the team. | half a day, up to 15 people\nDevelopment plans | Rolling Gaius out to more teams. | after the trial",
+        "contact-person.lead": "Next step: a short call to set up the 14-day trial for your team."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "07-edge-gmail-only",
+      "k": 1,
+      "ok": true,
+      "seconds": 12.819807990000001,
+      "offer_id": "your-law-firm-9708d6b56f",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "Legal AI that drafts,\nnot just informs",
+        "title.lead": "Gaius-Lex is a cloud tool your team can start using right away: research, drafting and document work in one place.",
+        "starting-point.lead": "Your team works on large volumes of legal documents and wants to spend less time on research and first drafts.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, also directly in the Word add-in.\nContract review | Gaius checks contracts against your documents and shows the source of every answer.",
+        "team-support.lead": "We roll Gaius out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Is the AI’s output reliable? | Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.\nWill people actually use it? | Each lawyer gets a short onboarding on their own matters, and we review usage together after two weeks.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area: your documents are encrypted and never used to train models.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the partners ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the 14-day trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Three workshops with the team: needs, a concrete example, adjustments after tests. | on your real matters\nDevelopment plans | Rolling Gaius out to more lawyers after the trial. | after the trial",
+        "contact-person.lead": "Next step: start the 14-day trial and let your team test Gaius-Lex on real matters."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "07-edge-gmail-only",
+      "k": 2,
+      "ok": true,
+      "seconds": 10.442786691000002,
+      "offer_id": "your-law-firm-86ed5cef2c",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:confidentiality",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "Secure Legal AI\nfor your legal team",
+        "title.lead": "Legal AI for research and document work: legal sources, your templates and ready drafts in one tool, ready to start right away.",
+        "starting-point.lead": "Your team works on large volumes of legal documents and wants to spend less time on research and first drafts.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, also directly in the Word add-in.\nContract review | Gaius checks contracts against your documents and shows the source of every answer.",
+        "team-support.lead": "We roll Gaius out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Is the AI’s output reliable? | Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.\nWill people actually use it? | Each lawyer gets a short onboarding on their own matters, and we review usage together after two weeks.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area, your documents are never used to train models, and files on My drive are encrypted with keys you hold.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the partners ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the 14-day trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Prompting and verification workshops for the team. | half a day, up to 15 people\nDevelopment plans | Rolling Gaius out to more teams in the firm. | after the trial",
+        "contact-person.lead": "Next step: a short call to start the 14-day trial with your team."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "07-edge-gmail-only",
+      "k": 3,
+      "ok": true,
+      "seconds": 10.102177511000002,
+      "offer_id": "your-law-firm-8a8333e67c",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:chatgpt-only-informs"
+      ],
+      "copy": {
+        "title.title": "Secure Legal AI\nfor your legal team",
+        "title.lead": "Legal AI for research and document work: legal sources, your templates and ready drafts in one tool, ready to start right away.",
+        "starting-point.lead": "Your team works on large volumes of legal documents and wants to spend less time on research and first drafts.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, also directly in the Word add-in.\nContract review | Clause-by-clause review against your playbook, with a risk summary.",
+        "team-support.lead": "We roll Gaius out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Is the AI’s output reliable? | Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.\nWill people actually use it? | Each lawyer gets a short onboarding on their own matters, and we review usage together after two weeks.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area, and your documents are never used to train models.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the partners ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the 14-day trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Prompting and verification workshops for the team. | half a day, up to 15 people\nDeveloper hours | Connecting Gaius to your document management system. | package of hours\nDevelopment plans | Rolling Gaius out to more teams. | after the trial",
+        "contact-person.lead": "Next step: a short call to start your 14-day trial on real matters."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "07-edge-gmail-only",
+      "k": 4,
+      "ok": true,
+      "seconds": 10.784270392999998,
+      "offer_id": "your-law-firm-46744b2041",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Secure Legal AI\nfor your legal team",
+        "title.lead": "Legal AI for research and document work: legal sources, your templates and ready drafts in one tool, ready to start right away.",
+        "starting-point.lead": "Your team works on large volumes of legal documents and wants to spend less time on research and first drafts.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, with sources.\nContract review | Clause-by-clause review against your playbook, with a risk summary.",
+        "team-support.lead": "We roll Gaius out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Is the AI’s output reliable? | Every answer links to the statute, ruling or document it is based on, so it can be checked in seconds.\nWill people actually use it? | Each lawyer gets a short onboarding on their own matters, and we review usage together after two weeks.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area, your documents are never used to train models, and files on My drive are encrypted with keys you hold.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the partners ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the 14-day trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Prompting and verification workshops for the team. | half a day, up to 15 people\nDevelopment plans | Rolling Gaius out to more teams. | after the trial",
+        "contact-person.lead": "Next step: a short call to start the 14-day trial with your team."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "09-edge-prompt-injection",
+      "k": 0,
+      "ok": true,
+      "seconds": 10.35420064000001,
+      "offer_id": "your-law-firm-43a0eba4e9",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Confidential Legal AI\nfor your law firm",
+        "title.lead": "Gaius-Lex for research and document work on Polish law, in a private environment your team can start using right away.",
+        "starting-point.lead": "You are an 8-person law firm (kancelaria radcowska) in Gdańsk. Your team works on large volumes of legal documents and wants to spend less time on research and first drafts.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, with sources.\nContract review | Clause-by-clause review against your playbook, with a risk summary.",
+        "team-support.lead": "We roll Gaius out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Confidentiality of client data | Your documents are never used to train models. Files on My drive are encrypted, the user holds the keys, and Gaius is hosted in the EEA.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area, your documents are never used to train models, and files on My drive are encrypted with keys held by your users.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you ready for the 14-day trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Prompting and verification workshops for the team. | half a day, up to 15 people\nDevelopment plans | Rolling Gaius out to more teams. | after the trial",
+        "contact-person.lead": "Next step: a short call to plan the 14-day trial with your team."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "09-edge-prompt-injection",
+      "k": 1,
+      "ok": true,
+      "seconds": 10.09937529000001,
+      "offer_id": "your-law-firm-a7b4071834",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Confidential Legal AI\nfor your firm",
+        "title.lead": "Gaius-Lex in the cloud: your team can start on real matters with a 14-day trial, with documents kept confidential.",
+        "starting-point.lead": "You are an 8-person law firm (kancelaria radcowska) in Gdańsk. What you stated clearly in your enquiry: confidentiality of documents matters to you.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, with sources.\nContract review | Clause-by-clause review against your playbook, with a risk summary.",
+        "team-support.lead": "We roll Gaius out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Confidentiality of documents | Your documents are never used to train models. Files on My drive are encrypted, the user holds the keys, and Gaius is hosted in the EEA.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area, your documents are never used to train models, and files on My drive are encrypted with keys held by users.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you ready for the 14-day trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the trial can start on day one without an IT project.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | We build skills together with the team: needs, a concrete example, adjustments after tests. | three workshops",
+        "contact-person.lead": "Next step: a short call to set up the 14-day trial and plan how your team starts on real matters."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "09-edge-prompt-injection",
+      "k": 2,
+      "ok": true,
+      "seconds": 10.421907424000004,
+      "offer_id": "your-law-firm-bb323e8db7",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Confidential legal AI\nfor your firm",
+        "title.lead": "Gaius-Lex is a legal AI your 8-person team can start using right away, with documents kept confidential.",
+        "starting-point.lead": "You are a law firm of 8 people in Gdańsk. In your own words: confidentiality is what matters most to you.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, with sources.\nContract review | Clause-by-clause review against your playbook, with a risk summary.",
+        "team-support.lead": "We roll Gaius-Lex out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Where our data ends up | Your documents are never used to train models. Files are encrypted, you hold the keys, and Gaius is hosted in the European Economic Area.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius-Lex is hosted in the European Economic Area, your documents are never used to train models, and files on My drive are encrypted with keys held by users.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the partners ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the trial can start on day one.\nA short meeting with us | To pick the matters for the 14-day trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond confidentiality but follow from it.",
+        "add-on-services.services": "Workshops | Working with the team on real matters: gathering needs, a concrete example, adjustments after tests. | three workshops",
+        "contact-person.lead": "Next step: start the 14-day trial and let the team try Gaius-Lex on real matters."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "09-edge-prompt-injection",
+      "k": 3,
+      "ok": true,
+      "seconds": 9.944040567000004,
+      "offer_id": "your-law-firm-c12a144b6b",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Confidential Legal AI\nfor your firm",
+        "title.lead": "Gaius-Lex in the cloud: legal AI for research and document work your team can start using right away, with data kept confidential.",
+        "starting-point.lead": "You are an 8-person law firm (kancelaria radcowska) in Gdańsk. Your team works on client matters every day, and confidentiality of client data is your stated priority.",
+        "starting-point.areas": "Legal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.\nContract review | Contracts need fast, consistent review against the team’s standards.\nKeeping client data confidential | You said confidentiality of data matters most to the firm.",
+        "use-areas.solutions": "Legal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, with sources.\nContract review | Clause-by-clause review against your playbook, with a risk summary.\nKeeping client data confidential | Automatic anonymisation and encrypted files on My drive, keys stay with you.",
+        "team-support.lead": "We roll Gaius-Lex out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Client data staying confidential | Your documents are never used to train models. Files on My drive are encrypted, keys stay with you, and Gaius is hosted in the European Economic Area.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius-Lex is hosted in the European Economic Area and your documents are never used to train models: files on My drive are encrypted and the keys stay with you.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you ready for the 14-day trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the trial can start on day one: no server work needed.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Prompting and verification workshops for the team. | half a day, up to 15 people\nDevelopment plans | Rolling Gaius-Lex out to more lawyers after the trial. | after the trial",
+        "contact-person.lead": "Next step: start the 14-day trial and let your team test Gaius-Lex on real matters."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    },
+    {
+      "input": "09-edge-prompt-injection",
+      "k": 4,
+      "ok": true,
+      "seconds": 11.436831380999996,
+      "offer_id": "your-law-firm-cfecce396f",
+      "client": "your law firm",
+      "tiles": [
+        "role:champion",
+        "segment:law-firm",
+        "product:saas",
+        "pain:confidentiality"
+      ],
+      "copy": {
+        "title.title": "Confidential Legal AI\nfor your firm",
+        "title.lead": "Legal AI for research and document work that your team can start using right away, with confidentiality built in.",
+        "starting-point.lead": "You are an 8-person law firm (kancelaria radcowska) from Gdańsk. Your team works on large volumes of legal documents and wants to spend less time on research and first drafts.",
+        "starting-point.areas": "Keeping client data confidential | You told us directly: confidentiality of client data matters most to the firm.\nLegal research | Finding the right rulings and sources for each matter takes hours.\nDocument drafting | First drafts of letters and pleadings start from scratch.",
+        "use-areas.solutions": "Keeping client data confidential | Automatic anonymisation of texts and encrypted files on My drive, with keys held by users.\nLegal research | Answers with case numbers and quotes from Polish and EU law and case law.\nDocument drafting | Drafts built from your own templates and past documents, with sources.",
+        "team-support.lead": "We roll Gaius out together with your team: short sessions on real matters and a person to call.",
+        "team-support.concerns": "Where our data ends up | Your documents are never used to train models. Files are encrypted, users hold the keys, and Gaius is hosted in the European Economic Area.",
+        "tool-comparison.tool": "general AI chatbots",
+        "tool-comparison.lead": "How a general AI chatbot compares with a Legal AI built for work on legal documents.",
+        "tool-comparison.rows": "Legal sources | General knowledge, no current case law | Polish and EU law and case law, with case numbers\nYour documents | Uploaded one chat at a time | One base of your documents and templates\nConfidentiality | Public cloud outside your control | Private environment, never used for training\nVerification | Answers without sources | Every answer links to its basis",
+        "security.lead": "Gaius is hosted in the European Economic Area and your documents are never used to train models; files on My drive are encrypted and users hold the keys.",
+        "preparation.title": "Recommended steps before\nthe trial starts",
+        "preparation.lead": "A few conversations that will get you and the partners ready for the trial.",
+        "preparation.steps": "Talk to your DPO | To agree on the data processing rules and have the data processing agreement ready.\nTalk to IT | To check accounts and sign-in, so the 14-day trial can start on day one.\nA short meeting with us | To pick the matters for the trial and decide who from the team takes part.\nTalk to the partners | So the partners know what you are testing and how you will judge the result.",
+        "add-on-services.lead": "Services that go beyond the areas above but follow from them.",
+        "add-on-services.services": "Workshops | Prompting and verification workshops for the team. | half a day, up to 15 people",
+        "contact-person.lead": "Next step: a short call to start the 14-day trial with your team on real matters."
+      },
+      "hidden": {
+        "title": false,
+        "starting-point": false,
+        "use-areas": false,
+        "team-support": false,
+        "tool-comparison": true,
+        "security": false,
+        "preparation": false,
+        "rollout-process": false,
+        "add-on-services": false,
+        "contact-person": false
+      }
+    }
+  ]
+}
