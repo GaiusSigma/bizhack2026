@@ -1,0 +1,8 @@
+{
+  "source": "landing-email",
+  "mode": "email",
+  "touched": [
+    "email"
+  ],
+  "email": "tomek.nowak1987@gmail.com"
+}
