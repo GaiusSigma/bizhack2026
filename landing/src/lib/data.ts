@@ -156,7 +156,7 @@ export const concerns: { icon: IconName; title: string; text: string }[] = [
 
 export const flowFacts: { icon: IconName; title: string; text: string }[] = [
   { icon: 'tool', title: 'Runs on tools we already use.', text: 'Gmail, Fireflies, Gaius Meet, n8n, our CRM and Discord. Nothing new to adopt, so it keeps running after the hackathon.' },
-  { icon: 'code', title: 'Run it yourself in three steps.', text: 'Clone the repo, start it with Docker Compose, send a file from sample-data. The workflow imports itself.' },
+  { icon: 'code', title: 'Run it yourself in three steps.', text: 'Clone the repo and run scripts/start.sh: it builds everything, fills the databases and makes two sample offers.' },
   { icon: 'eye', title: 'Honest about the demo.', text: 'The CRM write and the Discord alert are mocked. The offer, the AI copy and the PDF are generated live.' },
 ];
 

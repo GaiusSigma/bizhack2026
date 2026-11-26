@@ -8,27 +8,53 @@ Gaius-Lex deck (PDF) with copy written from what the client said, and the sales 
   about $0.002 of AI per deck, 0 failed runs. Numbers on the landing come from `landing/src/lib/measured.json`.
 - **What is mocked:** the CRM write and the Discord alert. The offer, the AI copy and the PDF are real.
 
-## Run it yourself in 5 minutes
+## Try it
 
-You need Docker (with Compose), Node 18+ for the helper script, and an [OpenRouter](https://openrouter.ai) API key. Linux / macOS:
+**No install:** open https://bizhack.trygaius.com, pick the "Paste a call" tab, click "Use a sample call" (or paste
+your own email or notes) and "Generate my offer". The deck comes back in about 15 seconds.
+
+**On your machine, one command** (Docker with Compose; Node 18+ is optional):
 
 ```bash
 git clone https://github.com/GaiusSigma/bizhack2026.git && cd bizhack2026
-cp .env.example .env          # then put your key in OPENROUTER_API_KEY
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build   # ~2 min the first time
-node scripts/try-it.mjs       # sends every file in sample-data/ and saves the decks to out/
+./scripts/start.sh            # Windows: powershell -ExecutionPolicy Bypass -File scripts\start.ps1
 ```
 
-Windows (PowerShell): `Copy-Item .env.example .env` instead of `cp`.
+It asks once for an [OpenRouter](https://openrouter.ai/keys) API key (the only thing you provide), builds and starts
+the stack, waits until the offer workflow is live, generates two sample offers into `out/` and prints the addresses.
+About 2½ minutes from `git clone` to the first deck on a fresh machine. Nothing to click or import: Offer Studio
+starts with its knowledge base, tiles, scenarios and slide templates, and n8n imports and publishes the workflow
+and creates its credentials by itself.
 
-- The offer workflow imports and publishes itself when n8n starts (no clicks, no owner account needed for the
-  webhooks). n8n needs about a minute after `up`; `try-it.mjs` waits for it by itself.
-- Landing http://localhost:8080 ("Generate my offer" posts to your local n8n via `OFFER_WEBHOOK_URL`), n8n http://localhost:5678,
-  Offer Studio http://localhost:8082 (password `studio`), FigCraft http://localhost:8081.
-- Your own case: `node scripts/try-it.mjs --text-file my-call.txt` (an email, notes or a transcript; Polish or English),
-  or the "Paste a call" tab on the landing.
-- Without Node: `curl -X POST -H 'content-type: application/json' --data @sample-data/landing-persona-firm-pl.json http://localhost:5678/webhook/dd7c4b67-f5f6-40f4-9325-1ca924d5ff78 -o offer.pdf`
-- Port already taken? Change the left side of `ports:` in `docker-compose.local.yml`.
+| What | Address | Login |
+|---|---|---|
+| Landing (generate an offer) | http://localhost:8080 | – |
+| Offer Studio (the offers, knowledge, scenarios, slides) | http://localhost:8082 | any user name, password `studio` |
+| n8n (the workflow and every run) | http://localhost:5678 | `demo@example.com` / `gaius-jury-2026` |
+| FigCraft (slide editor) | http://localhost:8081 | – (Offer Studio ▸ Slides ▸ Edit in FigCraft opens the deck template) |
+
+- Your own case: `node scripts/try-it.mjs --text-file my-call.txt` (an email, notes or a transcript; Polish or English).
+  All samples: `node scripts/try-it.mjs`; the 10 graded test cases: `node scripts/try-it.mjs sample-data/eval/*.json`
+  (results in [docs/EVAL.md](docs/EVAL.md)).
+- A port already taken? Set `LANDING_PORT`, `STUDIO_PORT`, `N8N_PORT` or `FIGCRAFT_PORT` in `.env` and run `start.sh` again.
+- Stop: `./scripts/stop.sh` (`--wipe` deletes the data too). The demo login and ports apply to local runs only
+  (`docker-compose.local.yml`); production has its own accounts.
+- By hand instead of the script: `cp .env.example .env`, set `OPENROUTER_API_KEY`, then
+  `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build`.
+
+## What you will see
+
+| | |
+|---|---|
+| ![Landing](docs/screenshots/01-landing.jpg) Landing: email, voice note, a pasted call or a role | ![Result](docs/screenshots/02-paste-a-call-result.jpg) The offer: what it was built from, the client's concerns, the note for our sales team |
+| ![Deck](docs/screenshots/03-deck-preview.jpg) The deck, full screen in the browser | ![Live run](docs/screenshots/04-workflow-live-run.jpg) "Run the workflow": the production workflow on a sample call |
+| ![Starting point](docs/screenshots/09-deck-starting-point.jpg) Slide written from the call | ![Team support](docs/screenshots/10-deck-team-support.jpg) Concerns "From our call", with our answers |
+| ![Offer Studio](docs/screenshots/06-offer-studio-offers.jpg) Offer Studio: every offer, with its tiles | ![Offer](docs/screenshots/07-offer-studio-offer.jpg) An offer: which slides AI wrote, edit, recompute, PDF |
+| ![Results](docs/screenshots/05-measured-results.jpg) Measured on real runs | |
+
+![n8n workflow](docs/screenshots/08-n8n-workflow.jpg)
+The n8n workflow: enquiry (website, Fireflies, Gmail, voice note) → tiles → AI plan → offer in Offer Studio →
+AI copy, checked field by field → PDF → back to the landing and to the sales team.
 
 ## The stack
 

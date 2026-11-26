@@ -88,9 +88,9 @@ Narrator podaje źródło baseline'u: dzisiejsza praca zespołu sprzedaży Gaius
 ### 6. Uruchom sam, używamy dalej (4:15–5:00), 20 + 15 pkt
 Karta: GitHub → README, sekcja „Run it yourself in 5 minutes”.
 
-> „Repo jest publiczne, na MIT. Cztery komendy: klon, `.env` z kluczem OpenRouter, `docker compose up`,
-> `node scripts/try-it.mjs`. Workflow importuje się i publikuje sam, w `sample-data` są gotowe zgłoszenia.
-> Sprawdziliśmy to na czystym klonie: pierwszy PDF po około 4 minutach od `git clone`. To działa na naszym
+> „Repo jest publiczne, na MIT. Dwie komendy: `git clone` i `./scripts/start.sh`. Skrypt pyta tylko o klucz
+> OpenRouter, sam buduje stack, wypełnia bazy, publikuje workflow i robi dwie przykładowe oferty; w README są loginy
+> i zrzuty ekranu. Sprawdziliśmy to na czystym klonie: pierwszy PDF po 2,5 minuty od `git clone`. To działa na naszym
 > serwerze (Coolify) i na narzędziach, których zespół już używa, więc od poniedziałku tak robimy oferty.”
 
 Zamknięcie, jedno zdanie: „Od rozmowy do oferty, która odpowiada na obawy tego klienta, w kilkanaście sekund
