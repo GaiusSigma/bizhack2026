@@ -92,3 +92,13 @@
   .pnav__hint { display: none; }
   .presenter__body { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Pitch v2: positioning, FOMU / FOBO, scale */
+.slide__h1--wide { font-size: calc(var(--u) * 5.2); max-width: 22ch; }
+.pchips { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 0.7); }
+.pchip--sm { padding: calc(var(--u) * 0.6) calc(var(--u) * 1.1); font-size: calc(var(--u) * 1.2); background: var(--sand); }
+.pcard--fear { background: #fff; border-color: var(--rose); }
+.pfear { font-size: calc(var(--u) * 4.4); line-height: 1; font-weight: 800; letter-spacing: -0.02em; color: var(--rose); }
+.pscale { margin: 0; padding: calc(var(--u) * 1.6) calc(var(--u) * 2); background: var(--ink); color: #fff; font-size: calc(var(--u) * 1.6); line-height: 1.45; }
+.pscale b { color: var(--rose-on-ink); }
+.slide__lead b { color: var(--ink); }

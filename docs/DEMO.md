@@ -3,16 +3,15 @@
 Bez pitchu, samo demo. Rdzeń trwa 5 minut. Wersja skrócona do 3 minut: kroki 1, 2, 5 i 6.
 Każdy krok jest przypisany do kryterium oceny; tak mówimy o nim jury.
 
-| Kryterium | Pkt | Gdzie to pokazujemy |
+| Kryterium | Pkt | Gdzie to pokazujemy (slajd /pitch) |
 |---|---|---|
-| Działa na żywo na prawdziwym przypadku właściciela wyzwania | 25 | krok 2 (prawdziwa rozmowa Gaius-Lex), krok 3 |
-| Zmierzona poprawa czasu, kosztu lub jakości | 25 | krok 5 (wyniki z produkcji + „your run just now”) |
-| Ktoś spoza zespołu uruchomi z repo | 20 | krok 6 (README, 4 komendy, sample-data) |
-| Firma realnie może dalej używać | 15 | krok 3 (Offer Studio), krok 6 (Coolify, nasze narzędzia) |
-| Problem i demo przedstawione jasno | 15 | krok 1 i jedno zdanie na każdy krok |
+| Działa na żywo na prawdziwym przypadku właściciela wyzwania | 25 | 6: prawdziwa rozmowa sprzedażowa Gaius-Lex |
+| Zmierzona poprawa czasu, kosztu lub jakości | 25 | 9: wyniki z produkcji + skala 1000 rejestracji |
+| Ktoś spoza zespołu uruchomi z repo | 20 | 11: dwie komendy, README z loginami i zrzutami |
+| Firma realnie może dalej używać | 15 | 10 i 11: element sprzedaży, działa na produkcji, zmiany bez kodu |
+| Problem i demo przedstawione jasno | 15 | 2–5: kim jesteśmy, FOMU/FOBO, nasz proces, rozwiązanie |
 
-Role: **kierowca** (laptop, klika, nic nie mówi) i **narrator** (mówi, pokazuje palcem). Narrator zna skrót każdego
-kroku na pamięć; kierowca ma otwarte karty w kolejności z listy niżej.
+Role: **kierowca** (laptop, klika, nic nie mówi) i **narrator** (mówi). Narrator prowadzi z widoku prowadzącego (/pitch, klawisz P).
 
 ## Tryb prezentacji: /pitch
 
@@ -21,7 +20,7 @@ na każdym slajdzie są przyciski, które otwierają na żywo generator, Offer S
 
 - Strzałki / spacja: dalej, wstecz. **F**: pełny ekran. **P**: widok prowadzącego w drugim oknie (notatki po polsku, zegar
   do 5:00, cel czasowy slajdu, następny slajd). Okna są zsynchronizowane: można klikać w którymkolwiek.
-- Slajd 4 („Under the hood”) jest opcjonalny: na pytanie „jak to działa” albo gdy deck się jeszcze generuje.
+- Slajdy 7 („Under the hood”) i 8 (Offer Studio) są zapasowe: na pytanie „jak to działa” albo gdy deck się jeszcze generuje; w 5 minutach je przeskakujesz.
   Pełny opis techniczny: https://bizhack.trygaius.com/how-it-works.
 - Układ ekranu: na projektorze okno /pitch (F), na laptopie widok prowadzącego; karty z landingiem, n8n i Offer Studio
   w tym samym oknie co /pitch, żeby przełączać się Ctrl+Tab.
@@ -45,68 +44,27 @@ na każdym slajdzie są przyciski, które otwierają na żywo generator, Offer S
 5. Nagranie ekranu całego demo (z próby) na pulpicie: ostatnia deska ratunku.
 6. Wyłącz powiadomienia systemowe i komunikatory. Ustaw przeglądarkę na pełny ekran.
 
-## Rdzeń: 5 minut
+## Rdzeń: 5 minut (12 slajdów, 7 i 8 zapasowe)
 
-### 1. Problem (0:00–0:30)
-Karta: landing, góra strony.
+Przekaz w jednym zdaniu: **Gaius to platforma document intelligence i automatyzacji na małych modelach językowych,
+wdrażana on-prem; ofertowanie zautomatyzowaliśmy u siebie, i to jest dowód, że zautomatyzujemy każdy proces.**
 
-> „Gaius-Lex sprzedaje prywatne AI kancelariom i działom prawnym. Dziś dopasowana oferta po rozmowie to u nas
-> około 3 godzin pracy handlowca, a klient czeka do 2 dni. Kupujący boją się dwóch rzeczy: złego narzędzia i wycieku
-> danych. Ogólny deck nie odpowiada na żadną z nich. Pokażemy, jak robimy to teraz: na żywo, na prawdziwej rozmowie.”
+| # | Slajd | Czas | Co mówimy |
+|---|---|---|---|
+| 1 | Tytuł | 0:00–0:15 | Kim jesteśmy, jednym zdaniem. „Dziś pokażemy na żywo, jak zautomatyzowaliśmy własne ofertowanie.” |
+| 2 | Kim jesteśmy | 0:15–0:45 | Document intelligence na sLLM, wdrożenia on-prem (Gaius Vault), automatyzacje na integracjach: SharePoint, Teams, Outlook, OneDrive, Google Drive, Word, API, n8n. Produkcyjnie: SGB Bank, mKomornik. |
+| 3 | FOMU i FOBO | 0:45–1:15 | W dobie AI slopu wyostrzyły się dwa lęki: strach przed pomyłką i strach, że jest coś lepszego. Przy wdrożeniu od 50 tys. € rocznie oferta „jesteśmy fajni” nie działa; trzeba pokazać, że rozumiemy ich potrzebę. |
+| 4 | Nasz proces | 1:15–1:45 | Dopasowana oferta: ok. 3 h pracy, do 2 dni do klienta, nawet z szablonami. Ok. 1000 rejestracji w SaaS miesięcznie w samej Polsce; testują SaaS, nie wdrożenie. Startupowym zespołem nie da się zaopiekować wszystkimi. |
+| 5 | Rozwiązanie | 1:45–2:05 | Każde zgłoszenie, rozmowa i rejestracja dostaje ofertę, która odpowiada na ich lęki ich słowami. „Zamiast mówić, pokażemy.” |
+| 6 | **Demo** | 2:05–3:20 | Paste a call → plik z prawdziwą rozmową → Generate; w trakcie karta n8n (nowe wykonanie). View the deck: slajd 2 (słowa klienta), 4 (obawy „From our call” = FOMU zbite), 6 (kroki przed decyzją = FOBO). Notatka dla handlowca. Plan B: PDF z próby. |
+| 7 | Jak to działa | zapas | Na pytanie „jak to działa” albo gdy deck się generuje. Pełny opis: /how-it-works. |
+| 8 | Offer Studio | zapas | Handlowiec poprawia slajd i pobiera nowy PDF. |
+| 9 | Zmierzone | 3:20–3:55 | Ok. 3 h → 12 s, do 2 dni → ten sam dzień, ok. $0,003 za ofertę, 0 błędów. Skala: 1000 rejestracji × 3 h = ok. 3000 h (ok. 19 etatów) ręcznie; automatem kilka godzin pracy maszyny i kilka dolarów. |
+| 10 | Dowód | 3:55–4:25 | Ten system to element sprzedaży: pokazuje, że świetnie operujemy AI i zautomatyzujemy każdy proces, nawet ofertowanie. Ten sam wzorzec budujemy klientom na Gaiusie. |
+| 11 | Uruchom sam | 4:25–4:45 | Repo publiczne, dwie komendy, pierwszy deck po 2,5 minuty; na produkcji działa na naszym serwerze. |
+| 12 | Zamknięcie | 4:45–5:00 | „Gaius: document intelligence i automatyzacja na małych modelach. Sprawdzone na własnej sprzedaży.” Pytania. |
 
-### 2. Prawdziwy przypadek (0:30–2:00), 25 pkt
-Karta: landing → zakładka **Paste a call**.
-
-1. Kierowca: **Load a file** → `real-call.txt` (albo wkleja). Narrator: „To zanonimizowana transkrypcja naszej
-   prawdziwej rozmowy sprzedażowej z <typ klienta, np. dział prawny grupy produkcyjnej>.”
-2. **Generate my offer**. W trakcie (ok. 12 s) kierowca przełącza na kartę n8n: nowe wykonanie pojawia się na liście.
-   Narrator: „n8n czyta rozmowę, dobiera kafelki z Offer Studio, model pisze treść slajdów, walidator sprawdza
-   każde pole i limity znaków, a FigCraft renderuje PDF.”
-3. Z powrotem na landing: kafelki (rola, segment, bóle) i „What you told us worries you”. Narrator wskazuje jeden
-   ból, który klient naprawdę powiedział.
-4. **View the deck**: slajd 2 (Starting point: słowa klienta), slajd 4 (Team support: obawy „From our call”),
-   slajd 6 (Preparation: kroki przed decyzją). Nie czytamy slajdów, pokazujemy jedno zdanie, które padło w rozmowie.
-5. Rozwiń **What our sales team gets with it**: notatka dla handlowca po polsku (co dopytać na następnym callu).
-
-Plan B: n8n nie odpowiada → kierowca otwiera PDF z punktu 3 przygotowania, narrator mówi to wprost
-(„tu wynik tego samego wejścia sprzed 20 minut”).
-
-### 3. Handlowiec przejmuje (2:00–2:45), 15 pkt
-Karta: Offer Studio → najnowsza oferta.
-
-> „Oferta nie znika w PDF-ie. Leży w Offer Studio: handlowiec widzi, które slajdy napisało AI i dlaczego,
-> poprawia jedno zdanie i pobiera nowy PDF. Wskazówki dla modelu też są tutaj, więc zmiana tonu nie wymaga programisty.”
-
-Kierowca: otwiera ofertę, pokazuje oznaczenie „written by…”, zmienia jedno słowo, podgląd się odświeża.
-
-### 4. Bez formularza: automat (2:45–3:30)
-Karta: landing → sekcja **How it runs** → źródło **Fireflies transcript** → **Run the workflow**.
-
-> „W codziennej pracy nikt nie wkleja tekstu. Po rozmowie transkrypcja trafia do n8n, a zespół dostaje gotowy deck
-> z notatką. Teraz leci prawdziwy produkcyjny workflow na przykładowej rozmowie. Uczciwie: zapis do CRM i alert
-> na Discordzie są tu zamockowane, oferta i PDF są prawdziwe.”
-
-Po zakończeniu: **Open the deck** w karcie Discorda (jedno spojrzenie, bez przewijania).
-
-### 5. Zmierzone (3:30–4:15), 25 pkt
-Karta: landing → sekcja **Measured result**.
-
-> „Te liczby nie są z prezentacji, tylko z wykonań produkcyjnego workflow, a skrypt `measure.mjs` w repo liczy je
-> od nowa. Mediana 12 sekund zamiast około 3 godzin. Koszt AI ok. 0,3 centa za ofertę. N decków, zero błędów.
-> A tu zielona linia: wasze uruchomienie sprzed minuty, X sekund.”
-
-Narrator podaje źródło baseline'u: dzisiejsza praca zespołu sprzedaży Gaius-Lex (listopad 2026).
-
-### 6. Uruchom sam, używamy dalej (4:15–5:00), 20 + 15 pkt
-Karta: GitHub → README, sekcja „Run it yourself in 5 minutes”.
-
-> „Repo jest publiczne, na MIT. Dwie komendy: `git clone` i `./scripts/start.sh`. Skrypt pyta tylko o klucz
-> OpenRouter, sam buduje stack, wypełnia bazy, publikuje workflow i robi dwie przykładowe oferty; w README są loginy
-> i zrzuty ekranu. Sprawdziliśmy to na czystym klonie: pierwszy PDF po 2,5 minuty od `git clone`. To działa na naszym
-> serwerze (Coolify) i na narzędziach, których zespół już używa, więc od poniedziałku tak robimy oferty.”
-
-Zamknięcie, jedno zdanie: „Od rozmowy do oferty, która odpowiada na obawy tego klienta, w kilkanaście sekund
-zamiast trzech godzin.”
+Plan B dla dema: n8n nie odpowiada → PDF z przygotowania (punkt 3), powiedz wprost, że to wynik sprzed 20 minut.
 
 ## Pytania, które padną
 
@@ -117,5 +75,7 @@ zamiast trzech godzin.”
 | Skąd 3 godziny? | Z obecnej pracy zespołu sprzedaży Gaius-Lex: rozmowa → notatki → wybór slajdów → przepisanie treści → PDF. |
 | Co, jak zgłoszenie jest puste? | Dostaje ofertę domyślną (segment z domeny e-maila, rola champion), a notatka dla handlowca mówi, co dopytać. Pokazane w `sample-data/landing-role-only.json`. |
 | Po polsku? | Wejście po polsku albo angielsku, deck po angielsku (taki jest szablon 2026). Notatka dla handlowca po polsku. |
-| Ile to kosztuje w skali? | ~17 tys. tokenów na deck, ok. $0,003. 100 ofert miesięcznie to ok. 30 centów. |
+| Ile to kosztuje w skali? | ~17 tys. tokenów na deck, ok. $0,003. 1000 ofert miesięcznie to ok. $3. |
+| Dlaczego sLLM i on-prem? | Dokumenty klientów zostają w organizacji; licencja Vault obejmuje całą organizację bez liczenia użytkowników. Nie twierdzimy, że każdy wariant Vault liczy wszystko lokalnie (research może korzystać z biblioteki prawa w chmurze w EOG, chyba że wariant z Legal Researcher on-premise). |
+| Czym jest FOMU / FOBO? | Fear of messing up (strach przed złym wyborem) i fear of a better option (strach, że zaraz będzie coś lepszego). |
 | Co jest zamockowane? | Zapis do CRM i alert na Discordzie. Wszystko inne jest na produkcji. |
