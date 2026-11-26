@@ -601,7 +601,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Nagranie ze strony (base64) -> plik binarny dla ElevenLabs. Przeglądarka nie przepisała mowy (Safari, Firefox, iPhone).\nconst item = $input.first();\nconst b = item.json.body || item.json;\nconst v = b.voice || {};\nconst mime = String(v.mimeType || 'audio/webm').split(';')[0];\nconst ext = /mp4|m4a|aac/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : /wav/.test(mime) ? 'wav' : /mpeg|mp3/.test(mime) ? 'mp3' : 'webm';\nreturn [{ json: item.json, binary: { audio: { data: String(v.audioBase64 || ''), mimeType: mime, fileName: `voice.${ext}` } } }];"
+        "jsCode": "// Nagranie ze strony (base64) -> plik binarny dla ElevenLabs. Przeglądarka nie przepisała mowy (Safari, Firefox, iPhone).\nconst item = $input.first();\nconst b = item.json.body || item.json;\nconst v = b.voice || {};\nconst mime = String(v.mimeType || 'audio/webm').split(';')[0];\nconst ext = /mp4|m4a|aac/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : /wav/.test(mime) ? 'wav' : /mpeg|mp3/.test(mime) ? 'mp3' : 'webm';\n// Język wybrany na stronie (\"I will speak: Polski / English\", voice.language = 'pl-PL' / 'en-GB') -> language_code\n// dla ElevenLabs; bez wyboru ElevenLabs rozpoznaje język sam.\nconst lang = String(v.language || '').toLowerCase().slice(0, 2);\nconst stt = /^[a-z]{2}$/.test(lang) ? { language_code: lang } : {};\nreturn [{ json: { ...item.json, stt }, binary: { audio: { data: String(v.audioBase64 || ''), mimeType: mime, fileName: `voice.${ext}` } } }];"
       },
       "id": "5b28d6da-3fca-4c88-a553-fba44de2506d",
       "name": "Nagranie → plik",
@@ -630,6 +630,10 @@
             {
               "name": "model_id",
               "value": "scribe_v1"
+            },
+            {
+              "name": "={{ $json.stt && $json.stt.language_code ? 'language_code' : 'tag_audio_events' }}",
+              "value": "={{ $json.stt && $json.stt.language_code ? $json.stt.language_code : 'false' }}"
             }
           ]
         },
